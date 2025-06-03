@@ -29,8 +29,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     try {
-      const userData = await authApi.getCurrentUser();
-      setUser(userData);
+      // Mock user for bypassing authentication
+      const mockUser: User = {
+        id: '1',
+        name: 'John Doe',
+        email: 'john@example.com',
+        avatar: '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      setUser(mockUser);
     } catch (error) {
       console.error('Failed to refresh user:', error);
       setUser(null);

@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Header from "./components/layout/Header";
 import MobileNav from "./components/layout/MobileNav";
 import Index from "./pages/Index";
@@ -33,31 +32,11 @@ const App = () => (
             </div>
             <Routes>
               <Route path="/login" element={<Login />} />
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <Home />
-                </ProtectedRoute>
-              } />
-              <Route path="/sources" element={
-                <ProtectedRoute>
-                  <Sources />
-                </ProtectedRoute>
-              } />
-              <Route path="/digests" element={
-                <ProtectedRoute>
-                  <Digests />
-                </ProtectedRoute>
-              } />
-              <Route path="/digests/:id" element={
-                <ProtectedRoute>
-                  <DigestDetail />
-                </ProtectedRoute>
-              } />
-              <Route path="/subscription" element={
-                <ProtectedRoute>
-                  <Subscription />
-                </ProtectedRoute>
-              } />
+              <Route path="/" element={<Home />} />
+              <Route path="/sources" element={<Sources />} />
+              <Route path="/digests" element={<Digests />} />
+              <Route path="/digests/:id" element={<DigestDetail />} />
+              <Route path="/subscription" element={<Subscription />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
