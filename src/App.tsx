@@ -26,37 +26,20 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
-            {/* Global Particle Background */}
-            <div className="particles fixed inset-0 pointer-events-none z-0">
-              {[...Array(100)].map((_, i) => (
-                <div
-                  key={i}
-                  className="particle"
-                  style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                    animationDelay: `${Math.random() * 4}s`
-                  }}
-                />
-              ))}
+          <div className="min-h-screen bg-gray-50">
+            <Header />
+            <div className="md:hidden fixed top-4 left-4 z-50">
+              <MobileNav />
             </div>
-            
-            <div className="relative z-10">
-              <Header />
-              <div className="md:hidden fixed top-4 left-4 z-50">
-                <MobileNav />
-              </div>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/" element={<Index />} />
-                <Route path="/sources" element={<Sources />} />
-                <Route path="/digests" element={<Digests />} />
-                <Route path="/digests/:id" element={<DigestDetail />} />
-                <Route path="/subscription" element={<Subscription />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </div>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<Index />} />
+              <Route path="/sources" element={<Sources />} />
+              <Route path="/digests" element={<Digests />} />
+              <Route path="/digests/:id" element={<DigestDetail />} />
+              <Route path="/subscription" element={<Subscription />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </div>
         </AuthProvider>
       </BrowserRouter>
