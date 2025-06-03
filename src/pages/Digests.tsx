@@ -32,17 +32,68 @@ const Digests = () => {
         setLoadingMore(true);
       }
 
-      const response = await digestsApi.getDigests(page, 10);
-      
+      // Mock data for demonstration since we don't have a real backend
+      const mockDigests: Digest[] = [
+        {
+          id: '1',
+          title: 'Daily Tech Digest - March 1, 2024',
+          date: new Date().toISOString(),
+          summaries: [
+            {
+              id: '1',
+              title: 'AI Revolution in Healthcare',
+              content: 'Artificial intelligence is transforming healthcare with new diagnostic tools...',
+              sourceUrl: 'https://technews.com/ai-healthcare',
+              sourceName: 'Tech News',
+              publishedAt: new Date().toISOString(),
+              readingTime: 5
+            },
+            {
+              id: '2',
+              title: 'Latest React Framework Updates',
+              content: 'React 18 introduces new features for better performance...',
+              sourceUrl: 'https://reactblog.com/updates',
+              sourceName: 'React Blog',
+              publishedAt: new Date().toISOString(),
+              readingTime: 3
+            }
+          ],
+          audioUrl: 'https://example.com/audio1.mp3',
+          duration: 480,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: '2',
+          title: 'Weekly Business Digest - February 28, 2024',
+          date: new Date(Date.now() - 86400000).toISOString(),
+          summaries: [
+            {
+              id: '3',
+              title: 'Market Trends Analysis',
+              content: 'Stock market shows positive trends in tech sector...',
+              sourceUrl: 'https://businessnews.com/trends',
+              sourceName: 'Business News',
+              publishedAt: new Date().toISOString(),
+              readingTime: 7
+            }
+          ],
+          isRead: true,
+          createdAt: new Date().toISOString()
+        }
+      ];
+
       if (append) {
-        setDigests(prev => [...prev, ...response.data]);
+        setDigests(prev => [...(prev || []), ...mockDigests]);
       } else {
-        setDigests(response.data);
+        setDigests(mockDigests || []);
       }
       
       setCurrentPage(page);
-      setTotalPages(response.pagination.totalPages);
+      setTotalPages(2); // Mock pagination
     } catch (error) {
+      console.error('Failed to load digests:', error);
+      setDigests([]); // Ensure digests is always an array
       toast({
         title: "Failed to load digests",
         description: "There was an error loading your digests.",
@@ -66,14 +117,16 @@ const Digests = () => {
     try {
       await digestsApi.markDigestAsRead(digest.id);
       setDigests(prev => 
-        prev.map(d => d.id === digest.id ? { ...d, isRead: true } : d)
+        (prev || []).map(d => d.id === digest.id ? { ...d, isRead: true } : d)
       );
     } catch (error) {
       console.error('Failed to mark as read:', error);
     }
   };
 
-  const filteredDigests = digests.filter(digest =>
+  // Ensure digests is always an array before filtering
+  const digestsArray = digests || [];
+  const filteredDigests = digestsArray.filter(digest =>
     digest.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     digest.summaries.some(summary => 
       summary.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -127,7 +180,7 @@ const Digests = () => {
         </div>
 
         {/* Empty State */}
-        {digests.length === 0 ? (
+        {digestsArray.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
               <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-6">
