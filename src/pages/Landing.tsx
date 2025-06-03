@@ -1,340 +1,329 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { CheckCircle, BookOpen, Clock, Zap, Palette, Layout } from 'lucide-react';
+import { CheckCircle, BookOpen, Clock, Zap, Palette, Layout, Sparkles, Shield, Bot, Cpu, Database, Workflow, Users, Building2, TrendingUp, Star } from 'lucide-react';
 
 const Landing = () => {
-  const [designStyle, setDesignStyle] = useState<'modern' | 'minimal' | 'bold'>('modern');
-  const [modernLayout, setModernLayout] = useState<'classic' | 'asymmetric' | 'cards'>('classic');
-
   const features = [
     {
-      icon: <BookOpen className="h-6 w-6" />,
-      title: "Curated Content",
-      description: "Get personalized digests from your favorite sources"
+      icon: <Bot className="h-8 w-8" />,
+      title: "AI-Powered Automation",
+      description: "Intelligent workflows that adapt and learn from your business patterns"
     },
     {
-      icon: <Clock className="h-6 w-6" />,
-      title: "Save Time",
-      description: "Condensed summaries save you hours of reading"
+      icon: <Workflow className="h-8 w-8" />,
+      title: "Smart Process Management",
+      description: "Streamline complex operations with our advanced AI decision engine"
     },
     {
-      icon: <Zap className="h-6 w-6" />,
-      title: "Stay Updated",
-      description: "Never miss important news and updates"
+      icon: <Cpu className="h-8 w-8" />,
+      title: "Neural Network Integration",
+      description: "Leverage cutting-edge machine learning for predictive automation"
+    },
+    {
+      icon: <Database className="h-8 w-8" />,
+      title: "Intelligent Data Processing",
+      description: "Transform raw data into actionable insights with AI-driven analytics"
+    },
+    {
+      icon: <Shield className="h-8 w-8" />,
+      title: "Enterprise Security",
+      description: "Military-grade encryption with AI-powered threat detection"
+    },
+    {
+      icon: <Sparkles className="h-8 w-8" />,
+      title: "Predictive Intelligence",
+      description: "Anticipate business needs with our advanced forecasting algorithms"
+    }
+  ];
+
+  const customers = [
+    { name: "TechCorp", logo: "🚀" },
+    { name: "DataFlow", logo: "📊" },
+    { name: "AutoScale", logo: "⚡" },
+    { name: "CloudSync", logo: "☁️" },
+    { name: "AI Dynamics", logo: "🤖" },
+    { name: "FutureWorks", logo: "🌟" }
+  ];
+
+  const pricingPlans = [
+    {
+      name: "Starter",
+      price: "$49",
+      period: "/month",
+      description: "Perfect for small teams getting started with AI automation",
+      features: [
+        "Up to 1,000 AI operations/month",
+        "Basic workflow automation",
+        "Email support",
+        "Standard integrations",
+        "Data encryption"
+      ],
+      popular: false
+    },
+    {
+      name: "Professional",
+      price: "$149",
+      period: "/month",
+      description: "Advanced AI capabilities for growing businesses",
+      features: [
+        "Up to 10,000 AI operations/month",
+        "Advanced neural networks",
+        "Priority support",
+        "Custom integrations",
+        "Predictive analytics",
+        "Team collaboration tools"
+      ],
+      popular: true
+    },
+    {
+      name: "Enterprise",
+      price: "$499",
+      period: "/month",
+      description: "Unlimited AI power for large organizations",
+      features: [
+        "Unlimited AI operations",
+        "Custom AI model training",
+        "24/7 dedicated support",
+        "White-label solutions",
+        "Advanced security features",
+        "On-premise deployment"
+      ],
+      popular: false
     }
   ];
 
   const testimonials = [
     {
-      name: "Sarah Johnson",
-      role: "Marketing Manager",
-      content: "Daily Digest has transformed how I stay informed. I save 2 hours every day!"
+      name: "Sarah Chen",
+      role: "CTO at TechFlow",
+      content: "This AI automation platform transformed our operations. We've seen 300% efficiency gains.",
+      rating: 5,
+      avatar: "👩‍💼"
     },
     {
-      name: "Michael Chen",
-      role: "Tech Lead",
-      content: "The AI-powered summaries are incredibly accurate and relevant to my interests."
+      name: "Marcus Rodriguez",
+      role: "Operations Director",
+      content: "The predictive capabilities are incredible. It's like having a crystal ball for our business.",
+      rating: 5,
+      avatar: "👨‍💼"
     },
     {
-      name: "Emily Davis",
-      role: "Entrepreneur",
-      content: "Perfect for busy professionals who need to stay on top of industry trends."
+      name: "Emily Watson",
+      role: "CEO at DataScale",
+      content: "Implementation was seamless. The AI learns our patterns and optimizes everything automatically.",
+      rating: 5,
+      avatar: "👩‍💻"
     }
   ];
 
-  const getStyleClasses = () => {
-    switch (designStyle) {
-      case 'modern':
-        return {
-          container: "min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100",
-          hero: "bg-white/80 backdrop-blur-sm rounded-3xl p-12 shadow-xl border border-white/20",
-          title: "text-5xl font-bold text-gray-900 mb-6",
-          subtitle: "text-xl text-gray-600 mb-8 max-w-3xl mx-auto",
-          button: "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg",
-          card: "bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1",
-          accent: "text-blue-600"
-        };
-      case 'minimal':
-        return {
-          container: "min-h-screen bg-white",
-          hero: "border border-gray-200 rounded-lg p-12",
-          title: "text-4xl font-light text-gray-900 mb-6 tracking-tight",
-          subtitle: "text-lg text-gray-500 mb-8 max-w-2xl mx-auto font-light",
-          button: "bg-black hover:bg-gray-800 text-white border-0",
-          card: "bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors",
-          accent: "text-black"
-        };
-      case 'bold':
-        return {
-          container: "min-h-screen bg-gradient-to-br from-orange-400 via-red-500 to-pink-500",
-          hero: "bg-white rounded-2xl p-12 shadow-2xl transform rotate-1 hover:rotate-0 transition-transform duration-300",
-          title: "text-6xl font-black text-gray-900 mb-6 transform -skew-x-6",
-          subtitle: "text-xl text-gray-700 mb-8 max-w-3xl mx-auto font-bold",
-          button: "bg-yellow-400 hover:bg-yellow-500 text-black font-black text-lg transform hover:scale-105 transition-transform shadow-lg",
-          card: "bg-gradient-to-br from-yellow-200 to-orange-200 border-4 border-black shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105",
-          accent: "text-red-600"
-        };
-    }
-  };
-
-  const styles = getStyleClasses();
-
-  const renderHeroSection = () => {
-    if (designStyle !== 'modern') {
-      // Classic hero for non-modern styles
-      return (
-        <div className={`text-center mb-16 ${styles.hero}`}>
-          <h1 className={styles.title}>
-            Your Daily Dose of 
-            <span className={styles.accent}> Knowledge</span>
-          </h1>
-          <p className={styles.subtitle}>
-            Transform information overload into actionable insights. Get personalized content digests 
-            delivered daily, powered by AI and tailored to your interests.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/login">
-              <Button size="lg" className={`px-8 py-3 text-lg ${styles.button}`}>
-                Start Your Free Trial
-              </Button>
-            </Link>
-            <Button variant="outline" size="lg" className="px-8 py-3 text-lg">
-              Watch Demo
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
-    // Modern style variations
-    switch (modernLayout) {
-      case 'classic':
-        return (
-          <div className={`text-center mb-16 ${styles.hero}`}>
-            <h1 className={styles.title}>
-              Your Daily Dose of 
-              <span className={styles.accent}> Knowledge</span>
-            </h1>
-            <p className={styles.subtitle}>
-              Transform information overload into actionable insights. Get personalized content digests 
-              delivered daily, powered by AI and tailored to your interests.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/login">
-                <Button size="lg" className={`px-8 py-3 text-lg ${styles.button}`}>
-                  Start Your Free Trial
-                </Button>
-              </Link>
-              <Button variant="outline" size="lg" className="px-8 py-3 text-lg">
-                Watch Demo
-              </Button>
-            </div>
-          </div>
-        );
-
-      case 'asymmetric':
-        return (
-          <div className="grid lg:grid-cols-2 gap-12 mb-16 items-center">
-            <div className="space-y-8">
-              <h1 className="text-6xl font-bold text-gray-900 leading-tight">
-                Your Daily Dose of 
-                <span className="text-blue-600 block"> Knowledge</span>
-              </h1>
-              <p className="text-xl text-gray-600 leading-relaxed">
-                Transform information overload into actionable insights. Get personalized content digests 
-                delivered daily, powered by AI and tailored to your interests.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/login">
-                  <Button size="lg" className={`px-8 py-3 text-lg ${styles.button}`}>
-                    Start Your Free Trial
-                  </Button>
-                </Link>
-                <Button variant="outline" size="lg" className="px-8 py-3 text-lg">
-                  Watch Demo
-                </Button>
-              </div>
-            </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-white/20">
-              <div className="aspect-video bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
-                <div className="text-6xl text-blue-600">📰</div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'cards':
-        return (
-          <div className="mb-16">
-            <div className="text-center mb-12">
-              <h1 className="text-5xl font-bold text-gray-900 mb-4">
-                Your Daily Dose of 
-                <span className="text-blue-600"> Knowledge</span>
-              </h1>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                Transform information overload into actionable insights.
-              </p>
-            </div>
-            
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
-              <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg text-center p-6">
-                <div className="text-4xl mb-4">🎯</div>
-                <h3 className="font-semibold mb-2">Personalized</h3>
-                <p className="text-sm text-gray-600">Tailored to your interests</p>
-              </Card>
-              <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg text-center p-6">
-                <div className="text-4xl mb-4">⚡</div>
-                <h3 className="font-semibold mb-2">Fast</h3>
-                <p className="text-sm text-gray-600">Save hours of reading</p>
-              </Card>
-              <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg text-center p-6">
-                <div className="text-4xl mb-4">🤖</div>
-                <h3 className="font-semibold mb-2">AI-Powered</h3>
-                <p className="text-sm text-gray-600">Smart content curation</p>
-              </Card>
-            </div>
-
-            <div className="text-center">
-              <Link to="/login">
-                <Button size="lg" className={`px-8 py-3 text-lg mr-4 ${styles.button}`}>
-                  Start Your Free Trial
-                </Button>
-              </Link>
-              <Button variant="outline" size="lg" className="px-8 py-3 text-lg">
-                Watch Demo
-              </Button>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
   return (
-    <div className={styles.container}>
-      {/* Style Switcher */}
-      <div className="fixed top-20 right-4 z-50 bg-white rounded-lg shadow-lg p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Palette className="h-4 w-4" />
-          <span className="text-sm font-medium">Design Style</span>
-        </div>
-        <div className="flex flex-col gap-1 mb-4">
-          <button
-            onClick={() => setDesignStyle('modern')}
-            className={`px-3 py-1 text-sm rounded ${designStyle === 'modern' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-          >
-            Modern
-          </button>
-          <button
-            onClick={() => setDesignStyle('minimal')}
-            className={`px-3 py-1 text-sm rounded ${designStyle === 'minimal' ? 'bg-gray-100 text-gray-700' : 'hover:bg-gray-100'}`}
-          >
-            Minimal
-          </button>
-          <button
-            onClick={() => setDesignStyle('bold')}
-            className={`px-3 py-1 text-sm rounded ${designStyle === 'bold' ? 'bg-orange-100 text-orange-700' : 'hover:bg-gray-100'}`}
-          >
-            Bold
-          </button>
-        </div>
-
-        {/* Modern Layout Options */}
-        {designStyle === 'modern' && (
-          <>
-            <div className="flex items-center gap-2 mb-2 pt-2 border-t">
-              <Layout className="h-4 w-4" />
-              <span className="text-sm font-medium">Modern Layout</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <button
-                onClick={() => setModernLayout('classic')}
-                className={`px-3 py-1 text-sm rounded ${modernLayout === 'classic' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-              >
-                Classic
-              </button>
-              <button
-                onClick={() => setModernLayout('asymmetric')}
-                className={`px-3 py-1 text-sm rounded ${modernLayout === 'asymmetric' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-              >
-                Asymmetric
-              </button>
-              <button
-                onClick={() => setModernLayout('cards')}
-                className={`px-3 py-1 text-sm rounded ${modernLayout === 'cards' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-              >
-                Cards
-              </button>
-            </div>
-          </>
-        )}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-3/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse delay-2000"></div>
       </div>
 
-      {/* Hero Section */}
-      <div className="container mx-auto px-4 py-16">
-        {renderHeroSection()}
+      {/* Floating particles */}
+      <div className="absolute inset-0">
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-2 h-2 bg-white/20 rounded-full animate-bounce"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${3 + Math.random() * 2}s`
+            }}
+          ></div>
+        ))}
+      </div>
 
-        {/* Features Section */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-          {features.map((feature, index) => (
-            <Card key={index} className={`text-center ${styles.card}`}>
-              <CardHeader>
-                <div className={`mx-auto mb-4 w-12 h-12 ${designStyle === 'bold' ? 'bg-black' : 'bg-blue-100'} rounded-full flex items-center justify-center`}>
-                  <div className={designStyle === 'bold' ? 'text-yellow-400' : styles.accent}>
-                    {feature.icon}
+      <div className="relative z-10">
+        {/* Hero Section */}
+        <div className="container mx-auto px-4 py-20">
+          <div className="text-center mb-20">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-6 py-2 mb-8 border border-white/20">
+              <Sparkles className="h-4 w-4 text-cyan-400" />
+              <span className="text-white/90 text-sm font-medium">Next-Generation AI Automation</span>
+            </div>
+            
+            <h1 className="text-6xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 mb-6 leading-tight">
+              Automate Everything
+              <br />
+              <span className="text-white">with AI Intelligence</span>
+            </h1>
+            
+            <p className="text-xl text-white/80 mb-12 max-w-3xl mx-auto leading-relaxed">
+              Transform your business with cutting-edge AI automation. Our neural networks learn, adapt, 
+              and optimize your workflows in real-time, delivering unprecedented efficiency gains.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+              <Link to="/login">
+                <Button className="px-8 py-4 text-lg bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white rounded-full shadow-2xl shadow-purple-500/25 border border-white/20 backdrop-blur-sm transform hover:scale-105 transition-all duration-300 glow-effect">
+                  Start Free Trial
+                  <Sparkles className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <Button variant="outline" className="px-8 py-4 text-lg bg-white/10 backdrop-blur-md border-white/30 text-white hover:bg-white/20 rounded-full">
+                Watch Demo
+              </Button>
+            </div>
+            
+            <div className="mt-12 text-white/60 text-sm">
+              ✨ No credit card required • 14-day free trial • Setup in minutes
+            </div>
+          </div>
+
+          {/* Floating Dashboard Preview */}
+          <div className="relative max-w-6xl mx-auto mb-32">
+            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-2xl shadow-purple-500/20 transform hover:scale-105 transition-all duration-500 floating-card">
+              <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-purple-500/20"></div>
+                <div className="relative z-10 flex items-center justify-center h-full">
+                  <div className="text-6xl animate-pulse">🤖</div>
+                  <div className="ml-4 text-white">
+                    <div className="text-2xl font-bold">AI Dashboard</div>
+                    <div className="text-white/60">Real-time automation insights</div>
                   </div>
                 </div>
-                <CardTitle className={`text-xl ${designStyle === 'bold' ? 'font-black' : ''}`}>{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className={`text-base ${designStyle === 'bold' ? 'font-bold text-gray-800' : ''}`}>
-                  {feature.description}
-                </CardDescription>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* How It Works Section */}
-        <div className="mb-16">
-          <h2 className={`text-3xl font-bold text-center mb-12 ${designStyle === 'bold' ? 'font-black text-4xl' : 'text-gray-900'}`}>How It Works</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[1, 2, 3].map((step, index) => {
-              const titles = ["Choose Your Sources", "AI Processes Content", "Receive Your Digest"];
-              const descriptions = [
-                "Select from thousands of trusted news sources, blogs, and publications",
-                "Our AI analyzes and summarizes the most important information",
-                "Get personalized summaries delivered to your inbox daily"
-              ];
-              
-              return (
-                <div key={step} className="text-center">
-                  <div className={`w-16 h-16 ${designStyle === 'bold' ? 'bg-black border-4 border-yellow-400' : 'bg-blue-600'} text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 ${designStyle === 'bold' ? 'transform rotate-12' : ''}`}>
-                    {step}
-                  </div>
-                  <h3 className={`text-xl font-semibold mb-2 ${designStyle === 'bold' ? 'font-black' : ''}`}>{titles[index]}</h3>
-                  <p className={`${designStyle === 'minimal' ? 'text-gray-500' : 'text-gray-600'} ${designStyle === 'bold' ? 'font-bold' : ''}`}>{descriptions[index]}</p>
-                </div>
-              );
-            })}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Testimonials Section */}
-        <div className="mb-16">
-          <h2 className={`text-3xl font-bold text-center mb-12 ${designStyle === 'bold' ? 'font-black text-4xl' : 'text-gray-900'}`}>What Our Users Say</h2>
+        {/* Customer Logos */}
+        <div className="container mx-auto px-4 mb-32">
+          <div className="text-center mb-16">
+            <p className="text-white/60 mb-8">Trusted by innovative companies worldwide</p>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-8">
+              {customers.map((customer, index) => (
+                <div key={index} className="bg-white/5 backdrop-blur-md rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 floating-card">
+                  <div className="text-center">
+                    <div className="text-3xl mb-2">{customer.logo}</div>
+                    <div className="text-white/80 text-sm font-medium">{customer.name}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Features Section */}
+        <div className="container mx-auto px-4 mb-32">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Powered by Advanced AI
+            </h2>
+            <p className="text-xl text-white/70 max-w-3xl mx-auto">
+              Our neural networks continuously learn and optimize your business processes, 
+              delivering intelligent automation that evolves with your needs.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <Card key={index} className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-xl shadow-purple-500/10 hover:shadow-2xl hover:shadow-cyan-500/20 transition-all duration-500 transform hover:-translate-y-2 floating-card">
+                <CardHeader>
+                  <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-purple-500/25">
+                    <div className="text-white">
+                      {feature.icon}
+                    </div>
+                  </div>
+                  <CardTitle className="text-xl font-bold text-white">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-white/70 text-base leading-relaxed">
+                    {feature.description}
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Pricing Section */}
+        <div className="container mx-auto px-4 mb-32">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Choose Your AI Power Level
+            </h2>
+            <p className="text-xl text-white/70 max-w-3xl mx-auto">
+              Scale your automation capabilities with flexible pricing designed for businesses of all sizes.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {pricingPlans.map((plan, index) => (
+              <Card key={index} className={`relative bg-white/10 backdrop-blur-xl border transition-all duration-500 transform hover:-translate-y-4 floating-card ${plan.popular ? 'border-cyan-400/50 shadow-2xl shadow-cyan-500/25 scale-105' : 'border-white/20 hover:border-white/40'}`}>
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <div className="bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
+                      Most Popular
+                    </div>
+                  </div>
+                )}
+                <CardHeader className="text-center">
+                  <CardTitle className="text-2xl font-bold text-white mb-2">{plan.name}</CardTitle>
+                  <div className="flex items-baseline justify-center mb-4">
+                    <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">{plan.price}</span>
+                    <span className="text-white/60 ml-2">{plan.period}</span>
+                  </div>
+                  <CardDescription className="text-white/70">{plan.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-4 mb-8">
+                    {plan.features.map((feature, featureIndex) => (
+                      <li key={featureIndex} className="flex items-center text-white/80">
+                        <CheckCircle className="h-5 w-5 text-cyan-400 mr-3 flex-shrink-0" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 ${plan.popular ? 'bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white shadow-lg shadow-purple-500/25' : 'bg-white/20 backdrop-blur-md border border-white/30 text-white hover:bg-white/30'}`}>
+                    Get Started
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Testimonials */}
+        <div className="container mx-auto px-4 mb-32">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Loved by Industry Leaders
+            </h2>
+            <p className="text-xl text-white/70">
+              See how our AI automation is transforming businesses worldwide.
+            </p>
+          </div>
+          
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <Card key={index} className={styles.card}>
+              <Card key={index} className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 floating-card">
                 <CardContent className="p-6">
-                  <p className={`mb-4 italic ${designStyle === 'minimal' ? 'text-gray-500' : 'text-gray-600'} ${designStyle === 'bold' ? 'font-bold text-gray-800' : ''}`}>"{testimonial.content}"</p>
-                  <div>
-                    <p className={`font-semibold ${designStyle === 'bold' ? 'font-black' : 'text-gray-900'}`}>{testimonial.name}</p>
-                    <p className={`text-sm ${designStyle === 'minimal' ? 'text-gray-400' : 'text-gray-500'}`}>{testimonial.role}</p>
+                  <div className="flex mb-4">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
+                    ))}
+                  </div>
+                  <p className="text-white/80 mb-6 italic leading-relaxed">"{testimonial.content}"</p>
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-full flex items-center justify-center text-2xl mr-4">
+                      {testimonial.avatar}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white">{testimonial.name}</p>
+                      <p className="text-white/60 text-sm">{testimonial.role}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -343,17 +332,50 @@ const Landing = () => {
         </div>
 
         {/* CTA Section */}
-        <div className={`text-center ${styles.card} p-12`}>
-          <h2 className={`text-3xl font-bold mb-4 ${designStyle === 'bold' ? 'font-black text-4xl' : 'text-gray-900'}`}>Ready to Get Started?</h2>
-          <p className={`text-xl mb-8 ${designStyle === 'minimal' ? 'text-gray-500' : 'text-gray-600'} ${designStyle === 'bold' ? 'font-bold' : ''}`}>Join thousands of professionals who save time with Daily Digest</p>
-          <Link to="/login">
-            <Button size="lg" className={`px-8 py-3 text-lg ${styles.button}`}>
-              Start Your Free Trial Today
-            </Button>
-          </Link>
-          <p className={`text-sm mt-4 ${designStyle === 'minimal' ? 'text-gray-400' : 'text-gray-500'}`}>No credit card required • 14-day free trial</p>
+        <div className="container mx-auto px-4 pb-20">
+          <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-12 border border-white/20 shadow-2xl shadow-purple-500/20 text-center floating-card">
+            <div className="max-w-3xl mx-auto">
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                Ready to Revolutionize Your Business?
+              </h2>
+              <p className="text-xl text-white/70 mb-8">
+                Join thousands of forward-thinking companies using our AI automation platform 
+                to scale their operations and drive unprecedented growth.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                <Link to="/login">
+                  <Button className="px-8 py-4 text-lg bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white rounded-full shadow-2xl shadow-purple-500/25 border border-white/20 backdrop-blur-sm transform hover:scale-105 transition-all duration-300 glow-effect">
+                    Start Your AI Journey
+                    <Bot className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Button variant="outline" className="px-8 py-4 text-lg bg-white/10 backdrop-blur-md border-white/30 text-white hover:bg-white/20 rounded-full">
+                  Talk to Sales
+                </Button>
+              </div>
+              <div className="mt-8 text-white/60">
+                🔒 Enterprise-grade security • 🚀 Setup in minutes • 💬 24/7 support
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      <style jsx>{`
+        .glow-effect {
+          box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+        }
+        .floating-card {
+          animation: float 6s ease-in-out infinite;
+        }
+        .floating-card:nth-child(2n) {
+          animation-delay: -3s;
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+      `}</style>
     </div>
   );
 };
