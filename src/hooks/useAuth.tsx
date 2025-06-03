@@ -1,7 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '../types';
-import { authApi } from '../services/api';
 import { useToast } from './use-toast';
 
 interface AuthContextType {
@@ -46,12 +45,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = () => {
-    authApi.loginWithGoogle();
+    // Mock login - just set the user directly
+    const mockUser: User = {
+      id: '1',
+      name: 'John Doe',
+      email: 'john@example.com',
+      avatar: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    setUser(mockUser);
+    toast({
+      title: "Logged in successfully",
+      description: "Welcome to Daily Digest!",
+    });
   };
 
   const logout = async () => {
     try {
-      await authApi.logout();
+      // For mock authentication, just clear the user state
       setUser(null);
       toast({
         title: "Logged out successfully",
@@ -69,7 +81,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       setLoading(true);
-      await refreshUser();
+      // For demo purposes, start without a user so you can see the landing page
+      setUser(null);
       setLoading(false);
     };
 
