@@ -26,29 +26,75 @@ const Home = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [digestsResponse, sourcesData] = await Promise.all([
-          digestsApi.getDigests(1, 5),
-          sourcesApi.getSources()
-        ]);
-
-        setRecentDigests(digestsResponse.data);
-        setSources(sourcesData);
         
-        // Calculate stats
-        const unreadCount = digestsResponse.data.filter(d => !d.isRead).length;
-        const activeSourceCount = sourcesData.filter(s => s.isActive).length;
-        const totalReadingTime = digestsResponse.data.reduce((acc, digest) => {
-          return acc + digest.summaries.reduce((summaryAcc, summary) => summaryAcc + summary.readingTime, 0);
+        // Mock data for demonstration since we don't have a real backend
+        const mockDigests: Digest[] = [
+          {
+            id: '1',
+            title: 'Tech Weekly Digest',
+            date: new Date().toISOString(),
+            summaries: [
+              {
+                id: '1',
+                title: 'AI Breakthrough in Natural Language',
+                content: 'Recent advances in AI have shown remarkable progress...',
+                sourceUrl: 'https://example.com/article1',
+                sourceName: 'Tech News',
+                publishedAt: new Date().toISOString(),
+                readingTime: 5
+              }
+            ],
+            audioUrl: 'https://example.com/audio1.mp3',
+            duration: 300,
+            isRead: false,
+            createdAt: new Date().toISOString()
+          }
+        ];
+
+        const mockSources: ContentSource[] = [
+          {
+            id: '1',
+            name: 'Tech News',
+            url: 'https://technews.com',
+            type: 'blog',
+            description: 'Latest technology news and updates',
+            isActive: true,
+            lastScraped: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: '2',
+            name: 'AI Podcast',
+            url: 'https://aipodcast.com',
+            type: 'podcast',
+            description: 'Weekly AI discussions',
+            isActive: true,
+            lastScraped: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+          }
+        ];
+
+        setRecentDigests(mockDigests);
+        setSources(mockSources);
+        
+        // Calculate stats safely
+        const unreadCount = mockDigests.filter(d => !d.isRead).length;
+        const activeSourceCount = mockSources.filter(s => s.isActive).length;
+        const totalReadingTime = mockDigests.reduce((acc, digest) => {
+          return acc + (digest.summaries || []).reduce((summaryAcc, summary) => summaryAcc + summary.readingTime, 0);
         }, 0);
 
         setStats({
-          totalDigests: digestsResponse.pagination.total,
+          totalDigests: mockDigests.length,
           unreadDigests: unreadCount,
           activeSources: activeSourceCount,
           totalReadingTime
         });
       } catch (error) {
         console.error('Failed to fetch data:', error);
+        // Set empty arrays to prevent undefined errors
+        setRecentDigests([]);
+        setSources([]);
       } finally {
         setLoading(false);
       }
@@ -79,7 +125,7 @@ const Home = () => {
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {user?.name.split(' ')[0]}!
+            Welcome back, {user?.name?.split(' ')[0] || 'User'}!
           </h1>
           <p className="text-gray-600 mt-2">
             Here's what's new in your content digest
@@ -186,7 +232,7 @@ const Home = () => {
                           </div>
                           
                           <p className="text-sm text-gray-600 mb-3">
-                            {digest.summaries.length} summaries • {formatDate(digest.date)}
+                            {digest.summaries?.length || 0} summaries • {formatDate(digest.date)}
                           </p>
                           
                           <div className="flex items-center space-x-4">
