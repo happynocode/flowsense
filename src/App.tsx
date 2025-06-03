@@ -8,6 +8,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import Header from "./components/layout/Header";
 import MobileNav from "./components/layout/MobileNav";
 import Index from "./pages/Index";
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Sources from "./pages/Sources";

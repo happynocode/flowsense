@@ -3,6 +3,7 @@ import React from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import Home from './Home';
+import Landing from './Landing';
 import LoadingIndicator from '../components/common/LoadingIndicator';
 
 const Index = () => {
@@ -17,7 +18,7 @@ const Index = () => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Landing />;
   }
 
   return <Home />;
