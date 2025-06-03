@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -35,9 +34,45 @@ const Sources = () => {
   const fetchSources = async () => {
     try {
       setLoading(true);
-      const data = await sourcesApi.getSources();
-      setSources(data);
+      
+      // Mock data for demonstration since we don't have a real backend
+      const mockSources: ContentSource[] = [
+        {
+          id: '1',
+          name: 'Tech News',
+          url: 'https://technews.com',
+          type: 'blog',
+          description: 'Latest technology news and updates',
+          isActive: true,
+          lastScraped: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: '2',
+          name: 'AI Podcast',
+          url: 'https://aipodcast.com',
+          type: 'podcast',
+          description: 'Weekly AI discussions',
+          isActive: true,
+          lastScraped: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: '3',
+          name: 'Daily News',
+          url: 'https://dailynews.com',
+          type: 'news',
+          description: 'Breaking news and current events',
+          isActive: false,
+          lastScraped: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        }
+      ];
+      
+      setSources(mockSources || []);
     } catch (error) {
+      console.error('Failed to load sources:', error);
+      setSources([]); // Ensure sources is always an array
       toast({
         title: "Failed to load sources",
         description: "There was an error loading your content sources.",
@@ -50,9 +85,9 @@ const Sources = () => {
 
   const handleSourceSuccess = (source: ContentSource) => {
     if (editingSource) {
-      setSources(prev => prev.map(s => s.id === source.id ? source : s));
+      setSources(prev => (prev || []).map(s => s.id === source.id ? source : s));
     } else {
-      setSources(prev => [...prev, source]);
+      setSources(prev => [...(prev || []), source]);
     }
     setShowForm(false);
     setEditingSource(null);
@@ -66,7 +101,7 @@ const Sources = () => {
   const handleDelete = async (source: ContentSource) => {
     try {
       await sourcesApi.deleteSource(source.id);
-      setSources(prev => prev.filter(s => s.id !== source.id));
+      setSources(prev => (prev || []).filter(s => s.id !== source.id));
       toast({
         title: "Source deleted",
         description: "The content source has been removed.",
@@ -87,7 +122,7 @@ const Sources = () => {
       const updatedSource = await sourcesApi.updateSource(source.id, {
         isActive: !source.isActive
       });
-      setSources(prev => prev.map(s => s.id === source.id ? updatedSource : s));
+      setSources(prev => (prev || []).map(s => s.id === source.id ? updatedSource : s));
       toast({
         title: updatedSource.isActive ? "Source activated" : "Source deactivated",
         description: updatedSource.isActive 
@@ -150,6 +185,9 @@ const Sources = () => {
     );
   }
 
+  // Ensure sources is always an array before checking length
+  const sourcesArray = sources || [];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -168,7 +206,7 @@ const Sources = () => {
         </div>
 
         {/* Empty State */}
-        {sources.length === 0 ? (
+        {sourcesArray.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
               <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-6">
@@ -187,7 +225,7 @@ const Sources = () => {
         ) : (
           /* Sources Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sources.map((source) => (
+            {sourcesArray.map((source) => (
               <Card key={source.id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
