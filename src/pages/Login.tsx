@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Navigate } from 'react-router-dom';
+import { Brain, Zap, Shield, Globe } from 'lucide-react';
 
 const Login = () => {
   const { user, login, loading } = useAuth();
@@ -11,7 +12,12 @@ const Login = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="glass-card p-8">
+          <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-full flex items-center justify-center animate-pulse glow-purple">
+            <Brain className="w-8 h-8 text-starlight" />
+          </div>
+          <p className="text-center text-lunar-grey">Initializing neural interface...</p>
+        </div>
       </div>
     );
   }
@@ -21,30 +27,34 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 relative">
+      <div className="absolute inset-0 bg-gradient-to-br from-cosmic-purple/10 via-transparent to-electric-blue/10"></div>
+      
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mb-4">
-            <span className="text-white font-bold text-xl">DD</span>
+          <div className="floating mx-auto w-20 h-20 bg-cosmic-gradient rounded-2xl flex items-center justify-center mb-6 glow-purple">
+            <Brain className="w-10 h-10 text-starlight" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Daily Digest</h1>
-          <p className="text-gray-600 mt-2">Your personalized content summary platform</p>
+          <h1 className="text-4xl font-space-grotesk font-bold mb-2">
+            <span className="text-cosmic-gradient">Neural</span>{" "}
+            <span className="text-starlight">Interface</span>
+          </h1>
+          <p className="text-lunar-grey">Connect to the future of content intelligence</p>
         </div>
 
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle>Welcome Back</CardTitle>
-            <CardDescription>
-              Sign in to access your personalized content digests
+        <Card className="glass-card border-0">
+          <CardHeader className="text-center pb-6">
+            <CardTitle className="text-2xl text-starlight">Access Portal</CardTitle>
+            <CardDescription className="text-lunar-grey">
+              Authenticate your quantum signature to access personalized AI insights
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <Button 
               onClick={login} 
-              className="w-full h-11 bg-blue-600 hover:bg-blue-700"
-              size="lg"
+              className="btn-cosmic w-full h-12 text-base"
             >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -62,28 +72,31 @@ const Login = () => {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              Continue with Google
+              Initialize Neural Connection
             </Button>
             
-            <div className="text-xs text-gray-500 text-center">
-              By signing in, you agree to our Terms of Service and Privacy Policy
+            <div className="text-xs text-lunar-grey text-center leading-relaxed">
+              By connecting, you agree to our Quantum Terms of Service and Neural Privacy Policy
             </div>
           </CardContent>
         </Card>
 
-        <div className="mt-8 text-center">
-          <div className="grid grid-cols-3 gap-4 text-xs text-gray-500">
-            <div>
-              <div className="font-medium text-gray-900">AI Summaries</div>
-              <div>Smart content analysis</div>
+        <div className="mt-8">
+          <div className="grid grid-cols-3 gap-6 text-center">
+            <div className="glass-card p-4 hover-lift">
+              <Zap className="w-6 h-6 text-electric-blue mx-auto mb-2" />
+              <div className="text-xs text-starlight font-medium">Quantum Processing</div>
+              <div className="text-xs text-lunar-grey">Lightning fast analysis</div>
             </div>
-            <div>
-              <div className="font-medium text-gray-900">Audio Playback</div>
-              <div>Listen on the go</div>
+            <div className="glass-card p-4 hover-lift">
+              <Shield className="w-6 h-6 text-astral-teal mx-auto mb-2" />
+              <div className="text-xs text-starlight font-medium">Neural Security</div>
+              <div className="text-xs text-lunar-grey">Encrypted intelligence</div>
             </div>
-            <div>
-              <div className="font-medium text-gray-900">Multi-Source</div>
-              <div>Blogs, podcasts, news</div>
+            <div className="glass-card p-4 hover-lift">
+              <Globe className="w-6 h-6 text-cosmic-purple mx-auto mb-2" />
+              <div className="text-xs text-starlight font-medium">Global Network</div>
+              <div className="text-xs text-lunar-grey">Worldwide coverage</div>
             </div>
           </div>
         </div>

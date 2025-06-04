@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings, User, Brain } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const Header = () => {
@@ -21,59 +21,59 @@ const Header = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-midnight/80 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">DD</span>
+          <Link to="/" className="flex items-center space-x-3 group">
+            <div className="w-10 h-10 bg-cosmic-gradient rounded-xl flex items-center justify-center glow-purple transition-all duration-300 group-hover:scale-110">
+              <Brain className="w-6 h-6 text-starlight" />
             </div>
-            <span className="text-xl font-bold text-gray-900">Daily Digest</span>
+            <span className="text-xl font-space-grotesk font-bold text-starlight">Neural Hub</span>
           </Link>
 
           {/* Navigation */}
           {user && (
-            <nav className="hidden md:flex space-x-8">
+            <nav className="hidden md:flex space-x-1">
               <Link
                 to="/"
-                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
                   isActive('/') 
-                    ? 'text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
+                    : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
                 }`}
               >
-                Home
+                Command Center
               </Link>
               <Link
                 to="/sources"
-                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
                   isActive('/sources') 
-                    ? 'text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
+                    : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
                 }`}
               >
-                Sources
+                Data Sources
               </Link>
               <Link
                 to="/digests"
-                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
                   isActive('/digests') 
-                    ? 'text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
+                    : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
                 }`}
               >
-                Digests
+                Neural Digests
               </Link>
               <Link
                 to="/subscription"
-                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
                   isActive('/subscription') 
-                    ? 'text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
+                    : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
                 }`}
               >
-                Subscription
+                Power Level
               </Link>
             </nav>
           )}
@@ -83,47 +83,47 @@ const Header = () => {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:glow-blue">
+                    <Avatar className="h-10 w-10 border-2 border-electric-blue/30">
                       <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-cosmic-gradient text-starlight font-bold">
                         {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuContent className="w-56 bg-midnight/95 backdrop-blur-xl border-white/10" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">
+                      <p className="text-sm font-medium leading-none text-starlight">{user.name}</p>
+                      <p className="text-xs leading-none text-lunar-grey">
                         {user.email}
                       </p>
                     </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile" className="cursor-pointer">
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem asChild className="text-lunar-grey hover:text-starlight hover:bg-white/5 cursor-pointer">
+                    <Link to="/profile">
                       <User className="mr-2 h-4 w-4" />
-                      Profile
+                      Neural Profile
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/subscription" className="cursor-pointer">
+                  <DropdownMenuItem asChild className="text-lunar-grey hover:text-starlight hover:bg-white/5 cursor-pointer">
+                    <Link to="/subscription">
                       <Settings className="mr-2 h-4 w-4" />
-                      Subscription
+                      Power Level
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="cursor-pointer">
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem onClick={logout} className="text-nebula-pink hover:text-nebula-pink hover:bg-nebula-pink/10 cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Log out
+                    Disconnect
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Link to="/login">
-                <Button>Sign In</Button>
+                <Button className="btn-cosmic">Neural Interface</Button>
               </Link>
             )}
           </div>

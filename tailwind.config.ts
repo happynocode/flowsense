@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -19,6 +20,16 @@ export default {
 		},
 		extend: {
 			colors: {
+				// Futuristic Color Palette
+				'deep-space-blue': '#0B132B',
+				'cosmic-purple': '#5643CC',
+				'electric-blue': '#00A6FB',
+				'nebula-pink': '#FF3864',
+				'midnight': '#121420',
+				'starlight': '#F5F5FA',
+				'lunar-grey': '#E0E0E8',
+				'astral-teal': '#00E8FC',
+				
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
@@ -63,6 +74,11 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
+			fontFamily: {
+				'inter': ['Inter', 'sans-serif'],
+				'space-grotesk': ['Space Grotesk', 'sans-serif'],
+				'jetbrains': ['JetBrains Mono', 'monospace'],
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
@@ -84,11 +100,21 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				floating: {
+					'0%, 100%': { transform: 'translateY(0px)' },
+					'50%': { transform: 'translateY(-10px)' }
+				},
+				particles: {
+					'0%': { transform: 'translateY(0)' },
+					'100%': { transform: 'translateY(-200px)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				floating: 'floating 6s ease-in-out infinite',
+				particles: 'particles 20s linear infinite'
 			}
 		}
 	},

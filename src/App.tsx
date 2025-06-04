@@ -26,7 +26,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <div className="min-h-screen bg-gray-50">
+          <div className="min-h-screen bg-background text-foreground relative overflow-hidden particles">
             <Header />
             <div className="md:hidden fixed top-4 left-4 z-50">
               <MobileNav />

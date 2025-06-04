@@ -3,7 +3,7 @@ import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '../ui/sheet';
-import { Menu, Home, FileText, Settings, User, LogOut } from 'lucide-react';
+import { Menu, Home, FileText, Settings, User, LogOut, Brain } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const MobileNav = () => {
@@ -21,81 +21,83 @@ const MobileNav = () => {
     <div className="md:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" className="glass-card border-0 text-starlight hover:glow-blue">
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-64">
+        <SheetContent side="left" className="w-64 bg-midnight/95 backdrop-blur-xl border-white/10">
           <div className="flex flex-col h-full">
-            <div className="flex items-center space-x-2 pb-6">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">DD</span>
+            <div className="flex items-center space-x-3 pb-6">
+              <div className="w-10 h-10 bg-cosmic-gradient rounded-xl flex items-center justify-center glow-purple">
+                <Brain className="w-6 h-6 text-starlight" />
               </div>
-              <span className="text-xl font-bold text-gray-900">Daily Digest</span>
+              <span className="text-xl font-space-grotesk font-bold text-starlight">Neural Hub</span>
             </div>
             
-            <nav className="flex-1 space-y-2">
+            <nav className="flex-1 space-y-3">
               <Link
                 to="/"
                 onClick={closeNav}
-                className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
                   isActive('/') 
-                    ? 'text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
+                    : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
                 }`}
               >
-                <Home className="h-4 w-4" />
-                <span>Home</span>
+                <Home className="h-5 w-5" />
+                <span>Command Center</span>
               </Link>
               
               <Link
                 to="/sources"
                 onClick={closeNav}
-                className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
                   isActive('/sources') 
-                    ? 'text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
+                    : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
                 }`}
               >
-                <FileText className="h-4 w-4" />
-                <span>Sources</span>
+                <FileText className="h-5 w-5" />
+                <span>Data Sources</span>
               </Link>
               
               <Link
                 to="/digests"
                 onClick={closeNav}
-                className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
                   isActive('/digests') 
-                    ? 'text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
+                    : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
                 }`}
               >
-                <FileText className="h-4 w-4" />
-                <span>Digests</span>
+                <FileText className="h-5 w-5" />
+                <span>Neural Digests</span>
               </Link>
               
               <Link
                 to="/subscription"
                 onClick={closeNav}
-                className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
                   isActive('/subscription') 
-                    ? 'text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
+                    : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
                 }`}
               >
-                <Settings className="h-4 w-4" />
-                <span>Subscription</span>
+                <Settings className="h-5 w-5" />
+                <span>Power Level</span>
               </Link>
             </nav>
 
-            <div className="border-t pt-4 mt-auto">
-              <div className="flex items-center space-x-3 px-3 py-2 mb-2">
-                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                  <User className="h-4 w-4" />
+            <div className="border-t border-white/10 pt-4 mt-auto">
+              <div className="flex items-center space-x-3 px-4 py-3 mb-3">
+                <div className="w-10 h-10 bg-aurora-gradient rounded-full flex items-center justify-center glow-teal">
+                  <span className="text-sm font-bold text-midnight">
+                    {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  <p className="text-sm font-medium text-starlight truncate">{user.name}</p>
+                  <p className="text-xs text-lunar-grey truncate">{user.email}</p>
                 </div>
               </div>
               
@@ -105,10 +107,10 @@ const MobileNav = () => {
                   logout();
                   closeNav();
                 }}
-                className="w-full justify-start px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="w-full justify-start px-4 text-nebula-pink hover:text-nebula-pink hover:bg-nebula-pink/10 hover:glow-pink"
               >
-                <LogOut className="mr-2 h-4 w-4" />
-                Log out
+                <LogOut className="mr-3 h-4 w-4" />
+                Disconnect
               </Button>
             </div>
           </div>
