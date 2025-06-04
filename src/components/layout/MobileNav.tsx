@@ -38,7 +38,7 @@ const MobileNav = () => {
               <Link
                 to="/"
                 onClick={closeNav}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium ${
                   isActive('/') 
                     ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
                     : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
@@ -51,7 +51,7 @@ const MobileNav = () => {
               <Link
                 to="/sources"
                 onClick={closeNav}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium ${
                   isActive('/sources') 
                     ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
                     : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
@@ -64,7 +64,7 @@ const MobileNav = () => {
               <Link
                 to="/digests"
                 onClick={closeNav}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium ${
                   isActive('/digests') 
                     ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
                     : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
@@ -77,7 +77,7 @@ const MobileNav = () => {
               <Link
                 to="/subscription"
                 onClick={closeNav}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium ${
                   isActive('/subscription') 
                     ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
                     : 'text-lunar-grey hover:text-starlight hover:bg-white/5'

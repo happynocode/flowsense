@@ -114,7 +114,7 @@ const Landing = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-cosmic-purple/20 via-transparent to-electric-blue/20"></div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="floating mb-8">
+            <div className="mb-8">
               <div className="inline-flex items-center px-4 py-2 rounded-full bg-midnight/60 backdrop-blur-xl border border-white/10 text-sm text-electric-blue mb-6">
                 <Sparkles className="w-4 h-4 mr-2" />
                 Powered by Advanced AI Neural Networks
@@ -158,8 +158,7 @@ const Landing = () => {
             {customerLogos.map((customer, index) => (
               <div 
                 key={index} 
-                className="glass-card p-4 w-20 h-20 flex items-center justify-center floating hover-lift"
-                style={{ animationDelay: `${index * 0.2}s` }}
+                className="glass-card p-4 w-20 h-20 flex items-center justify-center"
               >
                 <span className="text-electric-blue font-bold text-lg">{customer.logo}</span>
               </div>
@@ -185,8 +184,7 @@ const Landing = () => {
             {features.map((feature, index) => (
               <Card 
                 key={index} 
-                className="glass-card hover-lift floating border-0"
-                style={{ animationDelay: `${index * 0.3}s` }}
+                className="glass-card border-0"
               >
                 <CardHeader className="text-center pb-4">
                   <div className="mx-auto mb-6 w-16 h-16 bg-cosmic-gradient rounded-2xl flex items-center justify-center glow-purple">
@@ -224,7 +222,7 @@ const Landing = () => {
                 </div>
               </div>
               <div className="relative">
-                <div className="glass-card p-8 text-center floating">
+                <div className="glass-card p-8 text-center">
                   <div className="w-24 h-24 mx-auto mb-6 bg-sunset-gradient rounded-full flex items-center justify-center glow-pink">
                     <Zap className="w-12 h-12 text-starlight" />
                   </div>
@@ -254,7 +252,7 @@ const Landing = () => {
             {pricingPlans.map((plan, index) => (
               <Card 
                 key={index} 
-                className={`relative glass-card border-0 hover-lift ${
+                className={`relative glass-card border-0 ${
                   plan.isPopular ? 'gradient-border glow-blue scale-105' : ''
                 }`}
               >
@@ -314,8 +312,7 @@ const Landing = () => {
             {testimonials.map((testimonial, index) => (
               <Card 
                 key={index} 
-                className="glass-card border-0 hover-lift floating"
-                style={{ animationDelay: `${index * 0.2}s` }}
+                className="glass-card border-0"
               >
                 <CardContent className="p-8">
                   <p className="text-lunar-grey mb-6 italic text-lg leading-relaxed">

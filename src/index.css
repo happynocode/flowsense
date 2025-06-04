@@ -65,16 +65,6 @@
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
-  /* Floating Animation */
-  .floating {
-    animation: floating 6s ease-in-out infinite;
-  }
-
-  @keyframes floating {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-  }
-
   /* Glow Effects */
   .glow-purple {
     box-shadow: 0 0 20px rgba(86, 67, 204, 0.4);
@@ -127,44 +117,18 @@
     -webkit-mask-composite: xor;
   }
 
-  /* Particle Animation */
-  .particles::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: 
-      radial-gradient(2px 2px at 20px 30px, #00E8FC, transparent),
-      radial-gradient(2px 2px at 40px 70px, #5643CC, transparent),
-      radial-gradient(1px 1px at 90px 40px, #00A6FB, transparent),
-      radial-gradient(1px 1px at 130px 80px, #FF3864, transparent),
-      radial-gradient(2px 2px at 160px 30px, #00E8FC, transparent);
-    background-repeat: repeat;
-    background-size: 200px 100px;
-    animation: particles 20s linear infinite;
-    opacity: 0.3;
-    pointer-events: none;
-  }
-
-  @keyframes particles {
-    0% { transform: translateY(0); }
-    100% { transform: translateY(-200px); }
-  }
-
   /* Button Styles */
   .btn-cosmic {
-    @apply bg-cosmic-gradient text-starlight font-medium px-6 py-3 rounded-lg transition-all duration-300;
+    @apply bg-cosmic-gradient text-starlight font-medium px-6 py-3 rounded-lg;
     box-shadow: 0 4px 15px rgba(86, 67, 204, 0.3);
   }
 
   .btn-cosmic:hover {
-    @apply glow-purple scale-105;
+    @apply glow-purple;
   }
 
   .btn-outline-electric {
-    @apply border-2 border-electric-blue bg-transparent text-electric-blue font-medium px-6 py-3 rounded-lg transition-all duration-300;
+    @apply border-2 border-electric-blue bg-transparent text-electric-blue font-medium px-6 py-3 rounded-lg;
   }
 
   .btn-outline-electric:hover {
@@ -173,20 +137,11 @@
 
   /* Input Styles */
   .input-futuristic {
-    @apply bg-midnight/60 backdrop-blur-sm border border-white/10 rounded-lg px-4 py-3 text-starlight placeholder-lunar-grey/60 transition-all duration-300;
+    @apply bg-midnight/60 backdrop-blur-sm border border-white/10 rounded-lg px-4 py-3 text-starlight placeholder-lunar-grey/60;
   }
 
   .input-futuristic:focus {
     @apply outline-none border-electric-blue glow-blue;
-  }
-
-  /* Card Hover Effects */
-  .hover-lift {
-    @apply transition-all duration-300;
-  }
-
-  .hover-lift:hover {
-    @apply -translate-y-2 glow-blue;
   }
 
   /* Text Gradient */

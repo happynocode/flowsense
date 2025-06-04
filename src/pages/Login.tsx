@@ -13,7 +13,7 @@ const Login = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="glass-card p-8">
-          <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-full flex items-center justify-center animate-pulse glow-purple">
+          <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-full flex items-center justify-center glow-purple">
             <Brain className="w-8 h-8 text-starlight" />
           </div>
           <p className="text-center text-lunar-grey">Initializing neural interface...</p>
@@ -32,7 +32,7 @@ const Login = () => {
       
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <div className="floating mx-auto w-20 h-20 bg-cosmic-gradient rounded-2xl flex items-center justify-center mb-6 glow-purple">
+          <div className="mx-auto w-20 h-20 bg-cosmic-gradient rounded-2xl flex items-center justify-center mb-6 glow-purple">
             <Brain className="w-10 h-10 text-starlight" />
           </div>
           <h1 className="text-4xl font-space-grotesk font-bold mb-2">
@@ -83,17 +83,17 @@ const Login = () => {
 
         <div className="mt-8">
           <div className="grid grid-cols-3 gap-6 text-center">
-            <div className="glass-card p-4 hover-lift">
+            <div className="glass-card p-4">
               <Zap className="w-6 h-6 text-electric-blue mx-auto mb-2" />
               <div className="text-xs text-starlight font-medium">Quantum Processing</div>
               <div className="text-xs text-lunar-grey">Lightning fast analysis</div>
             </div>
-            <div className="glass-card p-4 hover-lift">
+            <div className="glass-card p-4">
               <Shield className="w-6 h-6 text-astral-teal mx-auto mb-2" />
               <div className="text-xs text-starlight font-medium">Neural Security</div>
               <div className="text-xs text-lunar-grey">Encrypted intelligence</div>
             </div>
-            <div className="glass-card p-4 hover-lift">
+            <div className="glass-card p-4">
               <Globe className="w-6 h-6 text-cosmic-purple mx-auto mb-2" />
               <div className="text-xs text-starlight font-medium">Global Network</div>
               <div className="text-xs text-lunar-grey">Worldwide coverage</div>

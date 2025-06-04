@@ -6,7 +6,7 @@ import type { Subscription as SubscriptionType, SubscriptionPlan } from '../type
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { CheckCircle, Zap, Shield, Brain, Sparkles, Globe } from 'lucide-react';
+import { CheckCircle, Zap, Shield, Brain, Sparkles, Globe, Settings } from 'lucide-react';
 import LoadingIndicator from '../components/common/LoadingIndicator';
 
 const SubscriptionPage = () => {
@@ -75,7 +75,7 @@ const SubscriptionPage = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="glass-card p-8">
-          <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-full flex items-center justify-center animate-pulse glow-purple">
+          <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-full flex items-center justify-center glow-purple">
             <Brain className="w-8 h-8 text-starlight" />
           </div>
           <LoadingIndicator size="lg" text="Loading neural interface..." />
@@ -99,7 +99,7 @@ const SubscriptionPage = () => {
         
         {subscription ? (
           <div className="mb-12">
-            <Card className="glass-card border-0 hover-lift">
+            <Card className="glass-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between text-starlight">
                   Current Neural Configuration
@@ -174,7 +174,7 @@ const SubscriptionPage = () => {
             {currentPlans.map((plan: SubscriptionPlan) => (
               <Card 
                 key={plan.id} 
-                className={`relative glass-card border-0 hover-lift ${
+                className={`relative glass-card border-0 ${
                   plan.isPopular ? 'gradient-border glow-blue scale-105' : ''
                 }`}
               >
@@ -246,7 +246,7 @@ const SubscriptionPage = () => {
             <span className="text-cosmic-gradient">Neural</span> Interface FAQ
           </h3>
           <div className="grid md:grid-cols-2 gap-6">
-            <Card className="glass-card border-0 hover-lift">
+            <Card className="glass-card border-0">
               <CardContent className="p-6">
                 <h4 className="font-semibold text-starlight mb-3">Can I upgrade my neural capacity?</h4>
                 <p className="text-lunar-grey text-sm">
@@ -254,7 +254,7 @@ const SubscriptionPage = () => {
                 </p>
               </CardContent>
             </Card>
-            <Card className="glass-card border-0 hover-lift">
+            <Card className="glass-card border-0">
               <CardContent className="p-6">
                 <h4 className="font-semibold text-starlight mb-3">Is there a neural trial period?</h4>
                 <p className="text-lunar-grey text-sm">
@@ -262,7 +262,7 @@ const SubscriptionPage = () => {
                 </p>
               </CardContent>
             </Card>
-            <Card className="glass-card border-0 hover-lift">
+            <Card className="glass-card border-0">
               <CardContent className="p-6">
                 <h4 className="font-semibold text-starlight mb-3">Can I disconnect anytime?</h4>
                 <p className="text-lunar-grey text-sm">
@@ -270,7 +270,7 @@ const SubscriptionPage = () => {
                 </p>
               </CardContent>
             </Card>
-            <Card className="glass-card border-0 hover-lift">
+            <Card className="glass-card border-0">
               <CardContent className="p-6">
                 <h4 className="font-semibold text-starlight mb-3">What payment methods are accepted?</h4>
                 <p className="text-lunar-grey text-sm">
