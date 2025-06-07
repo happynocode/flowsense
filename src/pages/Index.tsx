@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom';
 import Home from './Home';
 import Landing from './Landing';
 import LoadingIndicator from '../components/common/LoadingIndicator';
+import EnvCheck from '../components/debug/EnvCheck';
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -13,6 +14,10 @@ const Index = () => {
     loading, 
     userEmail: user?.email 
   });
+
+  // 在开发环境中显示环境变量检查
+  const isDevelopment = import.meta.env.DEV;
+  const showEnvCheck = isDevelopment && (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY);
 
   if (loading) {
     console.log('⏳ Index 页面显示加载状态');
@@ -30,7 +35,16 @@ const Index = () => {
 
   if (!user) {
     console.log('👤 未登录用户，显示 Landing 页面');
-    return <Landing />;
+    return (
+      <div>
+        {showEnvCheck && (
+          <div className="container mx-auto px-4 py-8">
+            <EnvCheck />
+          </div>
+        )}
+        <Landing />
+      </div>
+    );
   }
 
   console.log('✅ 已登录用户，显示 Home 页面');
