@@ -44,79 +44,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (supabaseUser) {
         console.log('✅ 找到 Supabase 用户:', supabaseUser.email);
         
-        // 添加超时保护
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('数据库查询超时')), 10000);
-        });
+        // 直接使用 Supabase 用户信息，不查询数据库
+        const userData = {
+          id: supabaseUser.id,
+          name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+          email: supabaseUser.email || '',
+          avatar: supabaseUser.user_metadata?.avatar_url || '',
+          createdAt: supabaseUser.created_at || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
         
-        try {
-          // Get user data from our users table with timeout protection
-          const queryPromise = supabase
-            .from('users')
-            .select('*')
-            .eq('email', supabaseUser.email)
-            .single();
-          
-          const { data: userData, error: userError } = await Promise.race([
-            queryPromise,
-            timeoutPromise
-          ]) as any;
-
-          if (userError && userError.code !== 'PGRST116') {
-            console.error('❌ Error fetching user data:', userError);
-            
-            // 如果是权限错误，尝试创建用户
-            if (userError.message?.includes('permission') || userError.code === '42501') {
-              console.log('🔧 权限错误，尝试直接创建用户...');
-              await createUserDirectly(supabaseUser);
-              return;
-            }
-            
-            setUser(null);
-            return;
-          }
-
-          if (userData) {
-            console.log('✅ 找到用户数据:', userData.name);
-            setUser({
-              id: userData.id.toString(),
-              name: userData.name,
-              email: userData.email,
-              avatar: userData.avatar_url || '',
-              createdAt: userData.created_at,
-              updatedAt: userData.updated_at
-            });
-          } else {
-            console.log('📝 用户数据不存在，创建新用户记录...');
-            await createUserDirectly(supabaseUser);
-          }
-        } catch (dbError: any) {
-          console.error('❌ 数据库操作失败:', dbError);
-          
-          if (dbError.message === '数据库查询超时') {
-            console.log('⏰ 查询超时，使用基本用户信息');
-            // 使用 Supabase 用户信息创建基本用户对象
-            setUser({
-              id: supabaseUser.id,
-              name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-              email: supabaseUser.email || '',
-              avatar: supabaseUser.user_metadata?.avatar_url || '',
-              createdAt: supabaseUser.created_at || new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            });
-          } else {
-            // 其他错误，也使用基本信息
-            console.log('🔄 使用 Supabase 用户基本信息');
-            setUser({
-              id: supabaseUser.id,
-              name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-              email: supabaseUser.email || '',
-              avatar: supabaseUser.user_metadata?.avatar_url || '',
-              createdAt: supabaseUser.created_at || new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            });
-          }
-        }
+        console.log('✅ 设置用户数据:', userData.name);
+        setUser(userData);
+        
+        // 在后台尝试同步到数据库，但不阻塞用户界面
+        syncUserToDatabase(supabaseUser).catch(error => {
+          console.warn('⚠️ 后台数据库同步失败:', error);
+        });
       } else {
         console.log('ℹ️ 未找到用户会话');
         setUser(null);
@@ -127,74 +71,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const createUserDirectly = async (supabaseUser: SupabaseUser) => {
+  const syncUserToDatabase = async (supabaseUser: SupabaseUser) => {
     try {
-      console.log('📝 创建新用户记录...');
+      console.log('🔄 后台同步用户到数据库...');
       
-      const newUserData = {
-        email: supabaseUser.email || '',
-        name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-        avatar_url: supabaseUser.user_metadata?.avatar_url || null
-      };
-      
-      console.log('📋 用户数据:', newUserData);
-      
-      // 添加超时保护
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('创建用户超时')), 8000);
-      });
-      
-      const insertPromise = supabase
+      // 尝试查询用户是否存在
+      const { data: existingUser, error: queryError } = await supabase
         .from('users')
-        .insert(newUserData)
-        .select()
+        .select('*')
+        .eq('email', supabaseUser.email)
         .single();
-      
-      const { data: newUser, error: createError } = await Promise.race([
-        insertPromise,
-        timeoutPromise
-      ]) as any;
 
-      if (createError) {
-        console.error('❌ Error creating user:', createError);
-        
-        // 如果创建失败，使用基本用户信息
-        console.log('🔄 创建失败，使用基本用户信息');
-        setUser({
-          id: supabaseUser.id,
-          name: newUserData.name,
-          email: newUserData.email,
-          avatar: newUserData.avatar_url || '',
-          createdAt: supabaseUser.created_at || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
+      if (queryError && queryError.code !== 'PGRST116') {
+        console.warn('⚠️ 数据库查询失败:', queryError);
         return;
       }
 
-      if (newUser) {
-        console.log('✅ 新用户创建成功:', newUser.name);
-        setUser({
-          id: newUser.id.toString(),
-          name: newUser.name,
-          email: newUser.email,
-          avatar: newUser.avatar_url || '',
-          createdAt: newUser.created_at,
-          updatedAt: newUser.updated_at
-        });
+      if (!existingUser) {
+        // 用户不存在，尝试创建
+        const newUserData = {
+          email: supabaseUser.email || '',
+          name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+          avatar_url: supabaseUser.user_metadata?.avatar_url || null
+        };
+        
+        const { error: createError } = await supabase
+          .from('users')
+          .insert(newUserData);
+
+        if (createError) {
+          console.warn('⚠️ 创建用户记录失败:', createError);
+        } else {
+          console.log('✅ 用户记录创建成功');
+        }
+      } else {
+        console.log('✅ 用户记录已存在');
       }
-    } catch (error: any) {
-      console.error('❌ 创建用户失败:', error);
-      
-      // 即使创建失败，也设置基本用户信息
-      console.log('🔄 使用 Supabase 基本信息作为后备');
-      setUser({
-        id: supabaseUser.id,
-        name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-        email: supabaseUser.email || '',
-        avatar: supabaseUser.user_metadata?.avatar_url || '',
-        createdAt: supabaseUser.created_at || new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
+    } catch (error) {
+      console.warn('⚠️ 数据库同步异常:', error);
     }
   };
 
@@ -361,13 +275,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         console.log('✅ Supabase 客户端检查通过');
         
-        // 尝试获取会话，但不设置严格超时
+        // 设置最大初始化时间为5秒
+        const initTimeout = setTimeout(() => {
+          console.warn('⏰ 认证初始化超时，强制完成加载');
+          setLoading(false);
+          setInitialized(true);
+        }, 5000);
+        
         try {
-          const { data: { session }, error } = await supabase.auth.getSession();
+          // 快速获取会话
+          const { data: { session }, error } = await Promise.race([
+            supabase.auth.getSession(),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('会话获取超时')), 3000)
+            )
+          ]) as any;
+          
+          clearTimeout(initTimeout);
           
           if (error) {
             console.error('❌ 会话获取错误:', error);
-            // 即使有错误也继续，不阻止应用加载
           } else if (session) {
             console.log('✅ 找到现有会话，用户:', session.user?.email);
             await refreshUser();
@@ -375,13 +302,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('ℹ️ 未找到现有会话');
           }
         } catch (sessionError) {
+          clearTimeout(initTimeout);
           console.warn('⚠️ 获取会话时出错，但继续加载应用:', sessionError);
-          // 不抛出错误，让应用继续加载
         }
         
       } catch (error) {
         console.error('❌ 认证初始化错误:', error);
-        // 不阻止应用加载，即使认证初始化失败
       } finally {
         console.log('🏁 认证初始化完成，设置 loading = false');
         setLoading(false);
