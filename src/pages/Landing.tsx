@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
@@ -31,15 +30,6 @@ const Landing = () => {
     "Spots trending topics before they go mainstream",
     "Works with content in multiple languages",
     "Includes audio versions for listening on-the-go"
-  ];
-
-  const customerLogos = [
-    { name: "TechCorp", logo: "TC" },
-    { name: "InnovateLab", logo: "IL" },
-    { name: "FutureWorks", logo: "FW" },
-    { name: "QuantumSoft", logo: "QS" },
-    { name: "NeuralNet Inc", logo: "NN" },
-    { name: "CyberSpace", logo: "CS" }
   ];
 
   const testimonials = [
@@ -148,25 +138,6 @@ const Landing = () => {
             <p className="text-sm text-lunar-grey mt-6">
               No credit card required • 7-day free trial • Cancel anytime
             </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Customer Logos */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <p className="text-center text-lunar-grey mb-12 text-sm uppercase tracking-wider">
-            Trusted by Leading Organizations
-          </p>
-          <div className="flex flex-wrap justify-center items-center gap-8">
-            {customerLogos.map((customer, index) => (
-              <div 
-                key={index} 
-                className="glass-card p-4 w-20 h-20 flex items-center justify-center"
-              >
-                <span className="text-electric-blue font-bold text-lg">{customer.logo}</span>
-              </div>
-            ))}
           </div>
         </div>
       </section>
