@@ -29,22 +29,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [initialized, setInitialized] = useState(false);
   const { toast } = useToast();
 
-  // 🛠️ 更健壮的 refreshUser() 架构（StackBlitz 优化版本）
+  // 🛠️ 更健壮的 refreshUser() 架构（防挂死版本）
   const refreshUser = async () => {
     console.log('🔄 refreshUser 开始执行...');
     
     try {
       // 创建统一的超时 Promise
-      const createTimeout = (name: string, ms: number = 5000) => 
+      const createTimeout = (name: string, ms: number = 3000) => 
         new Promise<never>((_, reject) => 
           setTimeout(() => reject(new Error(`${name} 超时`)), ms)
         );
 
-      // 1. 首先检查 session 是否存在（5秒超时，StackBlitz 网络可能较慢）
+      // 1. 首先检查 session 是否存在（3秒超时）
       console.log('📡 检查当前 session...');
       const sessionResult = await Promise.race([
         supabase.auth.getSession(),
-        createTimeout("getSession", 5000)
+        createTimeout("getSession", 3000)
       ]);
 
       const session = sessionResult.data?.session;
@@ -65,12 +65,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      // 2. 如果有 session，再调用 getUser() 获取最新用户信息（5秒超时）
+      // 2. 如果有 session，再调用 getUser() 获取最新用户信息（3秒超时）
       console.log('📞 调用 supabase.auth.getUser()...');
       
       const userResult = await Promise.race([
         supabase.auth.getUser(),
-        createTimeout("getUser", 5000)
+        createTimeout("getUser", 3000)
       ]);
       
       console.log('✅ supabase.auth.getUser() 调用完成', { 
@@ -105,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('✅ 找到 Supabase 用户:', user.email);
       
-      // 🎯 直接从 Auth 用户信息构建用户对象，不访问数据库（StackBlitz 优化）
+      // 🎯 直接从 Auth 用户信息构建用户对象，不访问数据库
       const authUserData = {
         id: user.id,
         name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
@@ -187,7 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             full_name: name,
           },
-          emailRedirectTo: undefined // 👈 StackBlitz 优化：避免重定向问题
+          emailRedirectTo: undefined // 👈 避免重定向问题
         }
       });
 
@@ -409,12 +409,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // 最大初始化超时（防止无限加载）- StackBlitz 环境延长到 10 秒
+    // 最大初始化超时（防止无限加载）
     const maxInitTimeout = setTimeout(() => {
       console.warn('⏰ 认证初始化最大超时，强制完成加载');
       setLoading(false);
       setInitialized(true);
-    }, 10000); // 10秒超时，适应 StackBlitz 较慢的网络
+    }, 8000); // 8秒超时
 
     return () => {
       console.log('🧹 清理认证监听器');
