@@ -3,326 +3,57 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-let supabase: any;
-
-console.log('🔧 Supabase 环境变量检查:', {
-  url: supabaseUrl ? '✅ 已设置' : '❌ 未设置',
-  key: supabaseAnonKey ? '✅ 已设置' : '❌ 未设置',
-  urlValue: supabaseUrl,
-  keyLength: supabaseAnonKey ? supabaseAnonKey.length : 0
-});
-
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('❌ 缺少 Supabase 环境变量');
-  console.log('📋 请检查 .env 文件是否包含:');
-  console.log('   VITE_SUPABASE_URL=your-supabase-url');
-  console.log('   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key');
-  
-  // Create mock client to prevent app crashes
-  const mockClient = {
-    auth: {
-      getUser: () => {
-        console.log('🤖 模拟客户端: getUser 调用');
-        return Promise.resolve({ data: { user: null }, error: new Error('Supabase 未配置') });
-      },
-      getSession: () => {
-        console.log('🤖 模拟客户端: getSession 调用');
-        return Promise.resolve({ data: { session: null }, error: new Error('Supabase 未配置') });
-      },
-      signInWithPassword: () => {
-        console.log('🤖 模拟客户端: signInWithPassword 调用');
-        return Promise.resolve({ error: new Error('Supabase 未配置，请检查环境变量') });
-      },
-      signUp: () => {
-        console.log('🤖 模拟客户端: signUp 调用');
-        return Promise.resolve({ error: new Error('Supabase 未配置，请检查环境变量') });
-      },
-      signOut: () => {
-        console.log('🤖 模拟客户端: signOut 调用');
-        return Promise.resolve({ error: null });
-      },
-      onAuthStateChange: () => {
-        console.log('🤖 模拟客户端: onAuthStateChange 调用');
-        return { data: { subscription: { unsubscribe: () => console.log('🤖 模拟客户端: 取消订阅') } } };
-      }
-    },
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          single: () => {
-            console.log('🤖 模拟客户端: 数据库查询调用');
-            return Promise.resolve({ data: null, error: new Error('Supabase 未配置') });
-          }
-        })
-      }),
-      insert: () => ({
-        select: () => ({
-          single: () => {
-            console.log('🤖 模拟客户端: 数据库插入调用');
-            return Promise.resolve({ data: null, error: new Error('Supabase 未配置') });
-          }
-        })
-      }),
-      update: () => ({
-        eq: () => ({
-          select: () => ({
-            single: () => {
-              console.log('🤖 模拟客户端: 数据库更新调用');
-              return Promise.resolve({ data: null, error: new Error('Supabase 未配置') });
-            }
-          })
-        })
-      }),
-      delete: () => ({
-        eq: () => {
-          console.log('🤖 模拟客户端: 数据库删除调用');
-          return Promise.resolve({ error: new Error('Supabase 未配置') });
-        }
-      })
-    })
-  };
-  
-  supabase = mockClient;
-} else {
-  console.log('🚀 创建 Supabase 客户端...');
+  throw new Error('Missing Supabase environment variables')
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 2
+    }
+  }
+})
+
+// Test connection function with proper error handling
+export const testSupabaseConnection = async (): Promise<boolean> => {
   try {
-    supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true,
-        flowType: 'pkce'
-      },
-      global: {
-        headers: {
-          'X-Client-Info': 'supabase-js-web'
-        }
-      },
-      db: {
-        schema: 'public'
-      },
-      realtime: {
-        params: {
-          eventsPerSecond: 2
-        }
-      }
-    });
-    console.log('✅ Supabase 客户端创建成功');
-    
-    // Test connection with timeout
-    Promise.race([
-      supabase.auth.getSession(),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('连接测试超时')), 5000)
-      )
-    ]).then(({ data, error }) => {
-      if (error) {
-        console.warn('⚠️ Supabase 连接测试失败:', error.message);
-      } else {
-        console.log('✅ Supabase 连接测试成功');
-      }
-    }).catch((err) => {
-      console.error('❌ Supabase 连接测试异常:', err);
-    });
-    
+    // Use a simple query with timeout
+    const { data, error } = await supabase
+      .from('users')
+      .select('count')
+      .limit(1)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 is "no rows returned" which is fine for connection test
+      console.error('Supabase connection error:', error)
+      return false
+    }
+
+    return true
   } catch (error) {
-    console.error('❌ 创建 Supabase 客户端失败:', error);
-    // Use mock client if creation fails
-    supabase = mockClient;
+    console.error('Supabase connection test failed:', error)
+    return false
   }
 }
 
-export { supabase };
+// Initialize connection test on module load
+let connectionStatus: boolean | null = null
 
-// Database types (generated from your schema)
-export type Database = {
-  public: {
-    Tables: {
-      users: {
-        Row: {
-          id: number
-          email: string
-          google_id: string | null
-          name: string
-          avatar_url: string | null
-          subscription_status: string
-          subscription_expiry: string | null
-          stripe_customer_id: string | null
-          email_notifications: boolean
-          digest_frequency: string
-          created_at: string
-          updated_at: string
-          last_login: string | null
-        }
-        Insert: {
-          email: string
-          google_id?: string | null
-          name: string
-          avatar_url?: string | null
-          subscription_status?: string
-          subscription_expiry?: string | null
-          stripe_customer_id?: string | null
-          email_notifications?: boolean
-          digest_frequency?: string
-          created_at?: string
-          updated_at?: string
-          last_login?: string | null
-        }
-        Update: {
-          email?: string
-          google_id?: string | null
-          name?: string
-          avatar_url?: string | null
-          subscription_status?: string
-          subscription_expiry?: string | null
-          stripe_customer_id?: string | null
-          email_notifications?: boolean
-          digest_frequency?: string
-          updated_at?: string
-          last_login?: string | null
-        }
-      }
-      content_sources: {
-        Row: {
-          id: number
-          user_id: number
-          name: string
-          url: string
-          source_type: string
-          description: string | null
-          has_rss: boolean
-          rss_url: string | null
-          scraping_selector: string | null
-          is_active: boolean
-          last_scraped_at: string | null
-          last_error: string | null
-          error_count: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          user_id: number
-          name: string
-          url: string
-          source_type: string
-          description?: string | null
-          has_rss?: boolean
-          rss_url?: string | null
-          scraping_selector?: string | null
-          is_active?: boolean
-          last_scraped_at?: string | null
-          last_error?: string | null
-          error_count?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          user_id?: number
-          name?: string
-          url?: string
-          source_type?: string
-          description?: string | null
-          has_rss?: boolean
-          rss_url?: string | null
-          scraping_selector?: string | null
-          is_active?: boolean
-          last_scraped_at?: string | null
-          last_error?: string | null
-          error_count?: number
-          updated_at?: string
-        }
-      }
-      digests: {
-        Row: {
-          id: number
-          user_id: number
-          title: string
-          generation_date: string
-          email_sent: boolean
-          email_sent_at: string | null
-          audio_url: string | null
-          audio_duration: number | null
-          is_read: boolean
-          read_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          user_id: number
-          title: string
-          generation_date: string
-          email_sent?: boolean
-          email_sent_at?: string | null
-          audio_url?: string | null
-          audio_duration?: number | null
-          is_read?: boolean
-          read_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          user_id?: number
-          title?: string
-          generation_date?: string
-          email_sent?: boolean
-          email_sent_at?: string | null
-          audio_url?: string | null
-          audio_duration?: number | null
-          is_read?: boolean
-          read_at?: string | null
-          updated_at?: string
-        }
-      }
-      subscriptions: {
-        Row: {
-          id: number
-          user_id: number
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
-          stripe_price_id: string | null
-          plan_type: string
-          status: string
-          current_period_start: string | null
-          current_period_end: string | null
-          cancel_at_period_end: boolean
-          canceled_at: string | null
-          amount: number
-          currency: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          user_id: number
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          stripe_price_id?: string | null
-          plan_type: string
-          status: string
-          current_period_start?: string | null
-          current_period_end?: string | null
-          cancel_at_period_end?: boolean
-          canceled_at?: string | null
-          amount: number
-          currency?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          user_id?: number
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          stripe_price_id?: string | null
-          plan_type?: string
-          status?: string
-          current_period_start?: string | null
-          current_period_end?: string | null
-          cancel_at_period_end?: boolean
-          canceled_at?: string | null
-          amount?: number
-          currency?: string
-          updated_at?: string
-        }
-      }
-    }
+export const getConnectionStatus = async (): Promise<boolean> => {
+  if (connectionStatus === null) {
+    connectionStatus = await testSupabaseConnection()
   }
+  return connectionStatus
+}
+
+// Reset connection status for retry
+export const resetConnectionStatus = (): void => {
+  connectionStatus = null
 }
