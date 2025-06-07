@@ -84,21 +84,21 @@ export const sourcesApi = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id')
-      .eq('id', user.id)
-      .single();
-
-    if (!userData) throw new Error('User not found');
+    console.log('🔍 获取 sources，当前用户 ID:', user.id);
 
     const { data, error } = await supabase
       .from('content_sources')
       .select('*')
-      .eq('user_id', userData.id)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ 获取 sources 失败:', error);
+      throw error;
+    }
+
+    console.log('✅ 成功获取 sources:', data?.length || 0, '条记录');
+    console.log('📊 Sources 详情:', data);
 
     return (data || []).map(source => ({
       id: source.id.toString(),
@@ -116,18 +116,13 @@ export const sourcesApi = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id')
-      .eq('id', user.id)
-      .single();
-
-    if (!userData) throw new Error('User not found');
+    console.log('📝 创建新 source，用户 ID:', user.id);
+    console.log('📝 Source 数据:', source);
 
     const { data, error } = await supabase
       .from('content_sources')
       .insert({
-        user_id: userData.id,
+        user_id: user.id,
         name: source.name,
         url: source.url,
         source_type: source.type,
@@ -137,7 +132,12 @@ export const sourcesApi = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ 创建 source 失败:', error);
+      throw error;
+    }
+
+    console.log('✅ 成功创建 source:', data);
 
     return {
       id: data.id.toString(),
@@ -152,6 +152,11 @@ export const sourcesApi = {
   },
   
   updateSource: async (id: string, source: Partial<ContentSource>): Promise<ContentSource> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    console.log('🔄 更新 source，ID:', id, '用户 ID:', user.id);
+    
     const updateData: any = {};
     
     if (source.name !== undefined) updateData.name = source.name;
@@ -166,10 +171,16 @@ export const sourcesApi = {
       .from('content_sources')
       .update(updateData)
       .eq('id', parseInt(id))
+      .eq('user_id', user.id) // 确保只能更新自己的 source
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ 更新 source 失败:', error);
+      throw error;
+    }
+
+    console.log('✅ 成功更新 source:', data);
 
     return {
       id: data.id.toString(),
@@ -184,12 +195,23 @@ export const sourcesApi = {
   },
   
   deleteSource: async (id: string): Promise<void> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    console.log('🗑️ 删除 source，ID:', id, '用户 ID:', user.id);
+
     const { error } = await supabase
       .from('content_sources')
       .delete()
-      .eq('id', parseInt(id));
+      .eq('id', parseInt(id))
+      .eq('user_id', user.id); // 确保只能删除自己的 source
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ 删除 source 失败:', error);
+      throw error;
+    }
+
+    console.log('✅ 成功删除 source');
   },
   
   validateSource: async (url: string): Promise<{ valid: boolean; message: string }> => {
@@ -209,20 +231,12 @@ export const digestsApi = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id')
-      .eq('id', user.id)
-      .single();
-
-    if (!userData) throw new Error('User not found');
-
     const offset = (page - 1) * limit;
 
     const { data, error, count } = await supabase
       .from('digests')
       .select('*', { count: 'exact' })
-      .eq('user_id', userData.id)
+      .eq('user_id', user.id)
       .order('generation_date', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -304,18 +318,10 @@ export const subscriptionApi = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
-      const { data: userData } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', user.id)
-        .single();
-
-      if (!userData) return null;
-
       const { data, error } = await supabase
         .from('subscriptions')
         .select('*')
-        .eq('user_id', userData.id)
+        .eq('user_id', user.id)
         .eq('status', 'active')
         .maybeSingle();
 
