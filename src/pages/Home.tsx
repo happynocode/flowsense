@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
@@ -8,7 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { digestsApi, sourcesApi } from '../services/api';
 import { Digest, ContentSource } from '../types';
 import LoadingIndicator from '../components/common/LoadingIndicator';
-import { FileText, Play, Clock, TrendingUp, Plus } from 'lucide-react';
+import { FileText, Play, Clock, TrendingUp, Plus, Brain, Sparkles } from 'lucide-react';
 
 const Home = () => {
   const { user } = useAuth();
@@ -104,7 +103,7 @@ const Home = () => {
   }, []);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('zh-CN', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
@@ -113,73 +112,85 @@ const Home = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingIndicator size="lg" text="Loading your dashboard..." />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="glass-card p-8">
+          <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-full flex items-center justify-center glow-purple">
+            <Brain className="w-8 h-8 text-starlight" />
+          </div>
+          <LoadingIndicator size="lg" text="正在加载您的神经仪表板..." />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="container mx-auto px-4 py-8 relative">
+      <div className="max-w-7xl mx-auto">
         {/* Welcome Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {user?.name?.split(' ')[0] || 'User'}!
+          <h1 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-4">
+            <span className="text-cosmic-gradient">欢迎回来，</span>{" "}
+            <span className="text-starlight">{user?.name?.split(' ')[0] || '用户'}!</span>
           </h1>
-          <p className="text-gray-600 mt-2">
-            Here's what's new in your content digest
+          <p className="text-lunar-grey text-xl">
+            这里是您的内容摘要中心的最新动态
           </p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
+          <Card className="glass-card border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Digests</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalDigests}</p>
+                  <p className="text-sm font-medium text-lunar-grey">总摘要数</p>
+                  <p className="text-2xl font-bold text-starlight">{stats.totalDigests}</p>
                 </div>
-                <FileText className="h-8 w-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Unread</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.unreadDigests}</p>
-                </div>
-                <div className="h-8 w-8 bg-orange-100 rounded-full flex items-center justify-center">
-                  <div className="h-3 w-3 bg-orange-600 rounded-full"></div>
+                <div className="w-12 h-12 bg-cosmic-gradient rounded-full flex items-center justify-center glow-purple">
+                  <FileText className="h-6 w-6 text-starlight" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass-card border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active Sources</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.activeSources}</p>
+                  <p className="text-sm font-medium text-lunar-grey">未读摘要</p>
+                  <p className="text-2xl font-bold text-starlight">{stats.unreadDigests}</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-green-600" />
+                <div className="w-12 h-12 bg-sunset-gradient rounded-full flex items-center justify-center glow-pink">
+                  <div className="h-3 w-3 bg-starlight rounded-full"></div>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass-card border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Reading Time</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalReadingTime}m</p>
+                  <p className="text-sm font-medium text-lunar-grey">活跃源</p>
+                  <p className="text-2xl font-bold text-starlight">{stats.activeSources}</p>
                 </div>
-                <Clock className="h-8 w-8 text-purple-600" />
+                <div className="w-12 h-12 bg-aurora-gradient rounded-full flex items-center justify-center glow-teal">
+                  <TrendingUp className="h-6 w-6 text-midnight" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card border-0">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-lunar-grey">阅读时间</p>
+                  <p className="text-2xl font-bold text-starlight">{stats.totalReadingTime}分钟</p>
+                </div>
+                <div className="w-12 h-12 bg-cosmic-gradient rounded-full flex items-center justify-center glow-purple">
+                  <Clock className="h-6 w-6 text-starlight" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -189,26 +200,28 @@ const Home = () => {
           {/* Recent Digests */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Recent Digests</h2>
+              <h2 className="text-2xl font-space-grotesk font-semibold text-starlight">最近摘要</h2>
               <Link to="/digests">
-                <Button variant="outline" size="sm">
-                  View All
+                <Button variant="outline" size="sm" className="btn-outline-electric">
+                  查看全部
                 </Button>
               </Link>
             </div>
 
             {recentDigests.length === 0 ? (
-              <Card>
+              <Card className="glass-card border-0">
                 <CardContent className="p-8 text-center">
-                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No digests yet</h3>
-                  <p className="text-gray-500 mb-4">
-                    Add some content sources to start generating your daily digests
+                  <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-full flex items-center justify-center glow-purple">
+                    <FileText className="h-8 w-8 text-starlight" />
+                  </div>
+                  <h3 className="text-lg font-medium text-starlight mb-2">暂无摘要</h3>
+                  <p className="text-lunar-grey mb-4">
+                    添加一些内容源来开始生成您的每日摘要
                   </p>
                   <Link to="/sources">
-                    <Button>
+                    <Button className="btn-cosmic">
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Sources
+                      添加源
                     </Button>
                   </Link>
                 </CardContent>
@@ -216,37 +229,37 @@ const Home = () => {
             ) : (
               <div className="space-y-4">
                 {recentDigests.map((digest) => (
-                  <Card key={digest.id} className="hover:shadow-md transition-shadow">
+                  <Card key={digest.id} className="glass-card border-0 hover:glow-blue transition-all duration-300">
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
-                            <h3 className="text-lg font-medium text-gray-900">
+                            <h3 className="text-lg font-medium text-starlight">
                               {digest.title}
                             </h3>
                             {!digest.isRead && (
-                              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                                New
+                              <Badge className="bg-electric-blue/20 text-electric-blue border-electric-blue/30">
+                                新
                               </Badge>
                             )}
                           </div>
                           
-                          <p className="text-sm text-gray-600 mb-3">
-                            {digest.summaries?.length || 0} summaries • {formatDate(digest.date)}
+                          <p className="text-sm text-lunar-grey mb-3">
+                            {digest.summaries?.length || 0} 个摘要 • {formatDate(digest.date)}
                           </p>
                           
                           <div className="flex items-center space-x-4">
                             <Link to={`/digests/${digest.id}`}>
-                              <Button size="sm">
+                              <Button size="sm" className="btn-cosmic">
                                 <FileText className="h-4 w-4 mr-1" />
-                                Read
+                                阅读
                               </Button>
                             </Link>
                             
                             {digest.audioUrl && (
-                              <Button variant="outline" size="sm">
+                              <Button variant="outline" size="sm" className="btn-outline-electric">
                                 <Play className="h-4 w-4 mr-1" />
-                                Listen
+                                收听
                               </Button>
                             )}
                           </div>
@@ -262,26 +275,28 @@ const Home = () => {
           {/* Sources Sidebar */}
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Your Sources</h2>
+              <h2 className="text-2xl font-space-grotesk font-semibold text-starlight">您的源</h2>
               <Link to="/sources">
-                <Button variant="outline" size="sm">
-                  Manage
+                <Button variant="outline" size="sm" className="btn-outline-electric">
+                  管理
                 </Button>
               </Link>
             </div>
 
             {sources.length === 0 ? (
-              <Card>
+              <Card className="glass-card border-0">
                 <CardContent className="p-6 text-center">
-                  <TrendingUp className="h-8 w-8 text-gray-400 mx-auto mb-3" />
-                  <h3 className="font-medium text-gray-900 mb-2">No sources added</h3>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Add your favorite blogs, podcasts, and news sites
+                  <div className="w-12 h-12 mx-auto mb-3 bg-aurora-gradient rounded-full flex items-center justify-center glow-teal">
+                    <TrendingUp className="h-6 w-6 text-midnight" />
+                  </div>
+                  <h3 className="font-medium text-starlight mb-2">未添加源</h3>
+                  <p className="text-sm text-lunar-grey mb-4">
+                    添加您喜爱的博客、播客和新闻网站
                   </p>
                   <Link to="/sources">
-                    <Button size="sm">
+                    <Button size="sm" className="btn-cosmic">
                       <Plus className="h-4 w-4 mr-1" />
-                      Add Source
+                      添加源
                     </Button>
                   </Link>
                 </CardContent>
@@ -289,19 +304,19 @@ const Home = () => {
             ) : (
               <div className="space-y-3">
                 {sources.slice(0, 5).map((source) => (
-                  <Card key={source.id} className="hover:shadow-sm transition-shadow">
+                  <Card key={source.id} className="glass-card border-0 hover:glow-blue transition-all duration-300">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-gray-900 truncate">
+                          <h4 className="font-medium text-starlight truncate">
                             {source.name}
                           </h4>
-                          <p className="text-sm text-gray-500 truncate">
+                          <p className="text-sm text-lunar-grey truncate">
                             {source.url}
                           </p>
                         </div>
                         <div className={`ml-2 h-2 w-2 rounded-full ${
-                          source.isActive ? 'bg-green-500' : 'bg-gray-300'
+                          source.isActive ? 'bg-astral-teal glow-teal' : 'bg-lunar-grey'
                         }`} />
                       </div>
                     </CardContent>
@@ -310,8 +325,8 @@ const Home = () => {
                 
                 {sources.length > 5 && (
                   <Link to="/sources">
-                    <Button variant="ghost" size="sm" className="w-full">
-                      View {sources.length - 5} more sources
+                    <Button variant="ghost" size="sm" className="w-full text-lunar-grey hover:text-starlight">
+                      查看其他 {sources.length - 5} 个源
                     </Button>
                   </Link>
                 )}

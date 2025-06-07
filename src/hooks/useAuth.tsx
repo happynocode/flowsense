@@ -3,7 +3,6 @@ import { User } from '../types';
 import { useToast } from './use-toast';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -43,6 +42,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (error && error.code !== 'PGRST116') {
           console.error('Error fetching user data:', error);
+          // If user doesn't exist in our table, create them
+          if (error.code === '42P01' || error.code === 'PGRST116') {
+            await createUserRecord(supabaseUser);
+            return;
+          }
           setUser(null);
           return;
         }
@@ -58,39 +62,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         } else {
           // Create user record if it doesn't exist
-          const { data: newUser, error: createError } = await supabase
-            .from('users')
-            .insert({
-              email: supabaseUser.email || '',
-              google_id: supabaseUser.id,
-              name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-              avatar_url: supabaseUser.user_metadata?.avatar_url || null
-            })
-            .select()
-            .single();
-
-          if (createError) {
-            console.error('Error creating user:', createError);
-            setUser(null);
-            return;
-          }
-
-          if (newUser) {
-            setUser({
-              id: newUser.id.toString(),
-              name: newUser.name,
-              email: newUser.email,
-              avatar: newUser.avatar_url || '',
-              createdAt: newUser.created_at,
-              updatedAt: newUser.updated_at
-            });
-          }
+          await createUserRecord(supabaseUser);
         }
       } else {
         setUser(null);
       }
     } catch (error) {
       console.error('Failed to refresh user:', error);
+      setUser(null);
+    }
+  };
+
+  const createUserRecord = async (supabaseUser: SupabaseUser) => {
+    try {
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert({
+          email: supabaseUser.email || '',
+          google_id: supabaseUser.id,
+          name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+          avatar_url: supabaseUser.user_metadata?.avatar_url || null
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error creating user:', createError);
+        setUser(null);
+        return;
+      }
+
+      if (newUser) {
+        setUser({
+          id: newUser.id.toString(),
+          name: newUser.name,
+          email: newUser.email,
+          avatar: newUser.avatar_url || '',
+          createdAt: newUser.created_at,
+          updatedAt: newUser.updated_at
+        });
+      }
+    } catch (error) {
+      console.error('Error creating user record:', error);
       setUser(null);
     }
   };
@@ -113,17 +126,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "登录成功",
           description: "欢迎回到Neural Hub!",
         });
-        
-        // Force navigation after successful login
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 100);
       }
     } catch (error: any) {
       console.error('Login error:', error);
+      let errorMessage = "登录时出现错误，请重试。";
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = "邮箱或密码错误，请检查后重试。";
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = "请先验证您的邮箱地址。";
+      }
+      
       toast({
         title: "登录失败",
-        description: error.message || "登录时出现错误，请重试。",
+        description: errorMessage,
         variant: "destructive",
       });
       throw error;
@@ -184,8 +200,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "登出成功",
           description: "您已成功登出账户。",
         });
-        // Redirect to login page after logout
-        window.location.href = '/login';
       }
     } catch (error) {
       toast({
@@ -224,18 +238,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(true);
         await refreshUser();
         setLoading(false);
-        
-        // Navigate to home page after successful sign in
-        if (window.location.pathname === '/login') {
-          window.location.href = '/';
-        }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setLoading(false);
-        // Navigate to login page after sign out
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
       } else if (event === 'TOKEN_REFRESHED') {
         // Optionally refresh user data when token is refreshed
         await refreshUser();
