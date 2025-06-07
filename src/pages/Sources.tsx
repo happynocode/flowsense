@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Plus, Edit, Trash2, Globe, Mic, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, Mic, FileText, TestTube, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { sourcesApi } from '../services/api';
 import { ContentSource } from '../types';
 import { useToast } from '../hooks/use-toast';
@@ -25,6 +25,8 @@ const Sources = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingSource, setEditingSource] = useState<ContentSource | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<ContentSource | null>(null);
+  const [testingSource, setTestingSource] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<{[key: string]: any}>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -104,6 +106,53 @@ const Sources = () => {
     }
   };
 
+  // 新增：测试 Web Scraping 功能
+  const handleTestScraping = async (source: ContentSource) => {
+    setTestingSource(source.id);
+    setTestResults(prev => ({ ...prev, [source.id]: null }));
+
+    try {
+      console.log('🧪 开始测试 Web Scraping 功能...');
+      
+      const result = await sourcesApi.testScraping(source.id);
+      
+      setTestResults(prev => ({ ...prev, [source.id]: result }));
+
+      if (result.success) {
+        toast({
+          title: "🎉 测试成功！",
+          description: `成功抓取并总结了内容。标题：${result.data.extractedContent.title.substring(0, 50)}...`,
+        });
+        
+        // 刷新 sources 列表以更新 lastScraped 时间
+        fetchSources();
+      } else {
+        toast({
+          title: "❌ 测试失败",
+          description: result.error || "Web scraping 测试失败",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('测试失败:', error);
+      setTestResults(prev => ({ 
+        ...prev, 
+        [source.id]: { 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        } 
+      }));
+      
+      toast({
+        title: "❌ 测试失败",
+        description: "Web scraping 测试过程中发生错误",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingSource(null);
+    }
+  };
+
   const getTypeIcon = (type: ContentSource['type']) => {
     switch (type) {
       case 'podcast':
@@ -129,7 +178,7 @@ const Sources = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingIndicator size="lg\" text="Loading your sources..." />
+        <LoadingIndicator size="lg" text="Loading your sources..." />
       </div>
     );
   }
@@ -235,22 +284,79 @@ const Sources = () => {
                     Last scraped: {formatDate(source.lastScraped)}
                   </div>
 
-                  <div className="flex justify-end space-x-2">
+                  {/* 测试结果显示 */}
+                  {testResults[source.id] && (
+                    <div className={`p-3 rounded-lg text-sm ${
+                      testResults[source.id].success 
+                        ? 'bg-green-50 border border-green-200' 
+                        : 'bg-red-50 border border-red-200'
+                    }`}>
+                      {testResults[source.id].success ? (
+                        <div className="flex items-start space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-green-800">测试成功！</p>
+                            <p className="text-green-700 mt-1">
+                              抓取标题：{testResults[source.id].data?.extractedContent?.title?.substring(0, 40)}...
+                            </p>
+                            <p className="text-green-600 mt-1">
+                              内容长度：{testResults[source.id].data?.extractedContent?.contentLength} 字符
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start space-x-2">
+                          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-red-800">测试失败</p>
+                            <p className="text-red-700 mt-1">
+                              {testResults[source.id].error}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center">
+                    {/* 测试按钮 */}
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleEdit(source)}
+                      onClick={() => handleTestScraping(source)}
+                      disabled={testingSource === source.id}
+                      className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
                     >
-                      <Edit className="h-4 w-4" />
+                      {testingSource === source.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          Testing...
+                        </>
+                      ) : (
+                        <>
+                          <TestTube className="h-4 w-4 mr-1" />
+                          Test Scraping
+                        </>
+                      )}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDeleteDialog(source)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(source)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeleteDialog(source)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

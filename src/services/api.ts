@@ -222,7 +222,236 @@ export const sourcesApi = {
     } catch {
       return { valid: false, message: 'Invalid URL format' };
     }
+  },
+
+  // 新增：测试 Web Scraping 功能
+  testScraping: async (sourceId: string): Promise<{ success: boolean; data?: any; error?: string }> => {
+    try {
+      console.log('🕷️ 开始测试 Web Scraping，Source ID:', sourceId);
+      
+      // 获取 source 信息
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data: source, error: sourceError } = await supabase
+        .from('content_sources')
+        .select('*')
+        .eq('id', parseInt(sourceId))
+        .eq('user_id', user.id)
+        .single();
+
+      if (sourceError || !source) {
+        throw new Error('Source not found');
+      }
+
+      console.log('📄 开始抓取网站内容:', source.url);
+
+      // 使用 CORS 代理来抓取内容
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(source.url)}`;
+      
+      const response = await fetch(proxyUrl);
+      const data = await response.json();
+      
+      if (!data.contents) {
+        throw new Error('Failed to fetch content');
+      }
+
+      // 解析 HTML 内容
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(data.contents, 'text/html');
+      
+      // 提取标题
+      const title = doc.querySelector('title')?.textContent || 
+                   doc.querySelector('h1')?.textContent || 
+                   'Untitled';
+
+      // 提取主要内容
+      let content = '';
+      const contentSelectors = [
+        'article', '.post', '.entry', '.content',
+        '.post-content', '.entry-content', '.article-content',
+        'main', '.main-content', '#content'
+      ];
+
+      for (const selector of contentSelectors) {
+        const element = doc.querySelector(selector);
+        if (element) {
+          content = element.textContent || '';
+          break;
+        }
+      }
+
+      // 如果没找到特定内容区域，使用 body
+      if (!content) {
+        const body = doc.querySelector('body');
+        if (body) {
+          // 移除 script 和 style 标签
+          const scripts = body.querySelectorAll('script, style');
+          scripts.forEach(script => script.remove());
+          content = body.textContent || '';
+        }
+      }
+
+      // 清理内容
+      content = content.replace(/\s+/g, ' ').trim();
+      
+      if (content.length < 100) {
+        throw new Error('Content too short or not found');
+      }
+
+      // 创建 content_item 记录
+      const { data: contentItem, error: itemError } = await supabase
+        .from('content_items')
+        .insert({
+          source_id: parseInt(sourceId),
+          title: title.substring(0, 500), // 限制标题长度
+          content_url: source.url,
+          content_text: content.substring(0, 10000), // 限制内容长度
+          published_date: new Date().toISOString(),
+          is_processed: false
+        })
+        .select()
+        .single();
+
+      if (itemError) {
+        console.error('❌ 创建 content_item 失败:', itemError);
+        throw itemError;
+      }
+
+      console.log('✅ 成功抓取内容并创建 content_item:', contentItem.id);
+
+      // 调用 AI 总结
+      const summaryResult = await testAISummarization(contentItem.id, content);
+
+      // 更新 source 的 last_scraped_at
+      await supabase
+        .from('content_sources')
+        .update({ 
+          last_scraped_at: new Date().toISOString(),
+          error_count: 0,
+          last_error: null
+        })
+        .eq('id', parseInt(sourceId));
+
+      return {
+        success: true,
+        data: {
+          contentItem,
+          summary: summaryResult,
+          extractedContent: {
+            title,
+            contentLength: content.length,
+            preview: content.substring(0, 200) + '...'
+          }
+        }
+      };
+
+    } catch (error) {
+      console.error('❌ Web Scraping 测试失败:', error);
+      
+      // 更新 source 错误信息
+      try {
+        await supabase
+          .from('content_sources')
+          .update({ 
+            last_error: error instanceof Error ? error.message : 'Unknown error',
+            error_count: supabase.raw('error_count + 1')
+          })
+          .eq('id', parseInt(sourceId));
+      } catch (updateError) {
+        console.error('❌ 更新错误信息失败:', updateError);
+      }
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
+};
+
+// 新增：测试 AI 总结功能
+const testAISummarization = async (contentItemId: number, content: string): Promise<any> => {
+  try {
+    console.log('🤖 开始 AI 总结，Content Item ID:', contentItemId);
+
+    // 模拟 AI 总结（实际项目中这里会调用 OpenAI API）
+    const mockSummary = generateMockSummary(content);
+    
+    // 计算阅读时间（平均 200 字/分钟）
+    const wordCount = content.split(/\s+/).length;
+    const readingTime = Math.max(1, Math.round(wordCount / 200));
+
+    // 创建 summary 记录
+    const { data: summary, error: summaryError } = await supabase
+      .from('summaries')
+      .insert({
+        content_item_id: contentItemId,
+        summary_text: mockSummary,
+        summary_length: mockSummary.length,
+        reading_time: readingTime,
+        model_used: 'mock-ai-v1',
+        processing_time: Math.random() * 2 + 1 // 模拟处理时间 1-3 秒
+      })
+      .select()
+      .single();
+
+    if (summaryError) {
+      console.error('❌ 创建 summary 失败:', summaryError);
+      throw summaryError;
+    }
+
+    // 更新 content_item 为已处理
+    await supabase
+      .from('content_items')
+      .update({ 
+        is_processed: true,
+        processing_error: null
+      })
+      .eq('id', contentItemId);
+
+    console.log('✅ 成功创建 AI 总结:', summary.id);
+
+    return summary;
+
+  } catch (error) {
+    console.error('❌ AI 总结失败:', error);
+    
+    // 更新 content_item 错误信息
+    await supabase
+      .from('content_items')
+      .update({ 
+        processing_error: error instanceof Error ? error.message : 'AI summarization failed'
+      })
+      .eq('id', contentItemId);
+
+    throw error;
+  }
+};
+
+// 生成模拟 AI 总结
+const generateMockSummary = (content: string): string => {
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
+  
+  if (sentences.length === 0) {
+    return "This content discusses various topics and provides information on the subject matter.";
+  }
+
+  // 选择前几个有意义的句子作为总结
+  const selectedSentences = sentences.slice(0, Math.min(3, sentences.length));
+  let summary = selectedSentences.join('. ').trim();
+  
+  // 确保总结以句号结尾
+  if (!summary.endsWith('.')) {
+    summary += '.';
+  }
+
+  // 限制总结长度
+  if (summary.length > 500) {
+    summary = summary.substring(0, 497) + '...';
+  }
+
+  return summary;
 };
 
 // Digests API
