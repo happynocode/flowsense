@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Plus, Edit, Trash2, Globe, Mic, FileText, TestTube, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, Mic, FileText, TestTube, Loader2, CheckCircle, AlertCircle, Brain, Sparkles } from 'lucide-react';
 import { sourcesApi } from '../services/api';
 import { ContentSource } from '../types';
 import { useToast } from '../hooks/use-toast';
@@ -26,7 +26,9 @@ const Sources = () => {
   const [editingSource, setEditingSource] = useState<ContentSource | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<ContentSource | null>(null);
   const [testingSource, setTestingSource] = useState<string | null>(null);
+  const [testingSummary, setTestingSummary] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<{[key: string]: any}>({});
+  const [summaryResults, setSummaryResults] = useState<{[key: string]: any}>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -106,7 +108,7 @@ const Sources = () => {
     }
   };
 
-  // 新增：测试 Web Scraping 功能
+  // 测试 Web Scraping 功能
   const handleTestScraping = async (source: ContentSource) => {
     setTestingSource(source.id);
     setTestResults(prev => ({ ...prev, [source.id]: null }));
@@ -153,6 +155,50 @@ const Sources = () => {
     }
   };
 
+  // 🤖 新增：测试 DeepSeek 摘要生成功能
+  const handleTestDeepSeekSummary = async (source: ContentSource) => {
+    setTestingSummary(source.id);
+    setSummaryResults(prev => ({ ...prev, [source.id]: null }));
+
+    try {
+      console.log('🤖 开始测试 DeepSeek 摘要生成功能...');
+      
+      const result = await sourcesApi.testDeepSeekSummary(source.id);
+      
+      setSummaryResults(prev => ({ ...prev, [source.id]: result }));
+
+      if (result.success) {
+        toast({
+          title: "🎉 DeepSeek 摘要生成成功！",
+          description: `成功生成摘要。模型：${result.data.summary.model_used}，处理时间：${result.data.summary.processing_time?.toFixed(2)}s`,
+        });
+      } else {
+        toast({
+          title: "❌ 摘要生成失败",
+          description: result.error || "DeepSeek 摘要生成失败",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('DeepSeek 摘要测试失败:', error);
+      setSummaryResults(prev => ({ 
+        ...prev, 
+        [source.id]: { 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        } 
+      }));
+      
+      toast({
+        title: "❌ 摘要生成失败",
+        description: "DeepSeek 摘要测试过程中发生错误",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingSummary(null);
+    }
+  };
+
   const getTypeIcon = (type: ContentSource['type']) => {
     switch (type) {
       case 'podcast':
@@ -178,7 +224,7 @@ const Sources = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingIndicator size="lg\" text="Loading your sources..." />
+        <LoadingIndicator size="lg" text="Loading your sources..." />
       </div>
     );
   }
@@ -284,7 +330,7 @@ const Sources = () => {
                     Last scraped: {formatDate(source.lastScraped)}
                   </div>
 
-                  {/* 测试结果显示 */}
+                  {/* Web Scraping 测试结果显示 */}
                   {testResults[source.id] && (
                     <div className={`p-3 rounded-lg text-sm ${
                       testResults[source.id].success 
@@ -295,7 +341,7 @@ const Sources = () => {
                         <div className="flex items-start space-x-2">
                           <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
                           <div>
-                            <p className="font-medium text-green-800">测试成功！</p>
+                            <p className="font-medium text-green-800">Web Scraping 测试成功！</p>
                             <p className="text-green-700 mt-1">
                               抓取标题：{testResults[source.id].data?.extractedContent?.title?.substring(0, 40)}...
                             </p>
@@ -308,7 +354,7 @@ const Sources = () => {
                         <div className="flex items-start space-x-2">
                           <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />
                           <div>
-                            <p className="font-medium text-red-800">测试失败</p>
+                            <p className="font-medium text-red-800">Web Scraping 测试失败</p>
                             <p className="text-red-700 mt-1">
                               {testResults[source.id].error}
                             </p>
@@ -318,28 +364,95 @@ const Sources = () => {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center">
-                    {/* 测试按钮 */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTestScraping(source)}
-                      disabled={testingSource === source.id}
-                      className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
-                    >
-                      {testingSource === source.id ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          Testing...
-                        </>
+                  {/* DeepSeek 摘要测试结果显示 */}
+                  {summaryResults[source.id] && (
+                    <div className={`p-3 rounded-lg text-sm ${
+                      summaryResults[source.id].success 
+                        ? 'bg-blue-50 border border-blue-200' 
+                        : 'bg-red-50 border border-red-200'
+                    }`}>
+                      {summaryResults[source.id].success ? (
+                        <div className="flex items-start space-x-2">
+                          <Brain className="h-4 w-4 text-blue-600 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-blue-800">DeepSeek 摘要生成成功！</p>
+                            <p className="text-blue-700 mt-1">
+                              模型：{summaryResults[source.id].data?.summary?.model_used}
+                            </p>
+                            <p className="text-blue-600 mt-1">
+                              处理时间：{summaryResults[source.id].data?.summary?.processing_time?.toFixed(2)}s
+                            </p>
+                            <p className="text-blue-600 mt-1">
+                              摘要长度：{summaryResults[source.id].data?.summary?.summary_length} 字符
+                            </p>
+                            {summaryResults[source.id].data?.apiUsage && (
+                              <p className="text-blue-500 mt-1 text-xs">
+                                Token 使用：{summaryResults[source.id].data.apiUsage.total_tokens}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       ) : (
-                        <>
-                          <TestTube className="h-4 w-4 mr-1" />
-                          Test Scraping
-                        </>
+                        <div className="flex items-start space-x-2">
+                          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-red-800">DeepSeek 摘要生成失败</p>
+                            <p className="text-red-700 mt-1">
+                              {summaryResults[source.id].error}
+                            </p>
+                          </div>
+                        </div>
                       )}
-                    </Button>
+                    </div>
+                  )}
 
+                  <div className="flex justify-between items-center space-x-2">
+                    {/* 测试按钮组 */}
+                    <div className="flex space-x-2">
+                      {/* Web Scraping 测试按钮 */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleTestScraping(source)}
+                        disabled={testingSource === source.id}
+                        className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
+                      >
+                        {testingSource === source.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            Testing...
+                          </>
+                        ) : (
+                          <>
+                            <TestTube className="h-4 w-4 mr-1" />
+                            Test Scraping
+                          </>
+                        )}
+                      </Button>
+
+                      {/* DeepSeek 摘要测试按钮 */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleTestDeepSeekSummary(source)}
+                        disabled={testingSummary === source.id}
+                        className="text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300"
+                      >
+                        {testingSummary === source.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Brain className="h-4 w-4 mr-1" />
+                            Test DeepSeek
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* 编辑和删除按钮 */}
                     <div className="flex space-x-2">
                       <Button
                         variant="outline"
