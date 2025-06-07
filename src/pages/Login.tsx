@@ -16,7 +16,7 @@ const Login = () => {
           <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-full flex items-center justify-center glow-purple">
             <Brain className="w-8 h-8 text-starlight" />
           </div>
-          <p className="text-center text-lunar-grey">Initializing neural interface...</p>
+          <p className="text-center text-lunar-grey">Setting up your personalized dashboard...</p>
         </div>
       </div>
     );
@@ -36,17 +36,17 @@ const Login = () => {
             <Brain className="w-10 h-10 text-starlight" />
           </div>
           <h1 className="text-4xl font-space-grotesk font-bold mb-2">
-            <span className="text-cosmic-gradient">Neural</span>{" "}
-            <span className="text-starlight">Interface</span>
+            <span className="text-cosmic-gradient">Daily</span>{" "}
+            <span className="text-starlight">Digest</span>
           </h1>
-          <p className="text-lunar-grey">Connect to the future of content intelligence</p>
+          <p className="text-lunar-grey">Your personalized content summary awaits</p>
         </div>
 
         <Card className="glass-card border-0">
           <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl text-starlight">Access Portal</CardTitle>
+            <CardTitle className="text-2xl text-starlight">Welcome Back</CardTitle>
             <CardDescription className="text-lunar-grey">
-              Authenticate your quantum signature to access personalized AI insights
+              Sign in to access your personalized daily digest and never miss what matters most
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -72,11 +72,11 @@ const Login = () => {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              Initialize Neural Connection
+              Continue with Google
             </Button>
             
             <div className="text-xs text-lunar-grey text-center leading-relaxed">
-              By connecting, you agree to our Quantum Terms of Service and Neural Privacy Policy
+              By signing in, you agree to our Terms of Service and Privacy Policy
             </div>
           </CardContent>
         </Card>
@@ -85,18 +85,18 @@ const Login = () => {
           <div className="grid grid-cols-3 gap-6 text-center">
             <div className="glass-card p-4">
               <Zap className="w-6 h-6 text-electric-blue mx-auto mb-2" />
-              <div className="text-xs text-starlight font-medium">Quantum Processing</div>
-              <div className="text-xs text-lunar-grey">Lightning fast analysis</div>
+              <div className="text-xs text-starlight font-medium">Lightning Fast</div>
+              <div className="text-xs text-lunar-grey">Get insights in seconds</div>
             </div>
             <div className="glass-card p-4">
               <Shield className="w-6 h-6 text-astral-teal mx-auto mb-2" />
-              <div className="text-xs text-starlight font-medium">Neural Security</div>
-              <div className="text-xs text-lunar-grey">Encrypted intelligence</div>
+              <div className="text-xs text-starlight font-medium">Always Secure</div>
+              <div className="text-xs text-lunar-grey">Your data stays private</div>
             </div>
             <div className="glass-card p-4">
               <Globe className="w-6 h-6 text-cosmic-purple mx-auto mb-2" />
-              <div className="text-xs text-starlight font-medium">Global Network</div>
-              <div className="text-xs text-lunar-grey">Worldwide coverage</div>
+              <div className="text-xs text-starlight font-medium">Works Everywhere</div>
+              <div className="text-xs text-lunar-grey">Access from any device</div>
             </div>
           </div>
         </div>

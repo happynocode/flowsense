@@ -9,28 +9,28 @@ const Landing = () => {
   const features = [
     {
       icon: <Brain className="h-8 w-8 text-electric-blue" />,
-      title: "AI-Powered Intelligence",
-      description: "Advanced neural networks analyze and synthesize content from thousands of sources in real-time"
+      title: "Save Hours Every Day",
+      description: "Stop scrolling through dozens of websites. Get all your favorite content summarized in one place, ready in minutes."
     },
     {
       icon: <Sparkles className="h-8 w-8 text-astral-teal" />,
-      title: "Instant Synthesis",
-      description: "Transform hours of reading into minutes of actionable insights with quantum-speed processing"
+      title: "Never Miss What Matters",
+      description: "Our smart system monitors your sources 24/7, so you'll always stay informed without the overwhelm."
     },
     {
       icon: <Shield className="h-8 w-8 text-cosmic-purple" />,
-      title: "Secure & Private",
-      description: "Enterprise-grade encryption ensures your data remains protected in our quantum-secured environment"
+      title: "Trustworthy & Secure",
+      description: "Your reading preferences stay private. We only summarize content from sources you choose and trust."
     }
   ];
 
   const automationFeatures = [
-    "Smart content curation from 10,000+ sources",
-    "Real-time sentiment analysis",
-    "Automated topic clustering",
-    "Predictive trend detection",
-    "Multi-language processing",
-    "Voice synthesis & playback"
+    "Automatically checks your favorite blogs and news sites",
+    "Creates easy-to-read summaries of the key points",
+    "Groups related topics together for better understanding",
+    "Spots trending topics before they go mainstream",
+    "Works with content in multiple languages",
+    "Includes audio versions for listening on-the-go"
   ];
 
   const customerLogos = [
@@ -45,23 +45,23 @@ const Landing = () => {
   const testimonials = [
     {
       name: "Dr. Sarah Chen",
-      role: "AI Research Director",
+      role: "Research Director",
       company: "TechCorp",
-      content: "This platform has revolutionized how our team stays ahead of industry developments. The AI insights are incredibly accurate.",
+      content: "I used to spend 2 hours every morning reading industry news. Now I get the same insights in 15 minutes. This has been a game-changer for staying informed.",
       avatar: "SC"
     },
     {
       name: "Marcus Rodriguez",
       role: "Innovation Lead",
       company: "FutureWorks",
-      content: "The predictive analytics have helped us identify market trends 6 months before our competitors. Game-changing technology.",
+      content: "The trend spotting feature helped us identify a market opportunity 6 months before our competitors. It's like having a crystal ball for industry trends.",
       avatar: "MR"
     },
     {
       name: "Dr. Yuki Tanaka",
       role: "CTO",
       company: "QuantumSoft",
-      content: "Integration was seamless and the quantum-speed processing delivers insights faster than we ever thought possible.",
+      content: "Setting it up took 5 minutes. Now I get personalized summaries from 30+ sources every morning. The audio feature is perfect for my commute.",
       avatar: "YT"
     }
   ];
@@ -69,39 +69,39 @@ const Landing = () => {
   const pricingPlans = [
     {
       name: "Starter",
-      price: 29,
+      price: 9,
       features: [
-        "Up to 100 sources",
-        "Daily AI digests",
-        "Basic analytics",
-        "Email delivery",
-        "Mobile app access"
+        "Follow up to 10 sources",
+        "Daily summary delivered to your inbox",
+        "Key insights and takeaways",
+        "Mobile-friendly format",
+        "Email support"
       ],
       isPopular: false
     },
     {
       name: "Professional",
-      price: 79,
+      price: 19,
       features: [
-        "Unlimited sources",
-        "Real-time processing",
-        "Advanced AI insights",
-        "Custom delivery schedules",
-        "API access",
+        "Follow unlimited sources",
+        "Real-time updates throughout the day",
+        "Advanced trend analysis",
+        "Audio summaries for listening",
+        "Custom delivery schedule",
         "Priority support"
       ],
       isPopular: true
     },
     {
       name: "Enterprise",
-      price: 199,
+      price: 49,
       features: [
         "Everything in Professional",
-        "Custom AI models",
-        "White-label solution",
-        "Dedicated support",
-        "On-premise deployment",
-        "Advanced security"
+        "Team sharing and collaboration",
+        "Custom branding options",
+        "Dedicated account manager",
+        "Advanced security features",
+        "Custom integrations"
       ],
       isPopular: false
     }
@@ -117,33 +117,37 @@ const Landing = () => {
             <div className="mb-8">
               <div className="inline-flex items-center px-4 py-2 rounded-full bg-midnight/60 backdrop-blur-xl border border-white/10 text-sm text-electric-blue mb-6">
                 <Sparkles className="w-4 h-4 mr-2" />
-                Powered by Advanced AI Neural Networks
+                Used by 10,000+ professionals worldwide
               </div>
             </div>
             
             <h1 className="text-6xl md:text-7xl font-space-grotesk font-bold mb-6 leading-tight">
-              <span className="text-cosmic-gradient">Future of</span>{" "}
-              <span className="text-starlight">Content</span>{" "}
-              <span className="text-aurora-gradient">Intelligence</span>
+              <span className="text-cosmic-gradient">Your Favorite Content,</span>{" "}
+              <span className="text-starlight">Summarized</span>{" "}
+              <span className="text-aurora-gradient">Daily</span>
             </h1>
             
             <p className="text-xl text-lunar-grey mb-12 max-w-2xl mx-auto leading-relaxed">
-              Harness quantum-powered AI to transform information overload into strategic intelligence. 
-              Process thousands of sources instantly and stay ahead of tomorrow's trends.
+              Stop drowning in information overload. Get personalized summaries from all your 
+              favorite blogs, podcasts, and news sources delivered to your inbox every morning.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
               <Link to="/login">
                 <Button className="btn-cosmic text-lg px-8 py-4 h-auto">
                   <Brain className="w-5 h-5 mr-2" />
-                  Start Neural Processing
+                  Start Your Free Trial
                 </Button>
               </Link>
               <Button variant="outline" className="btn-outline-electric text-lg px-8 py-4 h-auto">
                 <Globe2 className="w-5 h-5 mr-2" />
-                Explore Demo
+                See How It Works
               </Button>
             </div>
+            
+            <p className="text-sm text-lunar-grey mt-6">
+              No credit card required • 7-day free trial • Cancel anytime
+            </p>
           </div>
         </div>
       </section>
@@ -172,11 +176,11 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6">
-              <span className="text-cosmic-gradient">Advanced AI</span>{" "}
-              <span className="text-starlight">Capabilities</span>
+              <span className="text-cosmic-gradient">Why People</span>{" "}
+              <span className="text-starlight">Love Daily Digest</span>
             </h2>
             <p className="text-xl text-lunar-grey max-w-2xl mx-auto">
-              Experience the next generation of content intelligence with our quantum-enhanced AI platform
+              Join thousands who've reclaimed their time without missing what matters most
             </p>
           </div>
           
@@ -206,11 +210,11 @@ const Landing = () => {
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div>
                 <h3 className="text-3xl font-space-grotesk font-bold mb-6 text-starlight">
-                  Complete <span className="text-aurora-gradient">AI Automation</span>
+                  <span className="text-aurora-gradient">Smart Automation</span> That Just Works
                 </h3>
                 <p className="text-lunar-grey mb-8 text-lg leading-relaxed">
-                  Our neural networks work 24/7 to monitor, analyze, and synthesize content 
-                  from across the digital universe, delivering insights at the speed of thought.
+                  Set it up once, then sit back and relax. Our system continuously monitors 
+                  your chosen sources and delivers perfectly crafted summaries right to your inbox.
                 </p>
                 <div className="grid gap-4">
                   {automationFeatures.map((feature, index) => (
@@ -224,10 +228,10 @@ const Landing = () => {
               <div className="relative">
                 <div className="glass-card p-8 text-center">
                   <div className="w-24 h-24 mx-auto mb-6 bg-sunset-gradient rounded-full flex items-center justify-center glow-pink">
-                    <Zap className="w-12 h-12 text-starlight" />
+                    <Clock className="w-12 h-12 text-starlight" />
                   </div>
-                  <h4 className="text-xl font-semibold text-starlight mb-2">Quantum Speed</h4>
-                  <p className="text-lunar-grey">Process 10,000+ articles in seconds</p>
+                  <h4 className="text-xl font-semibold text-starlight mb-2">Save 10+ Hours Weekly</h4>
+                  <p className="text-lunar-grey">Average time saved by our users each week</p>
                 </div>
               </div>
             </div>
@@ -241,10 +245,10 @@ const Landing = () => {
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6">
               <span className="text-starlight">Choose Your</span>{" "}
-              <span className="text-cosmic-gradient">Power Level</span>
+              <span className="text-cosmic-gradient">Perfect Plan</span>
             </h2>
             <p className="text-xl text-lunar-grey max-w-2xl mx-auto">
-              Scale your AI intelligence with plans designed for every mission
+              Start free, then pick the plan that fits your information needs
             </p>
           </div>
           
@@ -289,7 +293,7 @@ const Landing = () => {
                         : 'btn-outline-electric'
                     }`}
                   >
-                    {plan.isPopular ? 'Get Started' : `Choose ${plan.name}`}
+                    {plan.isPopular ? 'Start Free Trial' : `Try ${plan.name}`}
                   </Button>
                 </CardContent>
               </Card>
@@ -303,8 +307,8 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6">
-              <span className="text-aurora-gradient">Quantum</span>{" "}
-              <span className="text-starlight">Success Stories</span>
+              <span className="text-aurora-gradient">Real Stories</span>{" "}
+              <span className="text-starlight">From Real Users</span>
             </h2>
           </div>
           
@@ -340,20 +344,20 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="glass-card p-12 md:p-16 text-center max-w-4xl mx-auto">
             <h2 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6">
-              <span className="text-starlight">Ready to Enter the</span>{" "}
-              <span className="text-cosmic-gradient">Future?</span>
+              <span className="text-starlight">Ready to Reclaim</span>{" "}
+              <span className="text-cosmic-gradient">Your Time?</span>
             </h2>
             <p className="text-xl text-lunar-grey mb-8 max-w-2xl mx-auto">
-              Join thousands of visionaries already using AI to stay ahead of tomorrow's trends
+              Join thousands of professionals who stay informed without the overwhelm
             </p>
             <Link to="/login">
               <Button className="btn-cosmic text-lg px-12 py-4 h-auto mb-4">
                 <Brain className="w-5 h-5 mr-2" />
-                Activate Neural Interface
+                Start Your Free Trial
               </Button>
             </Link>
             <p className="text-sm text-lunar-grey">
-              No quantum computer required • Neural networks included • Future-proof guarantee
+              No setup fees • Cancel anytime • Get results in 24 hours
             </p>
           </div>
         </div>
