@@ -44,57 +44,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (supabaseUser) {
         console.log('✅ 找到 Supabase 用户:', supabaseUser.email);
         
-        // Get user data from our users table
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', supabaseUser.email)
-          .single();
-
-        if (userError && userError.code !== 'PGRST116') {
-          console.error('❌ Error fetching user data:', userError);
-          setUser(null);
-          return;
-        }
-
-        if (userData) {
-          console.log('✅ 找到用户数据:', userData.name);
-          setUser({
-            id: userData.id.toString(),
-            name: userData.name,
-            email: userData.email,
-            avatar: userData.avatar_url || '',
-            createdAt: userData.created_at,
-            updatedAt: userData.updated_at
-          });
-        } else {
-          console.log('📝 创建新用户记录...');
-          // Create user record if it doesn't exist
-          const { data: newUser, error: createError } = await supabase
+        // 添加超时保护
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('数据库查询超时')), 10000);
+        });
+        
+        try {
+          // Get user data from our users table with timeout protection
+          const queryPromise = supabase
             .from('users')
-            .insert({
-              email: supabaseUser.email || '',
-              name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-              avatar_url: supabaseUser.user_metadata?.avatar_url || null
-            })
-            .select()
+            .select('*')
+            .eq('email', supabaseUser.email)
             .single();
+          
+          const { data: userData, error: userError } = await Promise.race([
+            queryPromise,
+            timeoutPromise
+          ]) as any;
 
-          if (createError) {
-            console.error('❌ Error creating user:', createError);
+          if (userError && userError.code !== 'PGRST116') {
+            console.error('❌ Error fetching user data:', userError);
+            
+            // 如果是权限错误，尝试创建用户
+            if (userError.message?.includes('permission') || userError.code === '42501') {
+              console.log('🔧 权限错误，尝试直接创建用户...');
+              await createUserDirectly(supabaseUser);
+              return;
+            }
+            
             setUser(null);
             return;
           }
 
-          if (newUser) {
-            console.log('✅ 新用户创建成功:', newUser.name);
+          if (userData) {
+            console.log('✅ 找到用户数据:', userData.name);
             setUser({
-              id: newUser.id.toString(),
-              name: newUser.name,
-              email: newUser.email,
-              avatar: newUser.avatar_url || '',
-              createdAt: newUser.created_at,
-              updatedAt: newUser.updated_at
+              id: userData.id.toString(),
+              name: userData.name,
+              email: userData.email,
+              avatar: userData.avatar_url || '',
+              createdAt: userData.created_at,
+              updatedAt: userData.updated_at
+            });
+          } else {
+            console.log('📝 用户数据不存在，创建新用户记录...');
+            await createUserDirectly(supabaseUser);
+          }
+        } catch (dbError: any) {
+          console.error('❌ 数据库操作失败:', dbError);
+          
+          if (dbError.message === '数据库查询超时') {
+            console.log('⏰ 查询超时，使用基本用户信息');
+            // 使用 Supabase 用户信息创建基本用户对象
+            setUser({
+              id: supabaseUser.id,
+              name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+              email: supabaseUser.email || '',
+              avatar: supabaseUser.user_metadata?.avatar_url || '',
+              createdAt: supabaseUser.created_at || new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+          } else {
+            // 其他错误，也使用基本信息
+            console.log('🔄 使用 Supabase 用户基本信息');
+            setUser({
+              id: supabaseUser.id,
+              name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+              email: supabaseUser.email || '',
+              avatar: supabaseUser.user_metadata?.avatar_url || '',
+              createdAt: supabaseUser.created_at || new Date().toISOString(),
+              updatedAt: new Date().toISOString()
             });
           }
         }
@@ -105,6 +124,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('❌ Failed to refresh user:', error);
       setUser(null);
+    }
+  };
+
+  const createUserDirectly = async (supabaseUser: SupabaseUser) => {
+    try {
+      console.log('📝 创建新用户记录...');
+      
+      const newUserData = {
+        email: supabaseUser.email || '',
+        name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+        avatar_url: supabaseUser.user_metadata?.avatar_url || null
+      };
+      
+      console.log('📋 用户数据:', newUserData);
+      
+      // 添加超时保护
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('创建用户超时')), 8000);
+      });
+      
+      const insertPromise = supabase
+        .from('users')
+        .insert(newUserData)
+        .select()
+        .single();
+      
+      const { data: newUser, error: createError } = await Promise.race([
+        insertPromise,
+        timeoutPromise
+      ]) as any;
+
+      if (createError) {
+        console.error('❌ Error creating user:', createError);
+        
+        // 如果创建失败，使用基本用户信息
+        console.log('🔄 创建失败，使用基本用户信息');
+        setUser({
+          id: supabaseUser.id,
+          name: newUserData.name,
+          email: newUserData.email,
+          avatar: newUserData.avatar_url || '',
+          createdAt: supabaseUser.created_at || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+        return;
+      }
+
+      if (newUser) {
+        console.log('✅ 新用户创建成功:', newUser.name);
+        setUser({
+          id: newUser.id.toString(),
+          name: newUser.name,
+          email: newUser.email,
+          avatar: newUser.avatar_url || '',
+          createdAt: newUser.created_at,
+          updatedAt: newUser.updated_at
+        });
+      }
+    } catch (error: any) {
+      console.error('❌ 创建用户失败:', error);
+      
+      // 即使创建失败，也设置基本用户信息
+      console.log('🔄 使用 Supabase 基本信息作为后备');
+      setUser({
+        id: supabaseUser.id,
+        name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+        email: supabaseUser.email || '',
+        avatar: supabaseUser.user_metadata?.avatar_url || '',
+        createdAt: supabaseUser.created_at || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
     }
   };
 
