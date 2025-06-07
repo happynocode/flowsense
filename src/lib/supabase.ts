@@ -28,7 +28,7 @@ export const testSupabaseConnection = async (): Promise<boolean> => {
     const { data, error } = await Promise.race([
       supabase.auth.getSession(),
       new Promise<any>((_, reject) => 
-        setTimeout(() => reject(new Error('连接测试超时')), 3000)
+        setTimeout(() => reject(new Error('连接测试超时')), 5000)
       )
     ]);
 
