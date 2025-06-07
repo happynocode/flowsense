@@ -29,18 +29,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     try {
-      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      const { data: { user: supabaseUser }, error } = await supabase.auth.getUser();
+      
+      if (error) {
+        console.error('Auth error:', error);
+        setUser(null);
+        return;
+      }
       
       if (supabaseUser) {
         // Get user data from our users table
-        const { data: userData, error } = await supabase
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .select('*')
           .eq('google_id', supabaseUser.id)
           .single();
 
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error fetching user data:', error);
+        if (userError && userError.code !== 'PGRST116') {
+          console.error('Error fetching user data:', userError);
           setUser(null);
           return;
         }
@@ -95,20 +101,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/`
-        }
+      // For now, we'll use email/password auth since Google OAuth isn't set up yet
+      // This is a placeholder - in a real app you'd have a proper login form
+      toast({
+        title: "Login not configured",
+        description: "Please set up Google OAuth in Supabase to enable login.",
+        variant: "destructive",
       });
-
-      if (error) {
-        toast({
-          title: "Login failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
     } catch (error) {
       toast({
         title: "Login failed",
@@ -146,16 +145,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const initAuth = async () => {
-      setLoading(true);
-      
-      // Get initial session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        await refreshUser();
+      try {
+        setLoading(true);
+        
+        // Get initial session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session error:', error);
+        }
+        
+        if (session) {
+          await refreshUser();
+        }
+        
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
+        // Always set loading to false, even if there's an error
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     initAuth();
