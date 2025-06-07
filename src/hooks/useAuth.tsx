@@ -1,7 +1,8 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '../types';
 import { useToast } from './use-toast';
+import { supabase } from '../lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -28,47 +29,112 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     try {
-      // Mock user for bypassing authentication
-      const mockUser: User = {
-        id: '1',
-        name: 'John Doe',
-        email: 'john@example.com',
-        avatar: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      setUser(mockUser);
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      
+      if (supabaseUser) {
+        // Get user data from our users table
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('google_id', supabaseUser.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching user data:', error);
+          setUser(null);
+          return;
+        }
+
+        if (userData) {
+          setUser({
+            id: userData.id.toString(),
+            name: userData.name,
+            email: userData.email,
+            avatar: userData.avatar_url || '',
+            createdAt: userData.created_at,
+            updatedAt: userData.updated_at
+          });
+        } else {
+          // Create user record if it doesn't exist
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .insert({
+              email: supabaseUser.email || '',
+              google_id: supabaseUser.id,
+              name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+              avatar_url: supabaseUser.user_metadata?.avatar_url || null
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('Error creating user:', createError);
+            setUser(null);
+            return;
+          }
+
+          if (newUser) {
+            setUser({
+              id: newUser.id.toString(),
+              name: newUser.name,
+              email: newUser.email,
+              avatar: newUser.avatar_url || '',
+              createdAt: newUser.created_at,
+              updatedAt: newUser.updated_at
+            });
+          }
+        }
+      } else {
+        setUser(null);
+      }
     } catch (error) {
       console.error('Failed to refresh user:', error);
       setUser(null);
     }
   };
 
-  const login = () => {
-    // Mock login - just set the user directly
-    const mockUser: User = {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      avatar: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    setUser(mockUser);
-    toast({
-      title: "Logged in successfully",
-      description: "Welcome to Daily Digest!",
-    });
+  const login = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Login failed",
+        description: "There was an error logging you in. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const logout = async () => {
     try {
-      // For mock authentication, just clear the user state
-      setUser(null);
-      toast({
-        title: "Logged out successfully",
-        description: "You have been logged out of your account.",
-      });
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        toast({
+          title: "Logout failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        setUser(null);
+        toast({
+          title: "Logged out successfully",
+          description: "You have been logged out of your account.",
+        });
+      }
     } catch (error) {
       toast({
         title: "Logout failed",
@@ -81,12 +147,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       setLoading(true);
-      // For demo purposes, start without a user so you can see the landing page
-      setUser(null);
+      
+      // Get initial session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        await refreshUser();
+      }
+      
       setLoading(false);
     };
 
     initAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        await refreshUser();
+        toast({
+          title: "Logged in successfully",
+          description: "Welcome to Neural Hub!",
+        });
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const value = {
