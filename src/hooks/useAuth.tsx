@@ -7,7 +7,8 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: () => void;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -42,7 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('*')
-          .eq('google_id', supabaseUser.id)
+          .eq('email', supabaseUser.email)
           .single();
 
         if (userError && userError.code !== 'PGRST116') {
@@ -66,7 +67,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .from('users')
             .insert({
               email: supabaseUser.email || '',
-              google_id: supabaseUser.id,
               name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
               avatar_url: supabaseUser.user_metadata?.avatar_url || null
             })
@@ -99,21 +99,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = async () => {
+  const signUp = async (email: string, password: string, name: string) => {
     try {
-      // For now, we'll use email/password auth since Google OAuth isn't set up yet
-      // This is a placeholder - in a real app you'd have a proper login form
-      toast({
-        title: "Login not configured",
-        description: "Please set up Google OAuth in Supabase to enable login.",
-        variant: "destructive",
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          }
+        }
       });
-    } catch (error) {
-      toast({
-        title: "Login failed",
-        description: "There was an error logging you in. Please try again.",
-        variant: "destructive",
+
+      if (error) {
+        toast({
+          title: "注册失败",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+
+      if (data.user && !data.session) {
+        toast({
+          title: "注册成功",
+          description: "请检查您的邮箱并点击确认链接来激活账户。",
+        });
+      }
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      throw error;
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
+
+      if (error) {
+        toast({
+          title: "登录失败",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+
+      if (data.user) {
+        toast({
+          title: "登录成功",
+          description: "欢迎回到 Neural Hub！",
+        });
+      }
+    } catch (error: any) {
+      console.error('Sign in error:', error);
+      throw error;
     }
   };
 
@@ -123,21 +166,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         toast({
-          title: "Logout failed",
+          title: "登出失败",
           description: error.message,
           variant: "destructive",
         });
       } else {
         setUser(null);
         toast({
-          title: "Logged out successfully",
-          description: "You have been logged out of your account.",
+          title: "已成功登出",
+          description: "您已安全退出账户。",
         });
       }
     } catch (error) {
       toast({
-        title: "Logout failed",
-        description: "There was an error logging you out. Please try again.",
+        title: "登出失败",
+        description: "退出时发生错误，请重试。",
         variant: "destructive",
       });
     }
@@ -185,10 +228,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (event === 'SIGNED_IN' && session) {
         await refreshUser();
-        toast({
-          title: "Logged in successfully",
-          description: "Welcome to Neural Hub!",
-        });
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
       }
@@ -200,7 +239,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value = {
     user,
     loading,
-    login,
+    signUp,
+    signIn,
     logout,
     refreshUser,
   };

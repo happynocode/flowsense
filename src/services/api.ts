@@ -3,15 +3,29 @@ import { User, ContentSource, Digest, Subscription, SubscriptionPlan, ApiRespons
 
 // Auth API
 export const authApi = {
-  loginWithGoogle: async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+  signUp: async (email: string, password: string, name: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
       options: {
-        redirectTo: `${window.location.origin}/`
+        data: {
+          full_name: name,
+        }
       }
     });
     
     if (error) throw error;
+    return data;
+  },
+
+  signIn: async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    if (error) throw error;
+    return data;
   },
   
   logout: async (): Promise<void> => {
@@ -28,7 +42,7 @@ export const authApi = {
       const { data: userData, error } = await supabase
         .from('users')
         .select('*')
-        .eq('google_id', supabaseUser.id)
+        .eq('email', supabaseUser.email)
         .single();
 
       if (error || !userData) return null;
@@ -45,6 +59,22 @@ export const authApi = {
       console.error('Error getting current user:', error);
       return null;
     }
+  },
+
+  resetPassword: async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    
+    if (error) throw error;
+  },
+
+  updatePassword: async (password: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: password
+    });
+    
+    if (error) throw error;
   }
 };
 
@@ -57,7 +87,7 @@ export const sourcesApi = {
     const { data: userData } = await supabase
       .from('users')
       .select('id')
-      .eq('google_id', user.id)
+      .eq('email', user.email)
       .single();
 
     if (!userData) throw new Error('User not found');
@@ -89,7 +119,7 @@ export const sourcesApi = {
     const { data: userData } = await supabase
       .from('users')
       .select('id')
-      .eq('google_id', user.id)
+      .eq('email', user.email)
       .single();
 
     if (!userData) throw new Error('User not found');
@@ -182,7 +212,7 @@ export const digestsApi = {
     const { data: userData } = await supabase
       .from('users')
       .select('id')
-      .eq('google_id', user.id)
+      .eq('email', user.email)
       .single();
 
     if (!userData) throw new Error('User not found');
@@ -277,7 +307,7 @@ export const subscriptionApi = {
       const { data: userData } = await supabase
         .from('users')
         .select('id')
-        .eq('google_id', user.id)
+        .eq('email', user.email)
         .single();
 
       if (!userData) return null;

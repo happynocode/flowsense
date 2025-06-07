@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
@@ -9,65 +8,65 @@ const Landing = () => {
   const features = [
     {
       icon: <Brain className="h-8 w-8 text-electric-blue" />,
-      title: "Save Hours Every Day",
-      description: "Stop scrolling through dozens of websites. Get all your favorite content summarized in one place, ready in minutes."
+      title: "每天节省数小时",
+      description: "停止浏览数十个网站。在一个地方获取所有您喜爱的内容摘要，几分钟内准备就绪。"
     },
     {
       icon: <Sparkles className="h-8 w-8 text-astral-teal" />,
-      title: "Never Miss What Matters",
-      description: "Our smart system monitors your sources 24/7, so you'll always stay informed without the overwhelm."
+      title: "永不错过重要内容",
+      description: "我们的智能系统24/7监控您的信息源，让您始终保持信息灵通而不会感到overwhelm。"
     },
     {
       icon: <Shield className="h-8 w-8 text-cosmic-purple" />,
-      title: "Trustworthy & Secure",
-      description: "Your reading preferences stay private. We only summarize content from sources you choose and trust."
+      title: "值得信赖且安全",
+      description: "您的阅读偏好保持私密。我们只从您选择和信任的信息源中总结内容。"
     }
   ];
 
   const automationFeatures = [
-    "Automatically checks your favorite blogs and news sites",
-    "Creates easy-to-read summaries of the key points",
-    "Groups related topics together for better understanding",
-    "Spots trending topics before they go mainstream",
-    "Works with content in multiple languages",
-    "Includes audio versions for listening on-the-go"
+    "自动检查您喜爱的博客和新闻网站",
+    "创建易于阅读的关键要点摘要",
+    "将相关主题分组以便更好理解",
+    "在趋势话题成为主流之前发现它们",
+    "支持多种语言的内容",
+    "包含音频版本，方便随时收听"
   ];
 
   const testimonials = [
     {
-      name: "Dr. Sarah Chen",
-      role: "Research Director",
-      company: "TechCorp",
-      content: "I used to spend 2 hours every morning reading industry news. Now I get the same insights in 15 minutes. This has been a game-changer for staying informed.",
-      avatar: "SC"
+      name: "陈博士",
+      role: "研究总监",
+      company: "科技公司",
+      content: "我过去每天早上要花2小时阅读行业新闻。现在我在15分钟内就能获得同样的见解。这改变了我保持信息灵通的方式。",
+      avatar: "陈"
     },
     {
-      name: "Marcus Rodriguez",
-      role: "Innovation Lead",
-      company: "FutureWorks",
-      content: "The trend spotting feature helped us identify a market opportunity 6 months before our competitors. It's like having a crystal ball for industry trends.",
-      avatar: "MR"
+      name: "马库斯·罗德里格斯",
+      role: "创新负责人",
+      company: "未来工作",
+      content: "趋势发现功能帮助我们比竞争对手提前6个月发现了市场机会。这就像拥有了行业趋势的水晶球。",
+      avatar: "马"
     },
     {
-      name: "Dr. Yuki Tanaka",
-      role: "CTO",
-      company: "QuantumSoft",
-      content: "Setting it up took 5 minutes. Now I get personalized summaries from 30+ sources every morning. The audio feature is perfect for my commute.",
-      avatar: "YT"
+      name: "田中博士",
+      role: "首席技术官",
+      company: "量子软件",
+      content: "设置只需5分钟。现在我每天早上从30多个信息源获得个性化摘要。音频功能非常适合我的通勤时间。",
+      avatar: "田"
     }
   ];
 
   const starterPlan = {
-    name: "Starter",
+    name: "入门版",
     price: 9,
     features: [
-      "Follow up to 10 sources",
-      "Daily summary delivered to your inbox",
-      "Key insights and takeaways",
-      "Mobile-friendly format",
-      "Email support",
-      "Audio summaries for listening",
-      "Custom delivery schedule"
+      "关注多达10个信息源",
+      "每日摘要发送到您的邮箱",
+      "关键见解和要点",
+      "移动友好格式",
+      "邮件支持",
+      "音频摘要收听功能",
+      "自定义发送时间"
     ]
   };
 
@@ -81,36 +80,36 @@ const Landing = () => {
             <div className="mb-8">
               <div className="inline-flex items-center px-4 py-2 rounded-full bg-midnight/60 backdrop-blur-xl border border-white/10 text-sm text-electric-blue mb-6">
                 <Sparkles className="w-4 h-4 mr-2" />
-                Used by 10,000+ professionals worldwide
+                全球10,000+专业人士的选择
               </div>
             </div>
             
             <h1 className="text-6xl md:text-7xl font-space-grotesk font-bold mb-6 leading-tight">
-              <span className="text-cosmic-gradient">Your Favorite Content,</span>{" "}
-              <span className="text-starlight">Summarized</span>{" "}
-              <span className="text-aurora-gradient">Daily</span>
+              <span className="text-cosmic-gradient">您喜爱的内容，</span>{" "}
+              <span className="text-starlight">每日</span>{" "}
+              <span className="text-aurora-gradient">智能摘要</span>
             </h1>
             
             <p className="text-xl text-lunar-grey mb-12 max-w-2xl mx-auto leading-relaxed">
-              Stop drowning in information overload. Get personalized summaries from all your 
-              favorite blogs, podcasts, and news sources delivered to your inbox every morning.
+              停止在信息海洋中溺水。从您喜爱的博客、播客和新闻源获得个性化摘要，
+              每天早上直接发送到您的邮箱。
             </p>
             
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
               <Link to="/login">
                 <Button className="btn-cosmic text-lg px-8 py-4 h-auto">
                   <Brain className="w-5 h-5 mr-2" />
-                  Start Your Free Trial
+                  开始免费试用
                 </Button>
               </Link>
               <Button variant="outline" className="btn-outline-electric text-lg px-8 py-4 h-auto">
                 <Globe2 className="w-5 h-5 mr-2" />
-                See How It Works
+                了解工作原理
               </Button>
             </div>
             
             <p className="text-sm text-lunar-grey mt-6">
-              No credit card required • 7-day free trial • Cancel anytime
+              无需信用卡 • 7天免费试用 • 随时取消
             </p>
           </div>
         </div>
@@ -121,11 +120,11 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6">
-              <span className="text-cosmic-gradient">Why People</span>{" "}
-              <span className="text-starlight">Love Daily Digest</span>
+              <span className="text-cosmic-gradient">为什么用户</span>{" "}
+              <span className="text-starlight">喜爱每日摘要</span>
             </h2>
             <p className="text-xl text-lunar-grey max-w-2xl mx-auto">
-              Join thousands who've reclaimed their time without missing what matters most
+              加入数千名已经重新掌控时间而不错过重要内容的用户
             </p>
           </div>
           
@@ -155,11 +154,11 @@ const Landing = () => {
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div>
                 <h3 className="text-3xl font-space-grotesk font-bold mb-6 text-starlight">
-                  <span className="text-aurora-gradient">Smart Automation</span> That Just Works
+                  <span className="text-aurora-gradient">智能自动化</span> 轻松运行
                 </h3>
                 <p className="text-lunar-grey mb-8 text-lg leading-relaxed">
-                  Set it up once, then sit back and relax. Our system continuously monitors 
-                  your chosen sources and delivers perfectly crafted summaries right to your inbox.
+                  一次设置，然后放松享受。我们的系统持续监控您选择的信息源，
+                  并将精心制作的摘要直接发送到您的邮箱。
                 </p>
                 <div className="grid gap-4">
                   {automationFeatures.map((feature, index) => (
@@ -175,8 +174,8 @@ const Landing = () => {
                   <div className="w-24 h-24 mx-auto mb-6 bg-sunset-gradient rounded-full flex items-center justify-center glow-pink">
                     <Clock className="w-12 h-12 text-starlight" />
                   </div>
-                  <h4 className="text-xl font-semibold text-starlight mb-2">Save 10+ Hours Weekly</h4>
-                  <p className="text-lunar-grey">Average time saved by our users each week</p>
+                  <h4 className="text-xl font-semibold text-starlight mb-2">每周节省10+小时</h4>
+                  <p className="text-lunar-grey">我们用户每周平均节省的时间</p>
                 </div>
               </div>
             </div>
@@ -189,11 +188,11 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6">
-              <span className="text-starlight">Simple</span>{" "}
-              <span className="text-cosmic-gradient">Pricing</span>
+              <span className="text-starlight">简单</span>{" "}
+              <span className="text-cosmic-gradient">定价</span>
             </h2>
             <p className="text-xl text-lunar-grey max-w-2xl mx-auto">
-              One plan that gives you everything you need to stay informed
+              一个计划，为您提供保持信息灵通所需的一切
             </p>
           </div>
           
@@ -205,8 +204,8 @@ const Landing = () => {
                 </div>
                 <CardTitle className="text-2xl text-starlight mb-4">{starterPlan.name}</CardTitle>
                 <div className="mb-4">
-                  <span className="text-4xl font-bold text-cosmic-gradient">${starterPlan.price}</span>
-                  <span className="text-lunar-grey">/month</span>
+                  <span className="text-4xl font-bold text-cosmic-gradient">¥{starterPlan.price}</span>
+                  <span className="text-lunar-grey">/月</span>
                 </div>
               </CardHeader>
               
@@ -223,7 +222,7 @@ const Landing = () => {
                 <Link to="/login">
                   <Button className="w-full h-12 btn-cosmic">
                     <Brain className="w-4 h-4 mr-2" />
-                    Start Free Trial
+                    开始免费试用
                   </Button>
                 </Link>
               </CardContent>
@@ -237,8 +236,8 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6">
-              <span className="text-aurora-gradient">Real Stories</span>{" "}
-              <span className="text-starlight">From Real Users</span>
+              <span className="text-aurora-gradient">真实用户</span>{" "}
+              <span className="text-starlight">真实故事</span>
             </h2>
           </div>
           
@@ -274,20 +273,20 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="glass-card p-12 md:p-16 text-center max-w-4xl mx-auto">
             <h2 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6">
-              <span className="text-starlight">Ready to Reclaim</span>{" "}
-              <span className="text-cosmic-gradient">Your Time?</span>
+              <span className="text-starlight">准备重新掌控</span>{" "}
+              <span className="text-cosmic-gradient">您的时间？</span>
             </h2>
             <p className="text-xl text-lunar-grey mb-8 max-w-2xl mx-auto">
-              Join thousands of professionals who stay informed without the overwhelm
+              加入数千名保持信息灵通而不感到overwhelm的专业人士
             </p>
             <Link to="/login">
               <Button className="btn-cosmic text-lg px-12 py-4 h-auto mb-4">
                 <Brain className="w-5 h-5 mr-2" />
-                Start Your Free Trial
+                开始免费试用
               </Button>
             </Link>
             <p className="text-sm text-lunar-grey">
-              No setup fees • Cancel anytime • Get results in 24 hours
+              无设置费 • 随时取消 • 24小时内获得结果
             </p>
           </div>
         </div>
