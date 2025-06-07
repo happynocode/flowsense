@@ -35,7 +35,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // 1. 首先检查 session 是否存在
       console.log('📡 检查当前 session...');
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<any>((_, reject) => 
+          setTimeout(() => reject(new Error("getSession 超时")), 3000)
+        )
+      ]);
+
       console.log('✅ session 检查完成:', { 
         hasSession: !!sessionData.session, 
         userEmail: sessionData.session?.user?.email,
@@ -55,29 +61,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // 2. 如果有 session，再调用 getUser() 获取最新用户信息
-      console.log('📞 调用 supabase.auth.getUser() 前...');
+      console.log('📞 调用 supabase.auth.getUser()...');
       
-      // 使用 Promise.race 添加超时机制
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("getUser 超时")), 5000)
-      );
-
-      const userPromise = supabase.auth.getUser();
-      const result = await Promise.race([userPromise, timeout]);
+      const { data: userData, error: userError } = await Promise.race([
+        supabase.auth.getUser(),
+        new Promise<any>((_, reject) => 
+          setTimeout(() => reject(new Error("getUser 超时")), 5000)
+        )
+      ]);
       
       console.log('✅ supabase.auth.getUser() 调用完成', { 
-        hasUser: !!result.data?.user, 
-        userEmail: result.data?.user?.email,
-        error: result.error?.message 
+        hasUser: !!userData?.user, 
+        userEmail: userData?.user?.email,
+        error: userError?.message 
       });
       
-      if (result.error) {
-        console.error('❌ Auth getUser error:', result.error);
+      if (userError) {
+        console.error('❌ Auth getUser error:', userError);
         // 如果 getUser 失败但有 session，使用 session 中的用户信息
         if (sessionData.session?.user) {
           console.log('🔄 getUser 失败，使用 session 中的用户信息');
           const supabaseUser = sessionData.session.user;
-          const userData = {
+          const fallbackUserData = {
             id: supabaseUser.id,
             name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
             email: supabaseUser.email || '',
@@ -85,31 +90,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             createdAt: supabaseUser.created_at || new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };
-          setUser(userData);
+          setUser(fallbackUserData);
         } else {
           setUser(null);
         }
         return;
       }
       
-      if (result.data?.user) {
-        console.log('✅ 找到 Supabase 用户:', result.data.user.email);
+      if (userData?.user) {
+        console.log('✅ 找到 Supabase 用户:', userData.user.email);
         
-        const userData = {
-          id: result.data.user.id,
-          name: result.data.user.user_metadata?.full_name || result.data.user.email?.split('@')[0] || 'User',
-          email: result.data.user.email || '',
-          avatar: result.data.user.user_metadata?.avatar_url || '',
-          createdAt: result.data.user.created_at || new Date().toISOString(),
+        // 🎯 直接从 Auth 用户信息构建用户对象，不访问数据库
+        const authUserData = {
+          id: userData.user.id,
+          name: userData.user.user_metadata?.full_name || userData.user.email?.split('@')[0] || 'User',
+          email: userData.user.email || '',
+          avatar: userData.user.user_metadata?.avatar_url || '',
+          createdAt: userData.user.created_at || new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
         
-        console.log('🎯 设置用户数据:', userData);
-        setUser(userData);
+        console.log('🎯 设置用户数据（仅来自 Auth）:', authUserData);
+        setUser(authUserData);
         console.log('✅ setUser 调用完成');
         
-        // 后台同步到数据库（不阻塞主流程）
-        syncUserToDatabase(result.data.user).catch(error => {
+        // 🔧 可选：后台同步到数据库（不阻塞主流程，有错误保护）
+        syncUserToDatabase(userData.user).catch(error => {
           console.warn('⚠️ 后台数据库同步失败（不影响用户体验）:', error);
         });
       } else {
@@ -121,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // 如果是超时错误，自动清除可能损坏的 session
       if (error instanceof Error && error.message.includes('超时')) {
-        console.warn('⚠️ getUser 超时，清除 session 防止死循环');
+        console.warn('⚠️ Auth 操作超时，清除 session 防止死循环');
         try {
           await supabase.auth.signOut();
         } catch (signOutError) {
@@ -145,45 +151,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      const { data: existingUser, error: queryError } = await Promise.race([
-        supabase
+      // 🔧 可选：数据库同步（仅当你有这个表时）
+      try {
+        await supabase
           .from('users')
-          .select('*')
-          .eq('email', supabaseUser.email)
-          .single(),
-        new Promise<any>((_, reject) => 
-          setTimeout(() => reject(new Error('数据库查询超时')), 5000)
-        )
-      ]);
-
-      if (queryError && queryError.code !== 'PGRST116') {
-        console.warn('⚠️ 数据库查询失败:', queryError);
-        return;
-      }
-
-      if (!existingUser) {
-        const newUserData = {
-          email: supabaseUser.email || '',
-          name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-          avatar_url: supabaseUser.user_metadata?.avatar_url || null
-        };
-        
-        const { error: createError } = await Promise.race([
-          supabase
-            .from('users')
-            .insert(newUserData),
-          new Promise<any>((_, reject) => 
-            setTimeout(() => reject(new Error('创建用户超时')), 5000)
-          )
-        ]);
-
-        if (createError) {
-          console.warn('⚠️ 创建用户记录失败:', createError);
+          .upsert([{ 
+            id: supabaseUser.id, 
+            email: supabaseUser.email,
+            name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+            avatar_url: supabaseUser.user_metadata?.avatar_url || null
+          }]);
+        console.log('✅ 用户数据库同步成功');
+      } catch (dbError: any) {
+        if (dbError?.message?.includes("relation") || dbError?.code === '42P01') {
+          console.warn("🔧 users 表不存在，跳过同步");
         } else {
-          console.log('✅ 用户记录创建成功');
+          throw dbError;
         }
-      } else {
-        console.log('✅ 用户记录已存在');
       }
     } catch (error) {
       console.warn('⚠️ 数据库同步异常（不影响用户体验）:', error);
