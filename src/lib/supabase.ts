@@ -12,7 +12,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,        // 👈 确保开启会话持久化
     detectSessionInUrl: true,
-    flowType: 'pkce'
+    flowType: 'pkce',
+    storage: window.localStorage, // 👈 使用 localStorage 替代 IndexedDB
+    multiTab: false              // 👈 禁用多 tab 同步，避免冲突
   },
   realtime: {
     params: {
@@ -21,23 +23,26 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// 连接测试函数（简化版，避免超时问题）
+// 更健壮的连接测试函数
 export const testSupabaseConnection = async (): Promise<boolean> => {
   try {
-    // 使用简单的认证状态检查而不是数据库查询
-    const { data, error } = await Promise.race([
-      supabase.auth.getSession(),
-      new Promise<any>((_, reject) => 
-        setTimeout(() => reject(new Error('连接测试超时')), 5000)
-      )
-    ]);
+    console.log('🔍 开始 Supabase 连接测试...');
+    
+    // 使用更短的超时时间进行快速检测
+    const timeout = new Promise<any>((_, reject) => 
+      setTimeout(() => reject(new Error('连接测试超时')), 3000)
+    );
+    
+    const sessionPromise = supabase.auth.getSession();
+    
+    const { data, error } = await Promise.race([sessionPromise, timeout]);
 
     if (error) {
-      console.error('Supabase connection error:', error);
+      console.error('❌ Supabase session error:', error);
       return false;
     }
 
-    console.log('✅ Supabase 连接测试成功');
+    console.log('✅ Supabase 连接测试成功', { hasSession: !!data.session });
     return true;
   } catch (error) {
     console.error('❌ Supabase 连接测试失败:', error);

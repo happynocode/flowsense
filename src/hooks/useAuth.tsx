@@ -29,101 +29,103 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [initialized, setInitialized] = useState(false);
   const { toast } = useToast();
 
+  // 🛠️ 更健壮的 refreshUser() 架构（防挂死版本）
   const refreshUser = async () => {
     console.log('🔄 refreshUser 开始执行...');
     
     try {
-      // 1. 首先检查 session 是否存在
+      // 创建统一的超时 Promise
+      const createTimeout = (name: string, ms: number = 3000) => 
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error(`${name} 超时`)), ms)
+        );
+
+      // 1. 首先检查 session 是否存在（3秒超时）
       console.log('📡 检查当前 session...');
-      const { data: sessionData, error: sessionError } = await Promise.race([
+      const sessionResult = await Promise.race([
         supabase.auth.getSession(),
-        new Promise<any>((_, reject) => 
-          setTimeout(() => reject(new Error("getSession 超时")), 5000)
-        )
+        createTimeout("getSession", 3000)
       ]);
 
+      const session = sessionResult.data?.session;
       console.log('✅ session 检查完成:', { 
-        hasSession: !!sessionData.session, 
-        userEmail: sessionData.session?.user?.email,
-        error: sessionError?.message 
+        hasSession: !!session, 
+        userEmail: session?.user?.email,
+        error: sessionResult.error?.message 
       });
 
-      if (sessionError) {
-        console.error('❌ Session error:', sessionError);
-        setUser(null);
-        return;
+      if (sessionResult.error) {
+        console.error('❌ Session error:', sessionResult.error);
+        throw sessionResult.error;
       }
 
-      if (!sessionData.session) {
+      if (!session) {
         console.log('ℹ️ 未找到有效 session，用户未登录');
         setUser(null);
         return;
       }
 
-      // 2. 如果有 session，再调用 getUser() 获取最新用户信息
+      // 2. 如果有 session，再调用 getUser() 获取最新用户信息（3秒超时）
       console.log('📞 调用 supabase.auth.getUser()...');
       
-      const { data: userData, error: userError } = await Promise.race([
+      const userResult = await Promise.race([
         supabase.auth.getUser(),
-        new Promise<any>((_, reject) => 
-          setTimeout(() => reject(new Error("getUser 超时")), 5000)
-        )
+        createTimeout("getUser", 3000)
       ]);
       
       console.log('✅ supabase.auth.getUser() 调用完成', { 
-        hasUser: !!userData?.user, 
-        userEmail: userData?.user?.email,
-        error: userError?.message 
+        hasUser: !!userResult.data?.user, 
+        userEmail: userResult.data?.user?.email,
+        error: userResult.error?.message 
       });
       
-      if (userError) {
-        console.error('❌ Auth getUser error:', userError);
-        // 如果 getUser 失败但有 session，使用 session 中的用户信息
-        if (sessionData.session?.user) {
-          console.log('🔄 getUser 失败，使用 session 中的用户信息');
-          const supabaseUser = sessionData.session.user;
-          const fallbackUserData = {
-            id: supabaseUser.id,
-            name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-            email: supabaseUser.email || '',
-            avatar: supabaseUser.user_metadata?.avatar_url || '',
-            createdAt: supabaseUser.created_at || new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          setUser(fallbackUserData);
-        } else {
-          setUser(null);
-        }
+      if (userResult.error) {
+        console.error('❌ Auth getUser error:', userResult.error);
+        // 如果 getUser 失败但有 session，使用 session 中的用户信息作为 fallback
+        console.log('🔄 getUser 失败，使用 session 中的用户信息作为 fallback');
+        const supabaseUser = session.user;
+        const fallbackUserData = {
+          id: supabaseUser.id,
+          name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+          email: supabaseUser.email || '',
+          avatar: supabaseUser.user_metadata?.avatar_url || '',
+          createdAt: supabaseUser.created_at || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        setUser(fallbackUserData);
         return;
       }
       
-      if (userData?.user) {
-        console.log('✅ 找到 Supabase 用户:', userData.user.email);
-        
-        // 🎯 直接从 Auth 用户信息构建用户对象，不访问数据库
-        const authUserData = {
-          id: userData.user.id,
-          name: userData.user.user_metadata?.full_name || userData.user.email?.split('@')[0] || 'User',
-          email: userData.user.email || '',
-          avatar: userData.user.user_metadata?.avatar_url || '',
-          createdAt: userData.user.created_at || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        
-        console.log('🎯 设置用户数据（仅来自 Auth）:', authUserData);
-        setUser(authUserData);
-        console.log('✅ setUser 调用完成');
-        
-        // 🔧 可选：后台同步到数据库（不阻塞主流程，有错误保护）
-        syncUserToDatabase(userData.user).catch(error => {
-          console.warn('⚠️ 后台数据库同步失败（不影响用户体验）:', error);
-        });
-      } else {
-        console.log('ℹ️ 未找到用户，设置 user = null');
+      const user = userResult.data?.user;
+      if (!user) {
+        console.log('ℹ️ getUser 返回为空，设置 user = null');
         setUser(null);
+        return;
       }
+
+      console.log('✅ 找到 Supabase 用户:', user.email);
+      
+      // 🎯 直接从 Auth 用户信息构建用户对象，不访问数据库
+      const authUserData = {
+        id: user.id,
+        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        email: user.email || '',
+        avatar: user.user_metadata?.avatar_url || '',
+        createdAt: user.created_at || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      console.log('🎯 设置用户数据（仅来自 Auth）:', authUserData);
+      setUser(authUserData);
+      console.log('✅ setUser 调用完成');
+      
+      // 🔧 可选：后台同步到数据库（不阻塞主流程，有错误保护）
+      syncUserToDatabase(user).catch(error => {
+        console.warn('⚠️ 后台数据库同步失败（不影响用户体验）:', error);
+      });
+
     } catch (error) {
-      console.error('❌ refreshUser 异常:', error);
+      console.warn('⚠️ refreshUser 异常:', error);
       
       // 如果是超时错误，自动清除可能损坏的 session
       if (error instanceof Error && error.message.includes('超时')) {
@@ -387,12 +389,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // 最大初始化超时
+    // 最大初始化超时（防止无限加载）
     const maxInitTimeout = setTimeout(() => {
       console.warn('⏰ 认证初始化最大超时，强制完成加载');
       setLoading(false);
       setInitialized(true);
-    }, 10000); // 10秒超时
+    }, 8000); // 8秒超时
 
     return () => {
       console.log('🧹 清理认证监听器');
