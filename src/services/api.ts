@@ -487,8 +487,8 @@ const processRSSFeed = async (sourceId: string, feedUrl: string): Promise<{ succ
 
     console.log('✅ 成功解析 RSS feed 并创建 content_item:', contentItem.id);
 
-    // 生成 AI 摘要
-    const summaryResult = await generateAISummary(contentItem.id, content);
+    // 使用 DeepSeek API 生成摘要
+    const summaryResult = await generateDeepSeekSummary(contentItem.id, content, link);
 
     // 更新 source 的 last_scraped_at
     await supabase
@@ -527,16 +527,71 @@ const processRSSFeed = async (sourceId: string, feedUrl: string): Promise<{ succ
   }
 };
 
-// 生成 AI 摘要（改进版本）
-const generateAISummary = async (contentItemId: number, content: string): Promise<any> => {
+// 使用 DeepSeek API 生成摘要
+const generateDeepSeekSummary = async (contentItemId: number, content: string, originalUrl: string): Promise<any> => {
   try {
-    console.log('🤖 开始 AI 总结，Content Item ID:', contentItemId);
+    console.log('🤖 开始使用 DeepSeek API 生成摘要，Content Item ID:', contentItemId);
 
-    // 生成更智能的模拟摘要
-    const mockSummary = generateMockSummary(content);
+    // DeepSeek API 配置
+    const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+    const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
+
+    if (!DEEPSEEK_API_KEY) {
+      console.warn('⚠️ DeepSeek API Key 未配置，使用模拟摘要');
+      return await generateMockSummary(contentItemId, content);
+    }
+
+    // 构建你指定的 prompt
+    const prompt = `summarize the main themes from this article in 5 to 10 sentences. each theme have some quotes from the original article. also link the original article URL: ${originalUrl}
+
+Article content:
+${content}`;
+
+    console.log('📝 发送请求到 DeepSeek API...');
+
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.3,
+        stream: false
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ DeepSeek API 请求失败:', response.status, errorText);
+      throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ DeepSeek API 响应成功');
+
+    if (!result.choices || !result.choices[0] || !result.choices[0].message) {
+      throw new Error('DeepSeek API 返回格式无效');
+    }
+
+    const summaryText = result.choices[0].message.content.trim();
     
+    if (!summaryText || summaryText.length < 50) {
+      throw new Error('DeepSeek API 返回的摘要太短');
+    }
+
+    console.log('📄 DeepSeek 摘要长度:', summaryText.length);
+
     // 计算阅读时间（平均 200 字/分钟）
-    const wordCount = content.split(/\s+/).length;
+    const wordCount = summaryText.split(/\s+/).length;
     const readingTime = Math.max(1, Math.round(wordCount / 200));
 
     // 创建 summary 记录
@@ -544,11 +599,11 @@ const generateAISummary = async (contentItemId: number, content: string): Promis
       .from('summaries')
       .insert({
         content_item_id: contentItemId,
-        summary_text: mockSummary,
-        summary_length: mockSummary.length,
+        summary_text: summaryText,
+        summary_length: summaryText.length,
         reading_time: readingTime,
-        model_used: 'mock-ai-v2',
-        processing_time: Math.random() * 2 + 1
+        model_used: 'deepseek-chat',
+        processing_time: result.usage?.total_tokens ? result.usage.total_tokens / 1000 : 2.0 // 估算处理时间
       })
       .select()
       .single();
@@ -567,27 +622,82 @@ const generateAISummary = async (contentItemId: number, content: string): Promis
       })
       .eq('id', contentItemId);
 
-    console.log('✅ 成功创建 AI 总结:', summary.id);
+    console.log('✅ 成功创建 DeepSeek AI 摘要:', summary.id);
 
-    return summary;
+    return {
+      ...summary,
+      api_usage: result.usage || null
+    };
 
   } catch (error) {
-    console.error('❌ AI 总结失败:', error);
+    console.error('❌ DeepSeek AI 摘要失败:', error);
     
     // 更新 content_item 错误信息
     await supabase
       .from('content_items')
       .update({ 
-        processing_error: error instanceof Error ? error.message : 'AI summarization failed'
+        processing_error: error instanceof Error ? error.message : 'DeepSeek AI summarization failed'
       })
       .eq('id', contentItemId);
 
+    // 如果 DeepSeek API 失败，回退到模拟摘要
+    console.log('🔄 回退到模拟摘要...');
+    return await generateMockSummary(contentItemId, content);
+  }
+};
+
+// 生成模拟摘要（作为 DeepSeek API 的备用方案）
+const generateMockSummary = async (contentItemId: number, content: string): Promise<any> => {
+  try {
+    console.log('🎭 生成模拟摘要作为备用方案');
+
+    // 生成更智能的模拟摘要
+    const mockSummary = createMockSummary(content);
+    
+    // 计算阅读时间（平均 200 字/分钟）
+    const wordCount = mockSummary.split(/\s+/).length;
+    const readingTime = Math.max(1, Math.round(wordCount / 200));
+
+    // 创建 summary 记录
+    const { data: summary, error: summaryError } = await supabase
+      .from('summaries')
+      .insert({
+        content_item_id: contentItemId,
+        summary_text: mockSummary,
+        summary_length: mockSummary.length,
+        reading_time: readingTime,
+        model_used: 'mock-ai-v2',
+        processing_time: Math.random() * 2 + 1
+      })
+      .select()
+      .single();
+
+    if (summaryError) {
+      console.error('❌ 创建模拟 summary 失败:', summaryError);
+      throw summaryError;
+    }
+
+    // 更新 content_item 为已处理
+    await supabase
+      .from('content_items')
+      .update({ 
+        is_processed: true,
+        processing_error: null
+      })
+      .eq('id', contentItemId);
+
+    console.log('✅ 成功创建模拟摘要:', summary.id);
+
+    return summary;
+
+  } catch (error) {
+    console.error('❌ 模拟摘要失败:', error);
     throw error;
   }
 };
 
-// 生成模拟 AI 总结（改进版本）
-const generateMockSummary = (content: string): string => {
+// 生成模拟摘要（改进版本）
+const createMockSummary = (content: string): string => {
   // 提取关键句子
   const sentences = content
     .split(/[.!?]+/)
