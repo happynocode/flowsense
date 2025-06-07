@@ -317,9 +317,9 @@ export const subscriptionApi = {
         .select('*')
         .eq('user_id', userData.id)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       if (!data) return null;
 
       return {
