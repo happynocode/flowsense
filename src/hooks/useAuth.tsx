@@ -38,7 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: sessionData, error: sessionError } = await Promise.race([
         supabase.auth.getSession(),
         new Promise<any>((_, reject) => 
-          setTimeout(() => reject(new Error("getSession 超时")), 3000)
+          setTimeout(() => reject(new Error("getSession 超时")), 5000)
         )
       ]);
 
