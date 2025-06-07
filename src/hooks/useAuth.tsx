@@ -148,21 +148,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         setLoading(true);
         
+        // Set a timeout to ensure loading doesn't persist indefinitely
+        const timeoutId = setTimeout(() => {
+          console.warn('Auth initialization timeout - setting loading to false');
+          setLoading(false);
+        }, 5000); // 5 second timeout
+        
         // Get initial session
         const { data: { session }, error } = await supabase.auth.getSession();
         
+        // Clear the timeout since we got a response
+        clearTimeout(timeoutId);
+        
         if (error) {
           console.error('Session error:', error);
+          // Don't throw error, just log it and continue
         }
         
         if (session) {
           await refreshUser();
         }
         
+        setLoading(false);
+        
       } catch (error) {
         console.error('Auth initialization error:', error);
-      } finally {
-        // Always set loading to false, even if there's an error
         setLoading(false);
       }
     };
@@ -171,6 +181,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event);
+      
       if (event === 'SIGNED_IN' && session) {
         await refreshUser();
         toast({

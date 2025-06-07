@@ -4,17 +4,56 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.')
+  console.error('Missing Supabase environment variables:', {
+    url: !!supabaseUrl,
+    key: !!supabaseAnonKey
+  });
+  
+  // Create a mock client to prevent app crashes
+  const mockClient = {
+    auth: {
+      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      signInWithOAuth: () => Promise.resolve({ error: new Error('Supabase not configured') }),
+      signOut: () => Promise.resolve({ error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
+    },
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          single: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') })
+        })
+      }),
+      insert: () => ({
+        select: () => ({
+          single: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') })
+        })
+      }),
+      update: () => ({
+        eq: () => ({
+          select: () => ({
+            single: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') })
+          })
+        })
+      }),
+      delete: () => ({
+        eq: () => Promise.resolve({ error: new Error('Supabase not configured') })
+      })
+    })
+  };
+  
+  // @ts-ignore
+  export const supabase = mockClient;
+} else {
+  export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce'
+    }
+  });
 }
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce'
-  }
-})
 
 // Database types (generated from your schema)
 export type Database = {
