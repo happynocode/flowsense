@@ -7,7 +7,8 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: () => void;
+  login: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -93,37 +94,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = async () => {
+  const login = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        await refreshUser();
+        toast({
+          title: "登录成功",
+          description: "欢迎回到Neural Hub!",
+        });
+      }
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast({
+        title: "登录失败",
+        description: error.message || "登录时出现错误，请重试。",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUp = async (email: string, password: string, name: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
         options: {
-          redirectTo: `${window.location.origin}/`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
+          data: {
+            full_name: name,
           }
         }
       });
 
       if (error) {
-        console.error('Login error:', error);
-        toast({
-          title: "Login failed",
-          description: error.message,
-          variant: "destructive",
-        });
-        setLoading(false);
+        throw error;
       }
-      // Don't set loading to false here as the redirect will happen
-    } catch (error) {
-      console.error('Login error:', error);
+
+      if (data.user) {
+        toast({
+          title: "注册成功",
+          description: "请检查您的邮箱以验证账户。",
+        });
+      }
+    } catch (error: any) {
+      console.error('Sign up error:', error);
       toast({
-        title: "Login failed",
-        description: "There was an error logging you in. Please try again.",
+        title: "注册失败",
+        description: error.message || "注册时出现错误，请重试。",
         variant: "destructive",
       });
+      throw error;
+    } finally {
       setLoading(false);
     }
   };
@@ -134,21 +168,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         toast({
-          title: "Logout failed",
+          title: "登出失败",
           description: error.message,
           variant: "destructive",
         });
       } else {
         setUser(null);
         toast({
-          title: "Logged out successfully",
-          description: "You have been logged out of your account.",
+          title: "登出成功",
+          description: "您已成功登出账户。",
         });
       }
     } catch (error) {
       toast({
-        title: "Logout failed",
-        description: "There was an error logging you out. Please try again.",
+        title: "登出失败",
+        description: "登出时出现错误，请重试。",
         variant: "destructive",
       });
     }
@@ -183,8 +217,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await refreshUser();
         setLoading(false);
         toast({
-          title: "Logged in successfully",
-          description: "Welcome to Neural Hub!",
+          title: "登录成功",
+          description: "欢迎来到Neural Hub!",
         });
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -202,6 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     loading,
     login,
+    signUp,
     logout,
     refreshUser,
   };

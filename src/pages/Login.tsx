@@ -1,13 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Navigate } from 'react-router-dom';
-import { Brain, Zap, Shield, Globe } from 'lucide-react';
+import { Brain, Zap, Shield, Globe, Mail, Lock, User } from 'lucide-react';
 import LoadingIndicator from '../components/common/LoadingIndicator';
 
 const Login = () => {
-  const { user, login, loading } = useAuth();
+  const { user, login, signUp, loading } = useAuth();
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [signUpForm, setSignUpForm] = useState({ email: '', password: '', name: '', confirmPassword: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (loading) {
     return (
@@ -16,7 +22,7 @@ const Login = () => {
           <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-full flex items-center justify-center glow-purple">
             <Brain className="w-8 h-8 text-starlight" />
           </div>
-          <LoadingIndicator size="lg" text="Connecting to neural interface..." />
+          <LoadingIndicator size="lg" text="连接到神经接口..." />
         </div>
       </div>
     );
@@ -25,6 +31,39 @@ const Login = () => {
   if (user) {
     return <Navigate to="/" replace />;
   }
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      await login(loginForm.email, loginForm.password);
+    } catch (error) {
+      // Error is handled in the login function
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    if (signUpForm.password !== signUpForm.confirmPassword) {
+      alert('密码不匹配');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await signUp(signUpForm.email, signUpForm.password, signUpForm.name);
+    } catch (error) {
+      // Error is handled in the signUp function
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
@@ -39,51 +78,160 @@ const Login = () => {
             <span className="text-cosmic-gradient">Neural</span>{" "}
             <span className="text-starlight">Hub</span>
           </h1>
-          <p className="text-lunar-grey">Your personalized content summary awaits</p>
+          <p className="text-lunar-grey">您的个性化内容摘要等待着您</p>
         </div>
 
         <Card className="glass-card border-0">
           <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl text-starlight">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl text-starlight">欢迎回来</CardTitle>
             <CardDescription className="text-lunar-grey">
-              Sign in to access your personalized daily digest and never miss what matters most
+              登录访问您的个性化每日摘要，永远不错过重要内容
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <Button 
-              onClick={login} 
-              className="btn-cosmic w-full h-12 text-base"
-              disabled={loading}
-            >
-              {loading ? (
-                <LoadingIndicator size="sm" />
-              ) : (
-                <>
-                  <svg className="w-5 h-5 mr-3\" viewBox="0 0 24 24">
-                    <path
-                      fill="currentColor"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                  </svg>
-                  Continue with Google
-                </>
-              )}
-            </Button>
+          <CardContent>
+            <Tabs defaultValue="login" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">登录</TabsTrigger>
+                <TabsTrigger value="signup">注册</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email" className="text-starlight">邮箱</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-lunar-grey" />
+                      <Input
+                        id="login-email"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={loginForm.email}
+                        onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
+                        className="pl-10 input-futuristic"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password" className="text-starlight">密码</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-lunar-grey" />
+                      <Input
+                        id="login-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={loginForm.password}
+                        onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                        className="pl-10 input-futuristic"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    className="btn-cosmic w-full h-12 text-base"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <LoadingIndicator size="sm" />
+                    ) : (
+                      <>
+                        <Brain className="w-4 h-4 mr-2" />
+                        进入神经接口
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+              
+              <TabsContent value="signup">
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name" className="text-starlight">姓名</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-lunar-grey" />
+                      <Input
+                        id="signup-name"
+                        type="text"
+                        placeholder="您的姓名"
+                        value={signUpForm.name}
+                        onChange={(e) => setSignUpForm(prev => ({ ...prev, name: e.target.value }))}
+                        className="pl-10 input-futuristic"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email" className="text-starlight">邮箱</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-lunar-grey" />
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={signUpForm.email}
+                        onChange={(e) => setSignUpForm(prev => ({ ...prev, email: e.target.value }))}
+                        className="pl-10 input-futuristic"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password" className="text-starlight">密码</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-lunar-grey" />
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={signUpForm.password}
+                        onChange={(e) => setSignUpForm(prev => ({ ...prev, password: e.target.value }))}
+                        className="pl-10 input-futuristic"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-confirm-password" className="text-starlight">确认密码</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-lunar-grey" />
+                      <Input
+                        id="signup-confirm-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={signUpForm.confirmPassword}
+                        onChange={(e) => setSignUpForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                        className="pl-10 input-futuristic"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    className="btn-cosmic w-full h-12 text-base"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <LoadingIndicator size="sm" />
+                    ) : (
+                      <>
+                        <Brain className="w-4 h-4 mr-2" />
+                        创建神经账户
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
             
-            <div className="text-xs text-lunar-grey text-center leading-relaxed">
-              By signing in, you agree to our Terms of Service and Privacy Policy
+            <div className="text-xs text-lunar-grey text-center leading-relaxed mt-6">
+              登录即表示您同意我们的服务条款和隐私政策
             </div>
           </CardContent>
         </Card>
@@ -92,18 +240,18 @@ const Login = () => {
           <div className="grid grid-cols-3 gap-6 text-center">
             <div className="glass-card p-4">
               <Zap className="w-6 h-6 text-electric-blue mx-auto mb-2" />
-              <div className="text-xs text-starlight font-medium">Lightning Fast</div>
-              <div className="text-xs text-lunar-grey">Get insights in seconds</div>
+              <div className="text-xs text-starlight font-medium">闪电般快速</div>
+              <div className="text-xs text-lunar-grey">秒级获取洞察</div>
             </div>
             <div className="glass-card p-4">
               <Shield className="w-6 h-6 text-astral-teal mx-auto mb-2" />
-              <div className="text-xs text-starlight font-medium">Always Secure</div>
-              <div className="text-xs text-lunar-grey">Your data stays private</div>
+              <div className="text-xs text-starlight font-medium">始终安全</div>
+              <div className="text-xs text-lunar-grey">数据保持私密</div>
             </div>
             <div className="glass-card p-4">
               <Globe className="w-6 h-6 text-cosmic-purple mx-auto mb-2" />
-              <div className="text-xs text-starlight font-medium">Works Everywhere</div>
-              <div className="text-xs text-lunar-grey">Access from any device</div>
+              <div className="text-xs text-starlight font-medium">随处可用</div>
+              <div className="text-xs text-lunar-grey">任何设备访问</div>
             </div>
           </div>
         </div>
