@@ -112,9 +112,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
+        let errorMessage = error.message;
+        
+        // 翻译常见错误信息
+        if (error.message.includes('User already registered')) {
+          errorMessage = '该邮箱已被注册，请尝试登录或使用其他邮箱。';
+        } else if (error.message.includes('Invalid email')) {
+          errorMessage = '邮箱格式不正确，请检查后重试。';
+        } else if (error.message.includes('Password should be at least')) {
+          errorMessage = '密码至少需要6个字符。';
+        }
+        
         toast({
           title: "注册失败",
-          description: error.message,
+          description: errorMessage,
           variant: "destructive",
         });
         throw error;
@@ -140,9 +151,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
+        let errorMessage = error.message;
+        
+        // 翻译常见错误信息
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = '邮箱或密码错误，请检查后重试。';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = '请先确认您的邮箱地址。';
+        } else if (error.message.includes('Too many requests')) {
+          errorMessage = '请求过于频繁，请稍后再试。';
+        }
+        
         toast({
           title: "登录失败",
-          description: error.message,
+          description: errorMessage,
           variant: "destructive",
         });
         throw error;
@@ -189,51 +211,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       try {
-        setLoading(true);
+        console.log('开始初始化认证...');
         
-        // Set a timeout to ensure loading doesn't persist indefinitely
-        const timeoutId = setTimeout(() => {
-          console.warn('Auth initialization timeout - setting loading to false');
+        // 检查 Supabase 是否正确配置
+        if (!supabase || typeof supabase.auth?.getSession !== 'function') {
+          console.error('Supabase 未正确配置');
           setLoading(false);
-        }, 5000); // 5 second timeout
+          return;
+        }
         
-        // Get initial session
+        // 设置超时以防止无限加载
+        const timeoutId = setTimeout(() => {
+          console.warn('认证初始化超时 - 设置 loading 为 false');
+          setLoading(false);
+        }, 3000); // 3秒超时
+        
+        // 获取初始会话
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        // Clear the timeout since we got a response
+        // 清除超时，因为我们得到了响应
         clearTimeout(timeoutId);
         
         if (error) {
-          console.error('Session error:', error);
-          // Don't throw error, just log it and continue
+          console.error('会话错误:', error);
+          // 不抛出错误，只是记录并继续
         }
         
         if (session) {
+          console.log('找到现有会话，刷新用户数据');
           await refreshUser();
+        } else {
+          console.log('未找到会话');
         }
         
         setLoading(false);
+        console.log('认证初始化完成');
         
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error('认证初始化错误:', error);
         setLoading(false);
       }
     };
 
     initAuth();
 
-    // Listen for auth changes
+    // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event);
+      console.log('认证状态变化:', event);
       
       if (event === 'SIGNED_IN' && session) {
+        console.log('用户已登录，刷新用户数据');
         await refreshUser();
       } else if (event === 'SIGNED_OUT') {
+        console.log('用户已登出');
         setUser(null);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log('清理认证监听器');
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value = {

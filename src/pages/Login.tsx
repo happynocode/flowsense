@@ -6,8 +6,9 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Navigate } from 'react-router-dom';
-import { Brain, Zap, Shield, Globe, Mail, Lock, User } from 'lucide-react';
+import { Brain, Zap, Shield, Globe, Mail, Lock, User, AlertCircle } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import { Alert, AlertDescription } from '../components/ui/alert';
 
 const Login = () => {
   const { user, signIn, signUp, loading } = useAuth();
@@ -26,6 +27,17 @@ const Login = () => {
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSupabaseWarning, setShowSupabaseWarning] = useState(false);
+
+  // 检查 Supabase 配置
+  React.useEffect(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseKey) {
+      setShowSupabaseWarning(true);
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -127,6 +139,17 @@ const Login = () => {
           <p className="text-lunar-grey">连接您的个性化内容摘要</p>
         </div>
 
+        {/* Supabase 配置警告 */}
+        {showSupabaseWarning && (
+          <Alert className="mb-6 border-nebula-pink/50 bg-nebula-pink/10">
+            <AlertCircle className="h-4 w-4 text-nebula-pink" />
+            <AlertDescription className="text-starlight">
+              <strong>配置提醒：</strong> 需要配置 Supabase 环境变量才能使用登录功能。
+              请检查 .env 文件中的 VITE_SUPABASE_URL 和 VITE_SUPABASE_ANON_KEY。
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card className="glass-card border-0">
           <CardHeader className="text-center pb-6">
             <CardTitle className="text-2xl text-starlight">欢迎使用</CardTitle>
@@ -159,6 +182,7 @@ const Login = () => {
                         onChange={(e) => setSignInForm(prev => ({ ...prev, email: e.target.value }))}
                         className="pl-10 input-futuristic"
                         required
+                        disabled={showSupabaseWarning}
                       />
                     </div>
                   </div>
@@ -175,6 +199,7 @@ const Login = () => {
                         onChange={(e) => setSignInForm(prev => ({ ...prev, password: e.target.value }))}
                         className="pl-10 input-futuristic"
                         required
+                        disabled={showSupabaseWarning}
                       />
                     </div>
                   </div>
@@ -182,7 +207,7 @@ const Login = () => {
                   <Button 
                     type="submit" 
                     className="btn-cosmic w-full h-12 text-base"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || showSupabaseWarning}
                   >
                     {isSubmitting ? (
                       <>
@@ -213,6 +238,7 @@ const Login = () => {
                         onChange={(e) => setSignUpForm(prev => ({ ...prev, name: e.target.value }))}
                         className="pl-10 input-futuristic"
                         required
+                        disabled={showSupabaseWarning}
                       />
                     </div>
                   </div>
@@ -229,6 +255,7 @@ const Login = () => {
                         onChange={(e) => setSignUpForm(prev => ({ ...prev, email: e.target.value }))}
                         className="pl-10 input-futuristic"
                         required
+                        disabled={showSupabaseWarning}
                       />
                     </div>
                   </div>
@@ -245,6 +272,7 @@ const Login = () => {
                         onChange={(e) => setSignUpForm(prev => ({ ...prev, password: e.target.value }))}
                         className="pl-10 input-futuristic"
                         required
+                        disabled={showSupabaseWarning}
                       />
                     </div>
                   </div>
@@ -261,6 +289,7 @@ const Login = () => {
                         onChange={(e) => setSignUpForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
                         className="pl-10 input-futuristic"
                         required
+                        disabled={showSupabaseWarning}
                       />
                     </div>
                   </div>
@@ -268,7 +297,7 @@ const Login = () => {
                   <Button 
                     type="submit" 
                     className="btn-cosmic w-full h-12 text-base"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || showSupabaseWarning}
                   >
                     {isSubmitting ? (
                       <>
