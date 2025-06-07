@@ -11,7 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,        // 👈 确保开启会话持久化
-    detectSessionInUrl: false,   // 👈 禁用 URL 检测，避免导航错误
+    detectSessionInUrl: true,    // 👈 重要：检测 URL 中的 session（用于重定向登录）
     flowType: 'pkce',
     storage: window.localStorage, // 👈 使用 localStorage 替代 IndexedDB
     multiTab: false              // 👈 禁用多 tab 同步，避免冲突

@@ -170,6 +170,15 @@ const Login = () => {
           </Alert>
         )}
 
+        {/* StackBlitz 环境提示 */}
+        <Alert className="mb-6 border-electric-blue/50 bg-electric-blue/10">
+          <AlertCircle className="h-4 w-4 text-electric-blue" />
+          <AlertDescription className="text-starlight">
+            <strong>StackBlitz 环境提示：</strong> 请确保在 Supabase 控制台中设置了正确的重定向 URL。
+            建议使用密码登录而非第三方登录以获得最佳体验。
+          </AlertDescription>
+        </Alert>
+
         <Card className="glass-card border-0">
           <CardHeader className="text-center pb-6">
             <CardTitle className="text-2xl text-starlight">欢迎使用</CardTitle>
