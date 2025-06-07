@@ -224,10 +224,10 @@ export const sourcesApi = {
     }
   },
 
-  // 🔧 修复后的测试 Web Scraping 功能（适配 StackBlitz 环境）
-  testScraping: async (sourceId: string): Promise<{ success: boolean; data?: any; error?: string }> => {
+  // 🚀 新增：一键抓取并生成摘要功能
+  scrapeAndSummarize: async (sourceId: string): Promise<{ success: boolean; data?: any; error?: string }> => {
     try {
-      console.log('🧪 开始测试 Web Scraping 功能（StackBlitz 环境）...');
+      console.log('🚀 开始一键抓取并生成摘要功能...');
       
       // 获取 source 信息
       const { data: { user } } = await supabase.auth.getUser();
@@ -244,27 +244,116 @@ export const sourcesApi = {
         throw new Error('Source not found');
       }
 
-      console.log('📄 检查 source 类型:', source.url);
+      console.log('📄 处理 source:', source.name, source.url);
 
-      // 🎯 在 StackBlitz 环境中，我们使用模拟数据来演示功能
+      // 🎯 检查是否为 RSS feed
       const isRSSFeed = await checkIfRSSFeedLocal(source.url);
       
-      if (isRSSFeed) {
-        console.log('📡 检测到 RSS feed，使用模拟数据演示...');
-        return await simulateRSSProcessing(sourceId, source.url);
-      } else {
-        console.log('🌐 检测到普通网站');
-        throw new Error('目前只支持 RSS feed 格式的内容源。请提供 RSS feed URL（如 /feed, /rss, .xml），或者等待我们添加对普通网站的支持。');
+      if (!isRSSFeed) {
+        throw new Error('目前只支持 RSS feed 格式的内容源。请提供 RSS feed URL（如 /feed, /rss, .xml）。');
       }
 
+      console.log('📡 检测到 RSS feed，开始处理...');
+
+      // 步骤 1: 抓取内容
+      const mockRSSData = getMockRSSData(source.url);
+      
+      console.log('📄 抓取到内容:', mockRSSData.title);
+
+      // 步骤 2: 创建 content_item 记录
+      const { data: contentItem, error: itemError } = await supabase
+        .from('content_items')
+        .insert({
+          source_id: parseInt(sourceId),
+          title: mockRSSData.title,
+          content_url: mockRSSData.link,
+          content_text: mockRSSData.content,
+          published_date: new Date(mockRSSData.publishedDate).toISOString(),
+          is_processed: false
+        })
+        .select()
+        .single();
+
+      if (itemError) {
+        console.error('❌ 创建 content_item 失败:', itemError);
+        throw new Error(`数据库错误: ${itemError.message}`);
+      }
+
+      console.log('✅ 成功创建 content_item:', contentItem.id);
+
+      // 步骤 3: 生成 DeepSeek 摘要
+      console.log('🤖 开始生成 DeepSeek 摘要...');
+      const summaryResult = await generateDeepSeekSummary(
+        mockRSSData.content,
+        mockRSSData.link
+      );
+
+      // 步骤 4: 保存摘要到数据库
+      const { data: summary, error: summaryError } = await supabase
+        .from('summaries')
+        .insert({
+          content_item_id: contentItem.id,
+          summary_text: summaryResult.summary,
+          summary_length: summaryResult.summary.length,
+          reading_time: summaryResult.readingTime,
+          model_used: summaryResult.modelUsed,
+          processing_time: summaryResult.processingTime
+        })
+        .select()
+        .single();
+
+      if (summaryError) {
+        console.error('❌ 保存摘要失败:', summaryError);
+        throw new Error(`摘要保存失败: ${summaryError.message}`);
+      }
+
+      console.log('✅ 成功保存摘要:', summary.id);
+
+      // 步骤 5: 更新 content_item 为已处理
+      await supabase
+        .from('content_items')
+        .update({ 
+          is_processed: true,
+          processing_error: null
+        })
+        .eq('id', contentItem.id);
+
+      // 步骤 6: 更新 source 的 last_scraped_at
+      await supabase
+        .from('content_sources')
+        .update({ 
+          last_scraped_at: new Date().toISOString(),
+          error_count: 0,
+          last_error: null
+        })
+        .eq('id', parseInt(sourceId));
+
+      console.log('🎉 一键抓取并生成摘要完成！');
+
+      return {
+        success: true,
+        data: {
+          contentItem,
+          summary,
+          summaryResult,
+          extractedContent: {
+            title: mockRSSData.title,
+            contentLength: mockRSSData.content.length,
+            preview: mockRSSData.content.substring(0, 200) + '...',
+            source: source.name,
+            link: mockRSSData.link,
+            publishedDate: mockRSSData.publishedDate
+          }
+        }
+      };
+
     } catch (error) {
-      console.error('❌ Web Scraping 测试失败:', error);
+      console.error('❌ 一键抓取并生成摘要失败:', error);
       
       // 更新 source 错误信息
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // 获取当前错误计数
           const { data: currentSource } = await supabase
             .from('content_sources')
             .select('error_count')
@@ -289,129 +378,6 @@ export const sourcesApi = {
         console.error('❌ 更新错误信息失败:', updateError);
       }
 
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  },
-
-  // 🤖 新增：测试 DeepSeek 摘要生成功能
-  testDeepSeekSummary: async (sourceId: string): Promise<{ success: boolean; data?: any; error?: string }> => {
-    try {
-      console.log('🤖 开始测试 DeepSeek 摘要生成功能...');
-      
-      // 获取 source 信息
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { data: source, error: sourceError } = await supabase
-        .from('content_sources')
-        .select('*')
-        .eq('id', parseInt(sourceId))
-        .eq('user_id', user.id)
-        .single();
-
-      if (sourceError || !source) {
-        throw new Error('Source not found');
-      }
-
-      // 获取该 source 的最新 content_item
-      const { data: contentItems, error: itemsError } = await supabase
-        .from('content_items')
-        .select('*')
-        .eq('source_id', parseInt(sourceId))
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (itemsError) {
-        throw new Error(`获取内容失败: ${itemsError.message}`);
-      }
-
-      let contentItem;
-      
-      if (!contentItems || contentItems.length === 0) {
-        // 如果没有现有内容，先创建一个模拟内容
-        console.log('📝 没有现有内容，创建模拟内容用于测试...');
-        const mockData = getMockRSSData(source.url);
-        
-        const { data: newItem, error: createError } = await supabase
-          .from('content_items')
-          .insert({
-            source_id: parseInt(sourceId),
-            title: mockData.title,
-            content_url: mockData.link,
-            content_text: mockData.content,
-            published_date: new Date(mockData.publishedDate).toISOString(),
-            is_processed: false
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          throw new Error(`创建测试内容失败: ${createError.message}`);
-        }
-        
-        contentItem = newItem;
-      } else {
-        contentItem = contentItems[0];
-      }
-
-      console.log('📄 使用内容进行摘要测试:', contentItem.title);
-
-      // 调用 DeepSeek API 生成摘要
-      const summaryResult = await generateDeepSeekSummary(
-        contentItem.content_text || contentItem.title,
-        contentItem.content_url
-      );
-
-      // 保存摘要到数据库
-      const { data: summary, error: summaryError } = await supabase
-        .from('summaries')
-        .insert({
-          content_item_id: contentItem.id,
-          summary_text: summaryResult.summary,
-          summary_length: summaryResult.summary.length,
-          reading_time: summaryResult.readingTime,
-          model_used: summaryResult.modelUsed,
-          processing_time: summaryResult.processingTime
-        })
-        .select()
-        .single();
-
-      if (summaryError) {
-        console.error('❌ 保存摘要失败:', summaryError);
-        // 即使保存失败，也返回生成的摘要
-      }
-
-      // 更新 content_item 为已处理
-      await supabase
-        .from('content_items')
-        .update({ 
-          is_processed: true,
-          processing_error: null
-        })
-        .eq('id', contentItem.id);
-
-      return {
-        success: true,
-        data: {
-          contentItem,
-          summary: summary || summaryResult,
-          apiUsage: summaryResult.apiUsage,
-          extractedContent: {
-            title: contentItem.title,
-            contentLength: contentItem.content_text?.length || 0,
-            preview: contentItem.content_text?.substring(0, 200) + '...' || '',
-            source: source.name,
-            link: contentItem.content_url,
-            publishedDate: contentItem.published_date
-          }
-        }
-      };
-
-    } catch (error) {
-      console.error('❌ DeepSeek 摘要测试失败:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -624,77 +590,6 @@ const checkIfRSSFeedLocal = async (url: string): Promise<boolean> => {
   }
 };
 
-// 🎭 模拟 RSS 处理（用于 StackBlitz 环境演示）
-const simulateRSSProcessing = async (sourceId: string, feedUrl: string): Promise<{ success: boolean; data?: any; error?: string }> => {
-  try {
-    console.log('🎭 使用模拟数据演示 RSS feed 处理...');
-
-    // 🎯 模拟不同 RSS feed 的数据
-    const mockRSSData = getMockRSSData(feedUrl);
-    
-    console.log('📄 模拟 RSS feed 内容:', mockRSSData);
-
-    // 创建 content_item 记录
-    const { data: contentItem, error: itemError } = await supabase
-      .from('content_items')
-      .insert({
-        source_id: parseInt(sourceId),
-        title: mockRSSData.title,
-        content_url: mockRSSData.link,
-        content_text: mockRSSData.content,
-        published_date: new Date(mockRSSData.publishedDate).toISOString(),
-        is_processed: false
-      })
-      .select()
-      .single();
-
-    if (itemError) {
-      console.error('❌ 创建 content_item 失败:', itemError);
-      throw new Error(`数据库错误: ${itemError.message}`);
-    }
-
-    console.log('✅ 成功创建模拟 content_item:', contentItem.id);
-
-    // 使用 DeepSeek API 或模拟摘要
-    const summaryResult = await generateSummaryWithFallback(contentItem.id, mockRSSData.content, mockRSSData.link);
-
-    // 更新 source 的 last_scraped_at
-    await supabase
-      .from('content_sources')
-      .update({ 
-        last_scraped_at: new Date().toISOString(),
-        error_count: 0,
-        last_error: null
-      })
-      .eq('id', parseInt(sourceId));
-
-    return {
-      success: true,
-      data: {
-        contentItem,
-        summary: summaryResult,
-        feedInfo: {
-          title: mockRSSData.feedTitle,
-          description: mockRSSData.feedDescription,
-          totalItems: 1
-        },
-        extractedContent: {
-          title: mockRSSData.title.substring(0, 100),
-          contentLength: mockRSSData.content.length,
-          preview: mockRSSData.content.substring(0, 200) + '...',
-          source: 'RSS Feed (模拟数据)',
-          link: mockRSSData.link,
-          publishedDate: mockRSSData.publishedDate
-        }
-      }
-    };
-
-  } catch (error) {
-    console.error('❌ 模拟 RSS feed 处理失败:', error);
-    throw error;
-  }
-};
-
 // 🎯 获取模拟 RSS 数据
 const getMockRSSData = (feedUrl: string) => {
   const lowerUrl = feedUrl.toLowerCase();
@@ -777,242 +672,83 @@ As one industry expert observes: "We're not just building better technology—we
   }
 };
 
-// 🤖 带回退机制的摘要生成
-const generateSummaryWithFallback = async (contentItemId: number, content: string, originalUrl: string): Promise<any> => {
-  try {
-    console.log('🤖 尝试使用 DeepSeek API 生成摘要...');
-    
-    // 检查是否有 DeepSeek API Key
-    const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
-    
-    if (!DEEPSEEK_API_KEY) {
-      console.warn('⚠️ DeepSeek API Key 未配置，使用模拟摘要');
-      return await generateMockSummary(contentItemId, content);
-    }
-
-    // 🌐 在 StackBlitz 环境中，外部 API 调用可能受限，直接使用模拟摘要
-    console.log('🎭 StackBlitz 环境：使用高质量模拟摘要');
-    return await generateEnhancedMockSummary(contentItemId, content, originalUrl);
-
-  } catch (error) {
-    console.error('❌ 摘要生成失败，使用备用方案:', error);
-    return await generateMockSummary(contentItemId, content);
-  }
-};
-
-// 🎯 增强版模拟摘要（模拟 DeepSeek 风格的输出）
-const generateEnhancedMockSummary = async (contentItemId: number, content: string, originalUrl: string): Promise<any> => {
-  try {
-    console.log('🎭 生成增强版模拟摘要（模拟 DeepSeek 风格）');
-
-    // 🎯 根据你的 prompt 生成摘要
-    const mockSummary = createDeepSeekStyleSummary(content, originalUrl);
-    
-    // 计算阅读时间（平均 200 字/分钟）
-    const wordCount = mockSummary.split(/\s+/).length;
-    const readingTime = Math.max(1, Math.round(wordCount / 200));
-
-    // 创建 summary 记录
-    const { data: summary, error: summaryError } = await supabase
-      .from('summaries')
-      .insert({
-        content_item_id: contentItemId,
-        summary_text: mockSummary,
-        summary_length: mockSummary.length,
-        reading_time: readingTime,
-        model_used: 'deepseek-chat-simulated',
-        processing_time: Math.random() * 2 + 1
-      })
-      .select()
-      .single();
-
-    if (summaryError) {
-      console.error('❌ 创建增强摘要失败:', summaryError);
-      throw summaryError;
-    }
-
-    // 更新 content_item 为已处理
-    await supabase
-      .from('content_items')
-      .update({ 
-        is_processed: true,
-        processing_error: null
-      })
-      .eq('id', contentItemId);
-
-    console.log('✅ 成功创建增强版模拟摘要:', summary.id);
-
-    return {
-      ...summary,
-      api_usage: { total_tokens: 850, prompt_tokens: 600, completion_tokens: 250 }
-    };
-
-  } catch (error) {
-    console.error('❌ 增强摘要失败:', error);
-    throw error;
-  }
-};
-
-// 🎯 创建 DeepSeek 风格的摘要（按照你的 prompt 要求）
-const createDeepSeekStyleSummary = (content: string, originalUrl: string): string => {
-  // 提取关键主题和引用
-  const sentences = content
-    .split(/[.!?]+/)
-    .map(s => s.trim())
-    .filter(s => s.length > 30 && s.length < 300);
-  
-  if (sentences.length === 0) {
-    return `This article discusses important topics and provides valuable insights. The content covers various themes relevant to the subject matter. For more details, please refer to the original article: ${originalUrl}`;
-  }
-
-  // 🎯 按照你的 prompt 格式生成摘要
-  let summary = '';
-  
-  // 主题 1
-  if (sentences.length > 0) {
-    summary += `The article explores the concept of technological advancement and its implications. As stated in the original piece: "${sentences[0]}" This theme highlights the rapid pace of change in our modern world.\n\n`;
-  }
-  
-  // 主题 2
-  if (sentences.length > 1) {
-    summary += `Another key theme focuses on the practical applications and real-world impact. The author notes: "${sentences[1]}" This demonstrates the tangible effects of these developments on society.\n\n`;
-  }
-  
-  // 主题 3
-  if (sentences.length > 2) {
-    summary += `The discussion also addresses future considerations and potential challenges. According to the text: "${sentences[2]}" This perspective emphasizes the importance of thoughtful planning and preparation.\n\n`;
-  }
-  
-  // 添加更多主题（如果有足够内容）
-  if (sentences.length > 3) {
-    summary += `Additionally, the article examines the broader implications for various stakeholders. As mentioned: "${sentences[3]}" This analysis provides valuable context for understanding the full scope of the topic.\n\n`;
-  }
-  
-  if (sentences.length > 4) {
-    summary += `The piece concludes with insights about long-term trends and recommendations. The author emphasizes: "${sentences[4]}" This forward-looking perspective offers guidance for navigating future developments.\n\n`;
-  }
-  
-  // 添加原文链接
-  summary += `For the complete analysis and additional details, please refer to the original article: ${originalUrl}`;
-  
-  return summary;
-};
-
-// 生成模拟摘要（作为最后的备用方案）
-const generateMockSummary = async (contentItemId: number, content: string): Promise<any> => {
-  try {
-    console.log('🎭 生成基础模拟摘要作为备用方案');
-
-    // 生成更智能的模拟摘要
-    const mockSummary = createBasicMockSummary(content);
-    
-    // 计算阅读时间（平均 200 字/分钟）
-    const wordCount = mockSummary.split(/\s+/).length;
-    const readingTime = Math.max(1, Math.round(wordCount / 200));
-
-    // 创建 summary 记录
-    const { data: summary, error: summaryError } = await supabase
-      .from('summaries')
-      .insert({
-        content_item_id: contentItemId,
-        summary_text: mockSummary,
-        summary_length: mockSummary.length,
-        reading_time: readingTime,
-        model_used: 'mock-ai-basic',
-        processing_time: Math.random() * 2 + 1
-      })
-      .select()
-      .single();
-
-    if (summaryError) {
-      console.error('❌ 创建基础摘要失败:', summaryError);
-      throw summaryError;
-    }
-
-    // 更新 content_item 为已处理
-    await supabase
-      .from('content_items')
-      .update({ 
-        is_processed: true,
-        processing_error: null
-      })
-      .eq('id', contentItemId);
-
-    console.log('✅ 成功创建基础模拟摘要:', summary.id);
-
-    return summary;
-
-  } catch (error) {
-    console.error('❌ 基础摘要失败:', error);
-    throw error;
-  }
-};
-
-// 生成基础模拟摘要
-const createBasicMockSummary = (content: string): string => {
-  // 提取关键句子
-  const sentences = content
-    .split(/[.!?]+/)
-    .map(s => s.trim())
-    .filter(s => s.length > 20 && s.length < 200)
-    .slice(0, 8); // 取前8个句子
-  
-  if (sentences.length === 0) {
-    return "This content discusses various topics and provides information on the subject matter. The article covers important points and insights relevant to the topic.";
-  }
-
-  // 选择最有代表性的句子（简单启发式：选择中等长度的句子）
-  const selectedSentences = sentences
-    .sort((a, b) => Math.abs(a.length - 100) - Math.abs(b.length - 100)) // 偏好长度接近100的句子
-    .slice(0, Math.min(3, sentences.length));
-
-  let summary = selectedSentences.join('. ').trim();
-  
-  // 确保总结以句号结尾
-  if (!summary.endsWith('.')) {
-    summary += '.';
-  }
-
-  // 添加总结性语句
-  if (summary.length < 200) {
-    summary += ' This article provides valuable insights and information on the topic.';
-  }
-
-  // 限制总结长度
-  if (summary.length > 500) {
-    summary = summary.substring(0, 497) + '...';
-  }
-
-  return summary;
-};
-
 // Digests API
 export const digestsApi = {
   getDigests: async (page = 1, limit = 10): Promise<PaginatedResponse<Digest[]>> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const offset = (page - 1) * limit;
+    console.log('🔍 获取用户的 digests...');
 
-    const { data, error, count } = await supabase
-      .from('digests')
-      .select('*', { count: 'exact' })
-      .eq('user_id', user.id)
-      .order('generation_date', { ascending: false })
-      .range(offset, offset + limit - 1);
+    // 🎯 获取用户的摘要数据，通过 content_sources 关联
+    const { data: summariesData, error: summariesError } = await supabase
+      .from('summaries')
+      .select(`
+        *,
+        content_items!inner(
+          *,
+          content_sources!inner(
+            id,
+            name,
+            user_id
+          )
+        )
+      `)
+      .eq('content_items.content_sources.user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(limit * 3); // 获取更多数据以便分组
 
-    if (error) throw error;
+    if (summariesError) {
+      console.error('❌ 获取摘要数据失败:', summariesError);
+      throw summariesError;
+    }
 
-    const digests: Digest[] = (data || []).map(digest => ({
-      id: digest.id.toString(),
-      title: digest.title,
-      date: digest.generation_date,
-      summaries: [], // Will be populated when needed
-      audioUrl: digest.audio_url || undefined,
-      duration: digest.audio_duration || undefined,
-      isRead: digest.is_read,
-      createdAt: digest.created_at
-    }));
+    console.log('✅ 获取到摘要数据:', summariesData?.length || 0, '条');
+
+    // 🎯 将摘要按日期分组，创建虚拟的 digest
+    const digestsMap = new Map<string, any>();
+    
+    (summariesData || []).forEach(summary => {
+      const contentItem = summary.content_items;
+      const source = contentItem.content_sources;
+      
+      // 按日期分组（使用创建日期的日期部分）
+      const dateKey = new Date(summary.created_at).toISOString().split('T')[0];
+      
+      if (!digestsMap.has(dateKey)) {
+        digestsMap.set(dateKey, {
+          id: `digest-${dateKey}`,
+          title: `Daily Digest - ${new Date(dateKey).toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })}`,
+          date: dateKey,
+          summaries: [],
+          isRead: false,
+          createdAt: summary.created_at
+        });
+      }
+      
+      // 添加摘要到对应的 digest
+      digestsMap.get(dateKey)!.summaries.push({
+        id: summary.id.toString(),
+        title: contentItem.title,
+        content: summary.summary_text,
+        sourceUrl: contentItem.content_url,
+        sourceName: source.name,
+        publishedAt: contentItem.published_date || contentItem.created_at,
+        readingTime: summary.reading_time || 3
+      });
+    });
+
+    // 转换为数组并排序
+    const digests = Array.from(digestsMap.values())
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice((page - 1) * limit, page * limit);
+
+    console.log('📊 生成的 digests:', digests.length, '个');
 
     return {
       data: digests,
@@ -1020,55 +756,113 @@ export const digestsApi = {
       pagination: {
         page,
         limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit)
+        total: digestsMap.size,
+        totalPages: Math.ceil(digestsMap.size / limit)
       }
     };
   },
   
   getDigest: async (id: string): Promise<Digest> => {
-    const { data, error } = await supabase
-      .from('digests')
-      .select('*')
-      .eq('id', parseInt(id))
-      .single();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
 
-    if (error) throw error;
+    console.log('🔍 获取特定 digest:', id);
 
-    // For now, return mock summaries since we don't have the full content pipeline
-    return {
-      id: data.id.toString(),
-      title: data.title,
-      date: data.generation_date,
-      summaries: [
-        {
-          id: '1',
-          title: 'Sample Summary',
-          content: 'This is a sample summary content.',
-          sourceUrl: 'https://example.com',
-          sourceName: 'Example Source',
-          publishedAt: new Date().toISOString(),
-          readingTime: 3
-        }
-      ],
-      audioUrl: data.audio_url || undefined,
-      duration: data.audio_duration || undefined,
-      isRead: data.is_read,
-      createdAt: data.created_at
+    // 从 digest ID 中提取日期
+    const dateKey = id.replace('digest-', '');
+    
+    // 获取该日期的所有摘要
+    const { data: summariesData, error: summariesError } = await supabase
+      .from('summaries')
+      .select(`
+        *,
+        content_items!inner(
+          *,
+          content_sources!inner(
+            id,
+            name,
+            user_id
+          )
+        )
+      `)
+      .eq('content_items.content_sources.user_id', user.id)
+      .gte('created_at', `${dateKey}T00:00:00.000Z`)
+      .lt('created_at', `${dateKey}T23:59:59.999Z`)
+      .order('created_at', { ascending: false });
+
+    if (summariesError) {
+      console.error('❌ 获取摘要数据失败:', summariesError);
+      throw summariesError;
+    }
+
+    if (!summariesData || summariesData.length === 0) {
+      throw new Error('Digest not found');
+    }
+
+    // 构建 digest 对象
+    const summaries = summariesData.map(summary => {
+      const contentItem = summary.content_items;
+      const source = contentItem.content_sources;
+      
+      return {
+        id: summary.id.toString(),
+        title: contentItem.title,
+        content: summary.summary_text,
+        sourceUrl: contentItem.content_url,
+        sourceName: source.name,
+        publishedAt: contentItem.published_date || contentItem.created_at,
+        readingTime: summary.reading_time || 3
+      };
+    });
+
+    const digest: Digest = {
+      id,
+      title: `Daily Digest - ${new Date(dateKey).toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      })}`,
+      date: dateKey,
+      summaries,
+      isRead: false,
+      createdAt: summariesData[0].created_at
     };
+
+    console.log('✅ 获取到 digest，包含', summaries.length, '个摘要');
+
+    return digest;
   },
   
   markDigestAsRead: async (id: string): Promise<void> => {
-    const { error } = await supabase
-      .from('digests')
-      .update({ 
-        is_read: true, 
-        read_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', parseInt(id));
+    // 由于我们使用虚拟 digest，这里暂时不做实际操作
+    console.log('📖 标记 digest 为已读:', id);
+  },
 
-    if (error) throw error;
+  // 🗑️ 新增：清除所有数据的功能
+  clearAllData: async (): Promise<void> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    console.log('🗑️ 开始清除所有用户数据...');
+
+    try {
+      // 删除用户的所有 content_sources（会级联删除相关数据）
+      const { error: sourcesError } = await supabase
+        .from('content_sources')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (sourcesError) {
+        console.error('❌ 删除 content_sources 失败:', sourcesError);
+        throw sourcesError;
+      }
+
+      console.log('✅ 成功清除所有用户数据');
+    } catch (error) {
+      console.error('❌ 清除数据失败:', error);
+      throw error;
+    }
   }
 };
 

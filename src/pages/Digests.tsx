@@ -1,15 +1,24 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
-import { FileText, Play, Clock, Search, Calendar } from 'lucide-react';
+import { FileText, Play, Clock, Search, Calendar, Trash2 } from 'lucide-react';
 import { digestsApi } from '../services/api';
 import { Digest } from '../types';
 import { useToast } from '../hooks/use-toast';
 import LoadingIndicator from '../components/common/LoadingIndicator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../components/ui/alert-dialog';
 
 const Digests = () => {
   const [digests, setDigests] = useState<Digest[]>([]);
@@ -18,6 +27,8 @@ const Digests = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -32,68 +43,19 @@ const Digests = () => {
         setLoadingMore(true);
       }
 
-      // Mock data for demonstration since we don't have a real backend
-      const mockDigests: Digest[] = [
-        {
-          id: '1',
-          title: 'Daily Tech Digest - March 1, 2024',
-          date: new Date().toISOString(),
-          summaries: [
-            {
-              id: '1',
-              title: 'AI Revolution in Healthcare',
-              content: 'Artificial intelligence is transforming healthcare with new diagnostic tools...',
-              sourceUrl: 'https://technews.com/ai-healthcare',
-              sourceName: 'Tech News',
-              publishedAt: new Date().toISOString(),
-              readingTime: 5
-            },
-            {
-              id: '2',
-              title: 'Latest React Framework Updates',
-              content: 'React 18 introduces new features for better performance...',
-              sourceUrl: 'https://reactblog.com/updates',
-              sourceName: 'React Blog',
-              publishedAt: new Date().toISOString(),
-              readingTime: 3
-            }
-          ],
-          audioUrl: 'https://example.com/audio1.mp3',
-          duration: 480,
-          isRead: false,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          title: 'Weekly Business Digest - February 28, 2024',
-          date: new Date(Date.now() - 86400000).toISOString(),
-          summaries: [
-            {
-              id: '3',
-              title: 'Market Trends Analysis',
-              content: 'Stock market shows positive trends in tech sector...',
-              sourceUrl: 'https://businessnews.com/trends',
-              sourceName: 'Business News',
-              publishedAt: new Date().toISOString(),
-              readingTime: 7
-            }
-          ],
-          isRead: true,
-          createdAt: new Date().toISOString()
-        }
-      ];
-
+      const response = await digestsApi.getDigests(page, 10);
+      
       if (append) {
-        setDigests(prev => [...(prev || []), ...mockDigests]);
+        setDigests(prev => [...(prev || []), ...(response.data || [])]);
       } else {
-        setDigests(mockDigests || []);
+        setDigests(response.data || []);
       }
       
       setCurrentPage(page);
-      setTotalPages(2); // Mock pagination
+      setTotalPages(response.pagination.totalPages);
     } catch (error) {
       console.error('Failed to load digests:', error);
-      setDigests([]); // Ensure digests is always an array
+      setDigests([]);
       toast({
         title: "Failed to load digests",
         description: "There was an error loading your digests.",
@@ -121,6 +83,29 @@ const Digests = () => {
       );
     } catch (error) {
       console.error('Failed to mark as read:', error);
+    }
+  };
+
+  // 🗑️ 清除所有数据功能
+  const handleClearAllData = async () => {
+    setClearing(true);
+    try {
+      await digestsApi.clearAllData();
+      setDigests([]);
+      toast({
+        title: "✅ 数据清除成功",
+        description: "所有内容和摘要数据已清除。",
+      });
+    } catch (error) {
+      console.error('Failed to clear data:', error);
+      toast({
+        title: "❌ 清除失败",
+        description: "清除数据时发生错误，请重试。",
+        variant: "destructive",
+      });
+    } finally {
+      setClearing(false);
+      setShowClearDialog(false);
     }
   };
 
@@ -160,10 +145,24 @@ const Digests = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Digests</h1>
-          <p className="text-gray-600">
-            Stay up to date with summaries from your content sources
-          </p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Digests</h1>
+              <p className="text-gray-600">
+                Stay up to date with summaries from your content sources
+              </p>
+            </div>
+            {digestsArray.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => setShowClearDialog(true)}
+                className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All Data
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Search */}
@@ -188,7 +187,8 @@ const Digests = () => {
               </div>
               <h3 className="text-xl font-medium text-gray-900 mb-2">No digests yet</h3>
               <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                Your digests will appear here once we start processing content from your sources. Check back soon!
+                Your digests will appear here once you start scraping content from your sources. 
+                Go to Sources and click "Scrape & Summarize" to get started!
               </p>
               <Link to="/sources">
                 <Button>
@@ -315,6 +315,36 @@ const Digests = () => {
             )}
           </div>
         )}
+
+        {/* Clear All Data Confirmation Dialog */}
+        <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear All Data</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to clear all your content sources, articles, and summaries? 
+                This action cannot be undone and will remove all your data permanently.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleClearAllData}
+                disabled={clearing}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {clearing ? (
+                  <>
+                    <LoadingIndicator size="sm" />
+                    <span className="ml-2">Clearing...</span>
+                  </>
+                ) : (
+                  'Clear All Data'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
