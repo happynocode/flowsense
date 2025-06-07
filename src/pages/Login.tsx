@@ -1,19 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Brain, Zap, Shield, Globe, Mail, Lock, User } from 'lucide-react';
 import LoadingIndicator from '../components/common/LoadingIndicator';
 
 const Login = () => {
   const { user, login, signUp, loading } = useAuth();
+  const navigate = useNavigate();
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [signUpForm, setSignUpForm] = useState({ email: '', password: '', name: '', confirmPassword: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user && !loading) {
+      navigate('/', { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   if (loading) {
     return (
@@ -28,6 +36,7 @@ const Login = () => {
     );
   }
 
+  // If user is already authenticated, redirect to home
   if (user) {
     return <Navigate to="/" replace />;
   }
@@ -39,6 +48,7 @@ const Login = () => {
     try {
       setIsSubmitting(true);
       await login(loginForm.email, loginForm.password);
+      // Navigation will be handled by the auth state change
     } catch (error) {
       // Error is handled in the login function
     } finally {

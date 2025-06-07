@@ -3,6 +3,7 @@ import { User } from '../types';
 import { useToast } from './use-toast';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -112,6 +113,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "登录成功",
           description: "欢迎回到Neural Hub!",
         });
+        
+        // Force navigation after successful login
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 100);
       }
     } catch (error: any) {
       console.error('Login error:', error);
@@ -178,6 +184,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "登出成功",
           description: "您已成功登出账户。",
         });
+        // Redirect to login page after logout
+        window.location.href = '/login';
       }
     } catch (error) {
       toast({
@@ -216,13 +224,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(true);
         await refreshUser();
         setLoading(false);
-        toast({
-          title: "登录成功",
-          description: "欢迎来到Neural Hub!",
-        });
+        
+        // Navigate to home page after successful sign in
+        if (window.location.pathname === '/login') {
+          window.location.href = '/';
+        }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setLoading(false);
+        // Navigate to login page after sign out
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       } else if (event === 'TOKEN_REFRESHED') {
         // Optionally refresh user data when token is refreshed
         await refreshUser();
