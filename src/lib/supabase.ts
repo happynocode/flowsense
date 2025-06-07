@@ -18,7 +18,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.log('   VITE_SUPABASE_URL=your-supabase-url');
   console.log('   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key');
   
-  // 创建模拟客户端以防止应用崩溃
+  // Create mock client to prevent app crashes
   const mockClient = {
     auth: {
       getUser: () => {
@@ -92,12 +92,30 @@ if (!supabaseUrl || !supabaseAnonKey) {
         persistSession: true,
         detectSessionInUrl: true,
         flowType: 'pkce'
+      },
+      global: {
+        headers: {
+          'X-Client-Info': 'supabase-js-web'
+        }
+      },
+      db: {
+        schema: 'public'
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 2
+        }
       }
     });
     console.log('✅ Supabase 客户端创建成功');
     
-    // 测试连接
-    supabase.auth.getSession().then(({ data, error }) => {
+    // Test connection with timeout
+    Promise.race([
+      supabase.auth.getSession(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('连接测试超时')), 5000)
+      )
+    ]).then(({ data, error }) => {
       if (error) {
         console.warn('⚠️ Supabase 连接测试失败:', error.message);
       } else {
@@ -109,7 +127,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
     
   } catch (error) {
     console.error('❌ 创建 Supabase 客户端失败:', error);
-    // 如果创建失败，使用模拟客户端
+    // Use mock client if creation fails
     supabase = mockClient;
   }
 }
