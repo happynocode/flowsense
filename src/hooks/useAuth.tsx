@@ -186,7 +186,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         options: {
           data: {
             full_name: name,
-          }
+          },
+          emailRedirectTo: undefined // 👈 避免重定向问题
         }
       });
 
