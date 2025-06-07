@@ -224,7 +224,7 @@ export const sourcesApi = {
     }
   },
 
-  // 简化的测试 Web Scraping 功能
+  // 改进的测试 Web Scraping 功能
   testScraping: async (sourceId: string): Promise<{ success: boolean; data?: any; error?: string }> => {
     try {
       console.log('🕷️ 开始测试 Web Scraping，Source ID:', sourceId);
@@ -254,7 +254,7 @@ export const sourcesApi = {
         return await processRSSFeed(sourceId, source.url);
       } else {
         console.log('🌐 检测到普通网站');
-        throw new Error('目前只支持 RSS feed 格式的内容源。请提供 RSS feed URL，或者等待我们添加对普通网站的支持。');
+        throw new Error('目前只支持 RSS feed 格式的内容源。请提供 RSS feed URL（如 /feed, /rss, .xml），或者等待我们添加对普通网站的支持。');
       }
 
     } catch (error) {
@@ -297,9 +297,11 @@ export const sourcesApi = {
   }
 };
 
-// 检查是否为 RSS feed
+// 检查是否为 RSS feed（改进版本）
 const checkIfRSSFeed = async (url: string): Promise<boolean> => {
   try {
+    console.log('🔍 检查是否为 RSS feed:', url);
+    
     // 简单的 RSS feed 检测
     const lowerUrl = url.toLowerCase();
     
@@ -307,34 +309,50 @@ const checkIfRSSFeed = async (url: string): Promise<boolean> => {
     if (lowerUrl.includes('/feed') || 
         lowerUrl.includes('/rss') || 
         lowerUrl.includes('.xml') ||
-        lowerUrl.includes('/atom')) {
+        lowerUrl.includes('/atom') ||
+        lowerUrl.endsWith('/feed/') ||
+        lowerUrl.endsWith('/rss/')) {
+      console.log('✅ URL 包含 RSS 关键词，判定为 RSS feed');
       return true;
     }
 
-    // 尝试获取内容并检查 Content-Type
+    // 尝试获取内容并检查 Content-Type 和内容
     try {
+      console.log('🔍 尝试获取内容检查格式...');
       const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+      
+      if (!response.ok) {
+        console.warn('⚠️ 无法获取内容，假设为普通网站');
+        return false;
+      }
+      
       const data = await response.json();
       
       if (data.contents) {
         const content = data.contents.toLowerCase();
-        return content.includes('<rss') || 
-               content.includes('<feed') || 
-               content.includes('<?xml') ||
-               content.includes('<channel>');
+        const isRSS = content.includes('<rss') || 
+                     content.includes('<feed') || 
+                     content.includes('<?xml') ||
+                     content.includes('<channel>') ||
+                     content.includes('<atom') ||
+                     content.includes('xmlns="http://www.w3.org/2005/atom"');
+        
+        console.log(isRSS ? '✅ 内容检查确认为 RSS feed' : '❌ 内容检查确认为普通网站');
+        return isRSS;
       }
     } catch (fetchError) {
-      console.warn('无法检测 RSS feed 类型，假设为普通网站');
+      console.warn('⚠️ 无法检测内容格式，假设为普通网站:', fetchError);
     }
 
+    console.log('❌ 判定为普通网站');
     return false;
   } catch (error) {
-    console.error('检测 RSS feed 时出错:', error);
+    console.error('❌ 检测 RSS feed 时出错:', error);
     return false;
   }
 };
 
-// 处理 RSS feed
+// 处理 RSS feed（基于你的 Python 代码逻辑）
 const processRSSFeed = async (sourceId: string, feedUrl: string): Promise<{ success: boolean; data?: any; error?: string }> => {
   try {
     console.log('📡 开始处理 RSS feed:', feedUrl);
@@ -352,6 +370,8 @@ const processRSSFeed = async (sourceId: string, feedUrl: string): Promise<{ succ
       throw new Error('无法获取 RSS feed 内容');
     }
 
+    console.log('📄 RSS feed 内容长度:', data.contents.length);
+
     // 解析 XML
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(data.contents, 'text/xml');
@@ -359,45 +379,92 @@ const processRSSFeed = async (sourceId: string, feedUrl: string): Promise<{ succ
     // 检查解析错误
     const parseError = xmlDoc.querySelector('parsererror');
     if (parseError) {
-      throw new Error('RSS feed 格式无效');
+      throw new Error('RSS feed 格式无效: ' + parseError.textContent);
     }
 
-    // 提取 RSS 信息
+    // 提取 RSS 信息（支持 RSS 和 Atom 格式）
     const channel = xmlDoc.querySelector('channel') || xmlDoc.querySelector('feed');
     if (!channel) {
-      throw new Error('无效的 RSS feed 格式');
+      throw new Error('无效的 RSS feed 格式：找不到 channel 或 feed 元素');
     }
 
-    // 获取第一个条目
+    // 获取 feed 标题和描述
+    const feedTitle = channel.querySelector('title')?.textContent?.trim() || 'Unknown Feed';
+    const feedDescription = channel.querySelector('description, subtitle')?.textContent?.trim() || '';
+    
+    console.log('📡 Feed 信息:', { title: feedTitle, description: feedDescription.substring(0, 100) });
+
+    // 获取条目（类似 Python 代码中的 feed.entries[:3]）
     const items = xmlDoc.querySelectorAll('item, entry');
+    console.log('📄 找到', items.length, '个条目');
+    
     if (items.length === 0) {
       throw new Error('RSS feed 中没有找到任何条目');
     }
 
+    // 处理最新的条目（类似 Python 代码逻辑）
     const firstItem = items[0];
     
     // 提取标题
     const titleElement = firstItem.querySelector('title');
     const title = titleElement?.textContent?.trim() || 'Untitled';
 
-    // 提取内容
-    const contentElement = firstItem.querySelector('description, content, summary');
+    // 提取链接
+    const linkElement = firstItem.querySelector('link');
+    let link = '';
+    if (linkElement) {
+      // RSS 格式：<link>url</link>
+      // Atom 格式：<link href="url" />
+      link = linkElement.textContent?.trim() || linkElement.getAttribute('href') || '';
+    }
+    if (!link) {
+      link = feedUrl; // 如果没有找到链接，使用 feed URL
+    }
+
+    // 提取发布日期
+    const pubDateElement = firstItem.querySelector('pubDate, published, updated');
+    const publishedDate = pubDateElement?.textContent?.trim() || new Date().toISOString();
+
+    // 提取内容（类似 Python 代码中的 entry.summary）
+    const contentElement = firstItem.querySelector('description, content, summary, content\\:encoded');
     let content = contentElement?.textContent?.trim() || '';
 
-    // 清理 HTML 标签
-    if (content) {
+    // 如果是 HTML 内容，清理标签（类似 BeautifulSoup 的功能）
+    if (content && (content.includes('<') || content.includes('&'))) {
+      console.log('🧹 清理 HTML 内容...');
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = content;
+      
+      // 移除不需要的元素
+      const unwantedElements = tempDiv.querySelectorAll('script, style, nav, header, footer, aside');
+      unwantedElements.forEach(el => el.remove());
+      
       content = tempDiv.textContent || tempDiv.innerText || '';
     }
 
-    if (content.length < 100) {
-      throw new Error('RSS 条目内容太短，无法生成有意义的摘要');
+    // 清理和格式化内容
+    content = content
+      .replace(/\s+/g, ' ')
+      .replace(/\n+/g, ' ')
+      .trim();
+
+    console.log('📝 提取的内容信息:', {
+      title: title.substring(0, 50),
+      link,
+      contentLength: content.length,
+      publishedDate
+    });
+
+    if (content.length < 50) {
+      throw new Error('RSS 条目内容太短（少于50字符），无法生成有意义的摘要');
     }
 
-    // 提取链接
-    const linkElement = firstItem.querySelector('link');
-    const link = linkElement?.textContent?.trim() || linkElement?.getAttribute('href') || feedUrl;
+    // 限制内容长度以避免数据库限制
+    const maxContentLength = 10000;
+    if (content.length > maxContentLength) {
+      content = content.substring(0, maxContentLength) + '...';
+      console.log('✂️ 内容已截断到', maxContentLength, '字符');
+    }
 
     // 创建 content_item 记录
     const { data: contentItem, error: itemError } = await supabase
@@ -406,8 +473,8 @@ const processRSSFeed = async (sourceId: string, feedUrl: string): Promise<{ succ
         source_id: parseInt(sourceId),
         title: title.substring(0, 500),
         content_url: link,
-        content_text: content.substring(0, 10000), // 限制长度
-        published_date: new Date().toISOString(),
+        content_text: content,
+        published_date: new Date(publishedDate).toISOString(),
         is_processed: false
       })
       .select()
@@ -438,11 +505,18 @@ const processRSSFeed = async (sourceId: string, feedUrl: string): Promise<{ succ
       data: {
         contentItem,
         summary: summaryResult,
+        feedInfo: {
+          title: feedTitle,
+          description: feedDescription,
+          totalItems: items.length
+        },
         extractedContent: {
           title: title.substring(0, 100),
           contentLength: content.length,
           preview: content.substring(0, 200) + '...',
-          source: 'RSS Feed'
+          source: 'RSS Feed',
+          link,
+          publishedDate
         }
       }
     };
@@ -453,12 +527,12 @@ const processRSSFeed = async (sourceId: string, feedUrl: string): Promise<{ succ
   }
 };
 
-// 生成 AI 摘要
+// 生成 AI 摘要（改进版本）
 const generateAISummary = async (contentItemId: number, content: string): Promise<any> => {
   try {
     console.log('🤖 开始 AI 总结，Content Item ID:', contentItemId);
 
-    // 生成模拟摘要
+    // 生成更智能的模拟摘要
     const mockSummary = generateMockSummary(content);
     
     // 计算阅读时间（平均 200 字/分钟）
@@ -473,7 +547,7 @@ const generateAISummary = async (contentItemId: number, content: string): Promis
         summary_text: mockSummary,
         summary_length: mockSummary.length,
         reading_time: readingTime,
-        model_used: 'mock-ai-v1',
+        model_used: 'mock-ai-v2',
         processing_time: Math.random() * 2 + 1
       })
       .select()
@@ -512,21 +586,24 @@ const generateAISummary = async (contentItemId: number, content: string): Promis
   }
 };
 
-// 生成模拟 AI 总结
+// 生成模拟 AI 总结（改进版本）
 const generateMockSummary = (content: string): string => {
-  // 提取前几个有意义的句子
+  // 提取关键句子
   const sentences = content
     .split(/[.!?]+/)
     .map(s => s.trim())
     .filter(s => s.length > 20 && s.length < 200)
-    .slice(0, 5);
+    .slice(0, 8); // 取前8个句子
   
   if (sentences.length === 0) {
     return "This content discusses various topics and provides information on the subject matter. The article covers important points and insights relevant to the topic.";
   }
 
-  // 选择最有代表性的句子
-  const selectedSentences = sentences.slice(0, Math.min(3, sentences.length));
+  // 选择最有代表性的句子（简单启发式：选择中等长度的句子）
+  const selectedSentences = sentences
+    .sort((a, b) => Math.abs(a.length - 100) - Math.abs(b.length - 100)) // 偏好长度接近100的句子
+    .slice(0, Math.min(3, sentences.length));
+
   let summary = selectedSentences.join('. ').trim();
   
   // 确保总结以句号结尾
