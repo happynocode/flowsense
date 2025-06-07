@@ -95,26 +95,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async () => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`
+          redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       });
 
       if (error) {
+        console.error('Login error:', error);
         toast({
           title: "Login failed",
           description: error.message,
           variant: "destructive",
         });
+        setLoading(false);
       }
+      // Don't set loading to false here as the redirect will happen
     } catch (error) {
+      console.error('Login error:', error);
       toast({
         title: "Login failed",
         description: "There was an error logging you in. Please try again.",
         variant: "destructive",
       });
+      setLoading(false);
     }
   };
 
@@ -148,28 +158,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       setLoading(true);
       
-      // Get initial session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        await refreshUser();
+      try {
+        // Get initial session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          await refreshUser();
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     initAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
+      
       if (event === 'SIGNED_IN' && session) {
+        setLoading(true);
         await refreshUser();
+        setLoading(false);
         toast({
           title: "Logged in successfully",
           description: "Welcome to Neural Hub!",
         });
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        setLoading(false);
+      } else if (event === 'TOKEN_REFRESHED') {
+        // Optionally refresh user data when token is refreshed
+        await refreshUser();
       }
     });
 
