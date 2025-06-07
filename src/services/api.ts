@@ -42,7 +42,7 @@ export const authApi = {
       const { data: userData, error } = await supabase
         .from('users')
         .select('*')
-        .eq('email', supabaseUser.email)
+        .eq('id', supabaseUser.id)
         .single();
 
       if (error || !userData) return null;
@@ -87,7 +87,7 @@ export const sourcesApi = {
     const { data: userData } = await supabase
       .from('users')
       .select('id')
-      .eq('email', user.email)
+      .eq('id', user.id)
       .single();
 
     if (!userData) throw new Error('User not found');
@@ -119,7 +119,7 @@ export const sourcesApi = {
     const { data: userData } = await supabase
       .from('users')
       .select('id')
-      .eq('email', user.email)
+      .eq('id', user.id)
       .single();
 
     if (!userData) throw new Error('User not found');
@@ -212,7 +212,7 @@ export const digestsApi = {
     const { data: userData } = await supabase
       .from('users')
       .select('id')
-      .eq('email', user.email)
+      .eq('id', user.id)
       .single();
 
     if (!userData) throw new Error('User not found');
@@ -307,7 +307,7 @@ export const subscriptionApi = {
       const { data: userData } = await supabase
         .from('users')
         .select('id')
-        .eq('email', user.email)
+        .eq('id', user.id)
         .single();
 
       if (!userData) return null;
