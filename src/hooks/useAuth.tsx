@@ -29,23 +29,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [initialized, setInitialized] = useState(false);
   const { toast } = useToast();
 
-  // 🛠️ 更健壮的 refreshUser() 架构（防挂死版本）
+  // 🛠️ 针对 StackBlitz 环境优化的 refreshUser 函数
   const refreshUser = async () => {
-    console.log('🔄 refreshUser 开始执行...');
+    console.log('🔄 refreshUser 开始执行（StackBlitz 优化版本）...');
     
     try {
-      // 创建统一的超时 Promise
-      const createTimeout = (name: string, ms: number = 3000) => 
+      // 🎯 针对 StackBlitz 环境，使用更短的超时时间
+      const createTimeout = (name: string, ms: number = 1500) => 
         new Promise<never>((_, reject) => 
           setTimeout(() => reject(new Error(`${name} 超时`)), ms)
         );
 
-      // 1. 首先检查 session 是否存在（3秒超时）
-      console.log('📡 检查当前 session...');
-      const sessionResult = await Promise.race([
-        supabase.auth.getSession(),
-        createTimeout("getSession", 3000)
-      ]);
+      // 1. 首先尝试获取 session（1.5秒超时）
+      console.log('📡 检查当前 session（StackBlitz 环境）...');
+      
+      let sessionResult;
+      try {
+        sessionResult = await Promise.race([
+          supabase.auth.getSession(),
+          createTimeout("getSession", 1500)
+        ]);
+      } catch (timeoutError) {
+        console.warn('⚠️ getSession 超时，尝试从 localStorage 恢复 session...');
+        
+        // 🔧 StackBlitz 环境 fallback：尝试从 localStorage 直接读取
+        const storedSession = localStorage.getItem('sb-auth-token');
+        if (storedSession) {
+          try {
+            const parsedSession = JSON.parse(storedSession);
+            console.log('✅ 从 localStorage 恢复 session 成功');
+            
+            // 构建用户数据
+            if (parsedSession.user) {
+              const fallbackUserData = {
+                id: parsedSession.user.id,
+                name: parsedSession.user.user_metadata?.full_name || parsedSession.user.email?.split('@')[0] || 'User',
+                email: parsedSession.user.email || '',
+                avatar: parsedSession.user.user_metadata?.avatar_url || '',
+                createdAt: parsedSession.user.created_at || new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+              setUser(fallbackUserData);
+              console.log('✅ 用户状态已从 localStorage 恢复');
+              return;
+            }
+          } catch (parseError) {
+            console.warn('⚠️ localStorage session 解析失败:', parseError);
+          }
+        }
+        
+        // 如果 localStorage 也没有，设置为未登录
+        setUser(null);
+        return;
+      }
 
       const session = sessionResult.data?.session;
       console.log('✅ session 检查完成:', { 
@@ -65,62 +101,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      // 2. 如果有 session，再调用 getUser() 获取最新用户信息（3秒超时）
-      console.log('📞 调用 supabase.auth.getUser()...');
+      // 2. 如果有 session，构建用户数据（不再调用 getUser，避免额外超时）
+      console.log('✅ 找到有效 session，构建用户数据...');
+      const supabaseUser = session.user;
       
-      const userResult = await Promise.race([
-        supabase.auth.getUser(),
-        createTimeout("getUser", 3000)
-      ]);
-      
-      console.log('✅ supabase.auth.getUser() 调用完成', { 
-        hasUser: !!userResult.data?.user, 
-        userEmail: userResult.data?.user?.email,
-        error: userResult.error?.message 
-      });
-      
-      if (userResult.error) {
-        console.error('❌ Auth getUser error:', userResult.error);
-        // 如果 getUser 失败但有 session，使用 session 中的用户信息作为 fallback
-        console.log('🔄 getUser 失败，使用 session 中的用户信息作为 fallback');
-        const supabaseUser = session.user;
-        const fallbackUserData = {
-          id: supabaseUser.id,
-          name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-          email: supabaseUser.email || '',
-          avatar: supabaseUser.user_metadata?.avatar_url || '',
-          createdAt: supabaseUser.created_at || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        setUser(fallbackUserData);
-        return;
-      }
-      
-      const user = userResult.data?.user;
-      if (!user) {
-        console.log('ℹ️ getUser 返回为空，设置 user = null');
-        setUser(null);
-        return;
-      }
-
-      console.log('✅ 找到 Supabase 用户:', user.email);
-      
-      // 🎯 直接从 Auth 用户信息构建用户对象，不访问数据库
       const authUserData = {
-        id: user.id,
-        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-        email: user.email || '',
-        avatar: user.user_metadata?.avatar_url || '',
-        createdAt: user.created_at || new Date().toISOString(),
+        id: supabaseUser.id,
+        name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+        email: supabaseUser.email || '',
+        avatar: supabaseUser.user_metadata?.avatar_url || '',
+        createdAt: supabaseUser.created_at || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
       
-      console.log('🎯 设置用户数据（仅来自 Auth）:', authUserData);
+      console.log('🎯 设置用户数据（来自 session）:', authUserData);
       setUser(authUserData);
       console.log('✅ setUser 调用完成');
       
       // 🔧 可选：后台同步到数据库（不阻塞主流程，有错误保护）
-      syncUserToDatabase(user).catch(error => {
+      syncUserToDatabase(supabaseUser).catch(error => {
         console.warn('⚠️ 后台数据库同步失败（不影响用户体验）:', error);
       });
 
@@ -132,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('⚠️ Auth 操作超时，清除 session 防止死循环');
         try {
           await supabase.auth.signOut();
+          localStorage.removeItem('sb-auth-token');
         } catch (signOutError) {
           console.error('❌ 清除 session 失败:', signOutError);
         }
@@ -269,9 +269,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: "欢迎回到 Neural Hub！",
         });
         
-        // 🎯 登录成功后立即刷新用户状态，确保页面跳转
-        console.log('🔄 登录成功，立即刷新用户状态...');
-        await refreshUser();
+        // 🎯 登录成功后，直接设置用户状态，避免额外的 refreshUser 调用
+        console.log('🔄 登录成功，直接设置用户状态...');
+        const authUserData = {
+          id: data.user.id,
+          name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
+          email: data.user.email || '',
+          avatar: data.user.user_metadata?.avatar_url || '',
+          createdAt: data.user.created_at || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        setUser(authUserData);
+        
+        // 后台同步数据库
+        syncUserToDatabase(data.user).catch(error => {
+          console.warn('⚠️ 登录后数据库同步失败（不影响用户体验）:', error);
+        });
       }
     } catch (error: any) {
       console.error('❌ Sign in error:', error);
@@ -296,6 +309,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       } else {
         console.log('✅ 登出成功');
+        // 清理 localStorage
+        localStorage.removeItem('sb-auth-token');
         toast({
           title: "已成功登出",
           description: "您已安全退出账户。",
@@ -319,7 +334,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const initAuth = async () => {
       try {
-        console.log('🚀 开始初始化认证系统...');
+        console.log('🚀 开始初始化认证系统（StackBlitz 优化版本）...');
         
         // 检查环境变量
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -387,25 +402,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🔄 认证状态变化:', event, session?.user?.email || 'no user');
       
       if (event === 'SIGNED_IN' && session) {
-        console.log('✅ 用户已登录，刷新用户数据');
-        try {
-          await refreshUser();
-          console.log('🎯 认证状态变化后用户数据已更新');
-        } catch (refreshError) {
-          console.error('❌ 状态变化时刷新用户失败:', refreshError);
-          setLoading(false);
-        }
+        console.log('✅ 用户已登录，设置用户数据');
+        const authUserData = {
+          id: session.user.id,
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+          email: session.user.email || '',
+          avatar: session.user.user_metadata?.avatar_url || '',
+          createdAt: session.user.created_at || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        setUser(authUserData);
+        setLoading(false);
       } else if (event === 'SIGNED_OUT') {
         console.log('👋 用户已登出');
         setUser(null);
         setLoading(false);
+        localStorage.removeItem('sb-auth-token');
       } else if (event === 'TOKEN_REFRESHED' && session) {
         console.log('🔄 Token 已刷新，更新用户数据');
-        try {
-          await refreshUser();
-        } catch (refreshError) {
-          console.error('❌ Token 刷新时更新用户失败:', refreshError);
-        }
+        const authUserData = {
+          id: session.user.id,
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+          email: session.user.email || '',
+          avatar: session.user.user_metadata?.avatar_url || '',
+          createdAt: session.user.created_at || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        setUser(authUserData);
       }
     });
 
@@ -414,7 +437,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('⏰ 认证初始化最大超时，强制完成加载');
       setLoading(false);
       setInitialized(true);
-    }, 8000); // 8秒超时
+    }, 5000); // 减少到 5 秒超时
 
     return () => {
       console.log('🧹 清理认证监听器');
