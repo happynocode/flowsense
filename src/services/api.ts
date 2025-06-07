@@ -224,160 +224,208 @@ export const sourcesApi = {
     }
   },
 
-  // 🚀 新增：一键抓取并生成摘要功能
-  scrapeAndSummarize: async (sourceId: string): Promise<{ success: boolean; data?: any; error?: string }> => {
+  // 🚀 新增：全局处理所有sources的功能
+  processAllSources: async (): Promise<{ 
+    success: boolean; 
+    data?: {
+      processedSources: any[];
+      skippedSources: any[];
+      digestId?: string;
+      totalSummaries: number;
+    }; 
+    error?: string 
+  }> => {
     try {
-      console.log('🚀 开始一键抓取并生成摘要功能...');
+      console.log('🚀 开始全局处理所有sources...');
       
-      // 获取 source 信息
+      // 获取用户的所有active sources
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data: source, error: sourceError } = await supabase
+      const { data: sources, error: sourcesError } = await supabase
         .from('content_sources')
         .select('*')
-        .eq('id', parseInt(sourceId))
         .eq('user_id', user.id)
-        .single();
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
-      if (sourceError || !source) {
-        throw new Error('Source not found');
+      if (sourcesError) {
+        throw new Error(`获取sources失败: ${sourcesError.message}`);
       }
 
-      console.log('📄 处理 source:', source.name, source.url);
-
-      // 🎯 检查是否为 RSS feed
-      const isRSSFeed = await checkIfRSSFeedLocal(source.url);
-      
-      if (!isRSSFeed) {
-        throw new Error('目前只支持 RSS feed 格式的内容源。请提供 RSS feed URL（如 /feed, /rss, .xml）。');
+      if (!sources || sources.length === 0) {
+        throw new Error('没有找到活跃的content sources。请先添加一些RSS feed源。');
       }
 
-      console.log('📡 检测到 RSS feed，开始处理...');
+      console.log(`📊 找到 ${sources.length} 个活跃的sources，开始逐个处理...`);
 
-      // 步骤 1: 抓取内容
-      const mockRSSData = getMockRSSData(source.url);
-      
-      console.log('📄 抓取到内容:', mockRSSData.title);
+      const processedSources: any[] = [];
+      const skippedSources: any[] = [];
+      const allSummaries: any[] = [];
 
-      // 步骤 2: 创建 content_item 记录
-      const { data: contentItem, error: itemError } = await supabase
-        .from('content_items')
-        .insert({
-          source_id: parseInt(sourceId),
-          title: mockRSSData.title,
-          content_url: mockRSSData.link,
-          content_text: mockRSSData.content,
-          published_date: new Date(mockRSSData.publishedDate).toISOString(),
-          is_processed: false
-        })
-        .select()
-        .single();
+      // 逐个处理每个source
+      for (let i = 0; i < sources.length; i++) {
+        const source = sources[i];
+        console.log(`\n🔄 处理第 ${i + 1}/${sources.length} 个source: ${source.name}`);
 
-      if (itemError) {
-        console.error('❌ 创建 content_item 失败:', itemError);
-        throw new Error(`数据库错误: ${itemError.message}`);
+        try {
+          // 检查是否为RSS feed
+          const isRSSFeed = await checkIfRSSFeedLocal(source.url);
+          
+          if (!isRSSFeed) {
+            console.log(`⚠️ 跳过非RSS源: ${source.name}`);
+            skippedSources.push({
+              id: source.id,
+              name: source.name,
+              url: source.url,
+              reason: '不是RSS feed格式'
+            });
+            continue;
+          }
+
+          // 抓取内容
+          const mockRSSData = getMockRSSData(source.url);
+          
+          // 创建content_item
+          const { data: contentItem, error: itemError } = await supabase
+            .from('content_items')
+            .insert({
+              source_id: source.id,
+              title: mockRSSData.title,
+              content_url: mockRSSData.link,
+              content_text: mockRSSData.content,
+              published_date: new Date(mockRSSData.publishedDate).toISOString(),
+              is_processed: false
+            })
+            .select()
+            .single();
+
+          if (itemError) {
+            console.error(`❌ 创建content_item失败 (${source.name}):`, itemError);
+            skippedSources.push({
+              id: source.id,
+              name: source.name,
+              url: source.url,
+              reason: `数据库错误: ${itemError.message}`
+            });
+            continue;
+          }
+
+          // 生成摘要
+          const summaryResult = await generateDeepSeekSummary(
+            mockRSSData.content,
+            mockRSSData.link
+          );
+
+          // 保存摘要
+          const { data: summary, error: summaryError } = await supabase
+            .from('summaries')
+            .insert({
+              content_item_id: contentItem.id,
+              summary_text: summaryResult.summary,
+              summary_length: summaryResult.summary.length,
+              reading_time: summaryResult.readingTime,
+              model_used: summaryResult.modelUsed,
+              processing_time: summaryResult.processingTime
+            })
+            .select()
+            .single();
+
+          if (summaryError) {
+            console.error(`❌ 保存摘要失败 (${source.name}):`, summaryError);
+            skippedSources.push({
+              id: source.id,
+              name: source.name,
+              url: source.url,
+              reason: `摘要保存失败: ${summaryError.message}`
+            });
+            continue;
+          }
+
+          // 更新content_item为已处理
+          await supabase
+            .from('content_items')
+            .update({ 
+              is_processed: true,
+              processing_error: null
+            })
+            .eq('id', contentItem.id);
+
+          // 更新source的last_scraped_at
+          await supabase
+            .from('content_sources')
+            .update({ 
+              last_scraped_at: new Date().toISOString(),
+              error_count: 0,
+              last_error: null
+            })
+            .eq('id', source.id);
+
+          // 记录成功处理的source
+          processedSources.push({
+            id: source.id,
+            name: source.name,
+            url: source.url,
+            contentItem,
+            summary,
+            extractedContent: {
+              title: mockRSSData.title,
+              contentLength: mockRSSData.content.length,
+              preview: mockRSSData.content.substring(0, 200) + '...'
+            }
+          });
+
+          allSummaries.push({
+            ...summary,
+            sourceName: source.name,
+            contentTitle: mockRSSData.title,
+            contentUrl: mockRSSData.link
+          });
+
+          console.log(`✅ 成功处理source: ${source.name}`);
+
+        } catch (error) {
+          console.error(`❌ 处理source失败 (${source.name}):`, error);
+          
+          // 更新source错误信息
+          await supabase
+            .from('content_sources')
+            .update({ 
+              last_error: error instanceof Error ? error.message : 'Unknown error',
+              error_count: (source.error_count || 0) + 1
+            })
+            .eq('id', source.id);
+
+          skippedSources.push({
+            id: source.id,
+            name: source.name,
+            url: source.url,
+            reason: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
       }
 
-      console.log('✅ 成功创建 content_item:', contentItem.id);
+      console.log(`\n🎯 处理完成统计:`);
+      console.log(`✅ 成功处理: ${processedSources.length} 个sources`);
+      console.log(`⚠️ 跳过: ${skippedSources.length} 个sources`);
+      console.log(`📄 生成摘要: ${allSummaries.length} 个`);
 
-      // 步骤 3: 生成 DeepSeek 摘要
-      console.log('🤖 开始生成 DeepSeek 摘要...');
-      const summaryResult = await generateDeepSeekSummary(
-        mockRSSData.content,
-        mockRSSData.link
-      );
-
-      // 步骤 4: 保存摘要到数据库
-      const { data: summary, error: summaryError } = await supabase
-        .from('summaries')
-        .insert({
-          content_item_id: contentItem.id,
-          summary_text: summaryResult.summary,
-          summary_length: summaryResult.summary.length,
-          reading_time: summaryResult.readingTime,
-          model_used: summaryResult.modelUsed,
-          processing_time: summaryResult.processingTime
-        })
-        .select()
-        .single();
-
-      if (summaryError) {
-        console.error('❌ 保存摘要失败:', summaryError);
-        throw new Error(`摘要保存失败: ${summaryError.message}`);
+      // 如果没有任何成功的处理，返回错误
+      if (processedSources.length === 0) {
+        throw new Error(`所有sources都处理失败。跳过的sources: ${skippedSources.map(s => s.name).join(', ')}`);
       }
-
-      console.log('✅ 成功保存摘要:', summary.id);
-
-      // 步骤 5: 更新 content_item 为已处理
-      await supabase
-        .from('content_items')
-        .update({ 
-          is_processed: true,
-          processing_error: null
-        })
-        .eq('id', contentItem.id);
-
-      // 步骤 6: 更新 source 的 last_scraped_at
-      await supabase
-        .from('content_sources')
-        .update({ 
-          last_scraped_at: new Date().toISOString(),
-          error_count: 0,
-          last_error: null
-        })
-        .eq('id', parseInt(sourceId));
-
-      console.log('🎉 一键抓取并生成摘要完成！');
 
       return {
         success: true,
         data: {
-          contentItem,
-          summary,
-          summaryResult,
-          extractedContent: {
-            title: mockRSSData.title,
-            contentLength: mockRSSData.content.length,
-            preview: mockRSSData.content.substring(0, 200) + '...',
-            source: source.name,
-            link: mockRSSData.link,
-            publishedDate: mockRSSData.publishedDate
-          }
+          processedSources,
+          skippedSources,
+          totalSummaries: allSummaries.length
         }
       };
 
     } catch (error) {
-      console.error('❌ 一键抓取并生成摘要失败:', error);
-      
-      // 更新 source 错误信息
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: currentSource } = await supabase
-            .from('content_sources')
-            .select('error_count')
-            .eq('id', parseInt(sourceId))
-            .eq('user_id', user.id)
-            .single();
-
-          if (currentSource) {
-            const newErrorCount = (currentSource.error_count || 0) + 1;
-            
-            await supabase
-              .from('content_sources')
-              .update({ 
-                last_error: error instanceof Error ? error.message : 'Unknown error',
-                error_count: newErrorCount
-              })
-              .eq('id', parseInt(sourceId))
-              .eq('user_id', user.id);
-          }
-        }
-      } catch (updateError) {
-        console.error('❌ 更新错误信息失败:', updateError);
-      }
-
+      console.error('❌ 全局处理sources失败:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

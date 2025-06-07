@@ -135,7 +135,7 @@ const Digests = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingIndicator size="lg\" text="Loading your digests..." />
+        <LoadingIndicator size="lg" text="Loading your digests..." />
       </div>
     );
   }
@@ -188,7 +188,7 @@ const Digests = () => {
               <h3 className="text-xl font-medium text-gray-900 mb-2">No digests yet</h3>
               <p className="text-gray-500 mb-6 max-w-md mx-auto">
                 Your digests will appear here once you start scraping content from your sources. 
-                Go to Sources and click "Scrape & Summarize" to get started!
+                Go to Sources and click "Process All Sources" to get started!
               </p>
               <Link to="/sources">
                 <Button>

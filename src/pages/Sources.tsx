@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCircle, Sparkles } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCircle, Sparkles, Zap } from 'lucide-react';
 import { sourcesApi } from '../services/api';
 import { ContentSource } from '../types';
 import { useToast } from '../hooks/use-toast';
@@ -25,8 +25,8 @@ const Sources = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingSource, setEditingSource] = useState<ContentSource | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<ContentSource | null>(null);
-  const [processingSources, setProcessingSources] = useState<Set<string>>(new Set());
-  const [processResults, setProcessResults] = useState<{[key: string]: any}>({});
+  const [globalProcessing, setGlobalProcessing] = useState(false);
+  const [processResults, setProcessResults] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -106,55 +106,44 @@ const Sources = () => {
     }
   };
 
-  // 🚀 新增：一键抓取并生成摘要功能
-  const handleScrapeAndSummarize = async (source: ContentSource) => {
-    const sourceId = source.id;
-    setProcessingSources(prev => new Set(prev).add(sourceId));
-    setProcessResults(prev => ({ ...prev, [sourceId]: null }));
+  // 🚀 全局处理所有sources的功能
+  const handleProcessAllSources = async () => {
+    setGlobalProcessing(true);
+    setProcessResults(null);
 
     try {
-      console.log('🚀 开始一键抓取并生成摘要...');
+      console.log('🚀 开始全局处理所有sources...');
       
-      const result = await sourcesApi.scrapeAndSummarize(sourceId);
+      const result = await sourcesApi.processAllSources();
       
-      setProcessResults(prev => ({ ...prev, [sourceId]: result }));
+      setProcessResults(result);
 
       if (result.success) {
+        const { processedSources, skippedSources, totalSummaries } = result.data!;
+        
         toast({
-          title: "🎉 抓取并摘要生成成功！",
-          description: `成功抓取内容并生成摘要。模型：${result.data.summary.model_used}`,
+          title: "🎉 全局处理完成！",
+          description: `成功处理 ${processedSources.length} 个sources，生成 ${totalSummaries} 个摘要。${skippedSources.length > 0 ? `跳过 ${skippedSources.length} 个sources。` : ''}`,
         });
         
         // 刷新 sources 列表以更新 lastScraped 时间
         fetchSources();
       } else {
         toast({
-          title: "❌ 处理失败",
-          description: result.error || "抓取并生成摘要失败",
+          title: "❌ 全局处理失败",
+          description: result.error || "处理过程中发生错误",
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error('一键处理失败:', error);
-      setProcessResults(prev => ({ 
-        ...prev, 
-        [sourceId]: { 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
-        } 
-      }));
-      
+      console.error('全局处理失败:', error);
       toast({
-        title: "❌ 处理失败",
-        description: "一键抓取并生成摘要过程中发生错误",
+        title: "❌ 全局处理失败",
+        description: "处理过程中发生错误，请重试。",
         variant: "destructive",
       });
     } finally {
-      setProcessingSources(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(sourceId);
-        return newSet;
-      });
+      setGlobalProcessing(false);
     }
   };
 
@@ -183,7 +172,7 @@ const Sources = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingIndicator size="lg\" text="Loading your sources..." />
+        <LoadingIndicator size="lg" text="Loading your sources..." />
       </div>
     );
   }
@@ -219,11 +208,102 @@ const Sources = () => {
               Manage your blogs, podcasts, and news sources
             </p>
           </div>
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Source
-          </Button>
+          <div className="flex space-x-3">
+            {/* 🚀 全局处理按钮 */}
+            {sourcesArray.length > 0 && (
+              <Button 
+                onClick={handleProcessAllSources}
+                disabled={globalProcessing}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+              >
+                {globalProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing All...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Process All Sources
+                  </>
+                )}
+              </Button>
+            )}
+            <Button onClick={() => setShowForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Source
+            </Button>
+          </div>
         </div>
+
+        {/* 全局处理结果显示 */}
+        {processResults && (
+          <div className="mb-8">
+            <Card className={`${
+              processResults.success 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-red-50 border-red-200'
+            }`}>
+              <CardHeader>
+                <CardTitle className={`flex items-center ${
+                  processResults.success ? 'text-green-800' : 'text-red-800'
+                }`}>
+                  {processResults.success ? (
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 mr-2" />
+                  )}
+                  全局处理结果
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {processResults.success ? (
+                  <div className="space-y-4">
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="text-center p-4 bg-white rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">
+                          {processResults.data.processedSources.length}
+                        </div>
+                        <div className="text-sm text-green-700">成功处理</div>
+                      </div>
+                      <div className="text-center p-4 bg-white rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {processResults.data.totalSummaries}
+                        </div>
+                        <div className="text-sm text-blue-700">生成摘要</div>
+                      </div>
+                      <div className="text-center p-4 bg-white rounded-lg">
+                        <div className="text-2xl font-bold text-orange-600">
+                          {processResults.data.skippedSources.length}
+                        </div>
+                        <div className="text-sm text-orange-700">跳过源</div>
+                      </div>
+                    </div>
+                    
+                    {processResults.data.skippedSources.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="font-medium text-orange-800 mb-2">跳过的Sources:</h4>
+                        <div className="space-y-2">
+                          {processResults.data.skippedSources.map((source: any, index: number) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-orange-100 rounded">
+                              <span className="font-medium">{source.name}</span>
+                              <span className="text-sm text-orange-700">{source.reason}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-red-700">
+                    <p className="font-medium">处理失败:</p>
+                    <p className="text-sm mt-1">{processResults.error}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Empty State */}
         {sourcesArray.length === 0 ? (
@@ -289,82 +369,22 @@ const Sources = () => {
                     Last scraped: {formatDate(source.lastScraped)}
                   </div>
 
-                  {/* 处理结果显示 */}
-                  {processResults[source.id] && (
-                    <div className={`p-3 rounded-lg text-sm ${
-                      processResults[source.id].success 
-                        ? 'bg-green-50 border border-green-200' 
-                        : 'bg-red-50 border border-red-200'
-                    }`}>
-                      {processResults[source.id].success ? (
-                        <div className="flex items-start space-x-2">
-                          <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-green-800">🎉 处理成功！</p>
-                            <p className="text-green-700 mt-1">
-                              抓取标题：{processResults[source.id].data?.extractedContent?.title?.substring(0, 40)}...
-                            </p>
-                            <p className="text-green-600 mt-1">
-                              摘要模型：{processResults[source.id].data?.summary?.model_used}
-                            </p>
-                            <p className="text-green-600 mt-1">
-                              摘要长度：{processResults[source.id].data?.summary?.summary_length} 字符
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-start space-x-2">
-                          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-red-800">处理失败</p>
-                            <p className="text-red-700 mt-1">
-                              {processResults[source.id].error}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-center">
-                    {/* 一键处理按钮 */}
+                  <div className="flex justify-end space-x-2">
                     <Button
-                      variant="default"
+                      variant="outline"
                       size="sm"
-                      onClick={() => handleScrapeAndSummarize(source)}
-                      disabled={processingSources.has(source.id)}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                      onClick={() => handleEdit(source)}
                     >
-                      {processingSources.has(source.id) ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-4 w-4 mr-1" />
-                          Scrape & Summarize
-                        </>
-                      )}
+                      <Edit className="h-4 w-4" />
                     </Button>
-
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(source)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDeleteDialog(source)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteDialog(source)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
