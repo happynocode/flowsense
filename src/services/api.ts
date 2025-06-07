@@ -3,29 +3,15 @@ import { User, ContentSource, Digest, Subscription, SubscriptionPlan, ApiRespons
 
 // Auth API
 export const authApi = {
-  loginWithEmail: async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (error) throw error;
-    return data;
-  },
-  
-  signUpWithEmail: async (email: string, password: string, name: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+  loginWithGoogle: async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
       options: {
-        data: {
-          full_name: name,
-        }
+        redirectTo: `${window.location.origin}/`
       }
     });
     
     if (error) throw error;
-    return data;
   },
   
   logout: async (): Promise<void> => {
@@ -324,20 +310,50 @@ export const subscriptionApi = {
     // Return static plans for now
     return [
       {
-        id: 'premium',
-        name: 'Premium Plan',
-        price: 9.99,
+        id: 'starter',
+        name: 'Neural Starter',
+        price: 29.99,
         features: [
-          'Up to 20 content sources',
-          'Daily AI digest delivery',
-          'Email summaries included',
-          'Audio digest versions',
+          'Up to 100 neural sources',
+          'Daily AI digest synthesis',
+          'Basic quantum analytics',
+          'Neural email delivery',
           'Mobile interface access',
-          'Priority support',
-          'Advanced analytics',
-          'Custom delivery schedules'
+          'Standard processing speed'
+        ],
+        isPopular: false
+      },
+      {
+        id: 'professional',
+        name: 'Quantum Professional',
+        price: 79.99,
+        features: [
+          'Unlimited neural sources',
+          'Real-time AI processing',
+          'Advanced quantum insights',
+          'Custom delivery schedules',
+          'API neural interface',
+          'Priority quantum support',
+          'Multi-dimensional analytics',
+          'Voice synthesis included'
         ],
         isPopular: true
+      },
+      {
+        id: 'enterprise',
+        name: 'Cosmic Enterprise',
+        price: 199.99,
+        features: [
+          'Everything in Professional',
+          'Custom AI neural models',
+          'White-label quantum solution',
+          'Dedicated neural support',
+          'On-premise deployment',
+          'Advanced security protocols',
+          'Team collaboration hub',
+          'Predictive trend analysis'
+        ],
+        isPopular: false
       }
     ];
   },

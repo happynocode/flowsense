@@ -7,8 +7,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  login: () => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -94,71 +93,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async () => {
     try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data.user) {
-        await refreshUser();
-        toast({
-          title: "登录成功",
-          description: "欢迎回到Neural Hub!",
-        });
-      }
-    } catch (error: any) {
-      console.error('Login error:', error);
-      toast({
-        title: "登录失败",
-        description: error.message || "登录时出现错误，请重试。",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signUp = async (email: string, password: string, name: string) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
         options: {
-          data: {
-            full_name: name,
-          }
+          redirectTo: `${window.location.origin}/`
         }
       });
 
       if (error) {
-        throw error;
-      }
-
-      if (data.user) {
         toast({
-          title: "注册成功",
-          description: "请检查您的邮箱以验证账户。",
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
         });
       }
-    } catch (error: any) {
-      console.error('Sign up error:', error);
+    } catch (error) {
       toast({
-        title: "注册失败",
-        description: error.message || "注册时出现错误，请重试。",
+        title: "Login failed",
+        description: "There was an error logging you in. Please try again.",
         variant: "destructive",
       });
-      throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -168,21 +124,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         toast({
-          title: "登出失败",
+          title: "Logout failed",
           description: error.message,
           variant: "destructive",
         });
       } else {
         setUser(null);
         toast({
-          title: "登出成功",
-          description: "您已成功登出账户。",
+          title: "Logged out successfully",
+          description: "You have been logged out of your account.",
         });
       }
     } catch (error) {
       toast({
-        title: "登出失败",
-        description: "登出时出现错误，请重试。",
+        title: "Logout failed",
+        description: "There was an error logging you out. Please try again.",
         variant: "destructive",
       });
     }
@@ -192,40 +148,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       setLoading(true);
       
-      try {
-        // Get initial session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          await refreshUser();
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        setLoading(false);
+      // Get initial session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        await refreshUser();
       }
+      
+      setLoading(false);
     };
 
     initAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email);
-      
       if (event === 'SIGNED_IN' && session) {
-        setLoading(true);
         await refreshUser();
-        setLoading(false);
         toast({
-          title: "登录成功",
-          description: "欢迎来到Neural Hub!",
+          title: "Logged in successfully",
+          description: "Welcome to Neural Hub!",
         });
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
-        setLoading(false);
-      } else if (event === 'TOKEN_REFRESHED') {
-        // Optionally refresh user data when token is refreshed
-        await refreshUser();
       }
     });
 
@@ -236,7 +180,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     loading,
     login,
-    signUp,
     logout,
     refreshUser,
   };

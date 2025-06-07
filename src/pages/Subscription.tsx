@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { subscriptionApi } from '../services/api';
@@ -21,20 +22,50 @@ const SubscriptionPage = () => {
 
   const mockPlans: SubscriptionPlan[] = [
     {
-      id: 'premium',
-      name: 'Premium Plan',
-      price: 9.99,
+      id: 'starter',
+      name: 'Neural Starter',
+      price: 29.99,
       features: [
-        'Up to 20 content sources',
-        'Daily AI digest delivery',
-        'Email summaries included',
-        'Audio digest versions',
+        'Up to 100 neural sources',
+        'Daily AI digest synthesis',
+        'Basic quantum analytics',
+        'Neural email delivery',
         'Mobile interface access',
-        'Priority support',
-        'Advanced analytics',
-        'Custom delivery schedules'
+        'Standard processing speed'
+      ],
+      isPopular: false
+    },
+    {
+      id: 'professional',
+      name: 'Quantum Professional',
+      price: 79.99,
+      features: [
+        'Unlimited neural sources',
+        'Real-time AI processing',
+        'Advanced quantum insights',
+        'Custom delivery schedules',
+        'API neural interface',
+        'Priority quantum support',
+        'Multi-dimensional analytics',
+        'Voice synthesis included'
       ],
       isPopular: true
+    },
+    {
+      id: 'enterprise',
+      name: 'Cosmic Enterprise',
+      price: 199.99,
+      features: [
+        'Everything in Professional',
+        'Custom AI neural models',
+        'White-label quantum solution',
+        'Dedicated neural support',
+        'On-premise deployment',
+        'Advanced security protocols',
+        'Team collaboration hub',
+        'Predictive trend analysis'
+      ],
+      isPopular: false
     }
   ];
 
@@ -55,7 +86,7 @@ const SubscriptionPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 relative">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-4">
             <span className="text-cosmic-gradient">Power Level</span>{" "}
@@ -134,27 +165,37 @@ const SubscriptionPage = () => {
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-space-grotesk font-bold mb-4">
               <span className="text-aurora-gradient">Neural</span>{" "}
-              <span className="text-starlight">Power Level</span>
+              <span className="text-starlight">Power Levels</span>
             </h2>
-            <p className="text-lunar-grey text-lg">The perfect configuration for enhanced intelligence processing</p>
+            <p className="text-lunar-grey text-lg">Choose the configuration that matches your intelligence requirements</p>
           </div>
           
-          <div className="max-w-md mx-auto">
+          <div className="grid md:grid-cols-3 gap-8">
             {currentPlans.map((plan: SubscriptionPlan) => (
               <Card 
                 key={plan.id} 
-                className="relative glass-card border-0 gradient-border glow-blue scale-105"
+                className={`relative glass-card border-0 ${
+                  plan.isPopular ? 'gradient-border glow-blue scale-105' : ''
+                }`}
               >
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-sunset-gradient text-starlight px-4 py-2 glow-pink">
-                    <Sparkles className="w-4 h-4 mr-1" />
-                    Most Popular
-                  </Badge>
-                </div>
+                {plan.isPopular && (
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <Badge className="bg-sunset-gradient text-starlight px-4 py-2 glow-pink">
+                      <Sparkles className="w-4 h-4 mr-1" />
+                      Most Advanced
+                    </Badge>
+                  </div>
+                )}
                 
                 <CardHeader className="text-center pb-6">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-sunset-gradient rounded-2xl flex items-center justify-center glow-pink">
-                    <Brain className="w-8 h-8 text-starlight" />
+                  <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${
+                    plan.isPopular 
+                      ? 'bg-sunset-gradient glow-pink' 
+                      : 'bg-cosmic-gradient glow-purple'
+                  }`}>
+                    {plan.id === 'starter' && <Zap className="w-8 h-8 text-starlight" />}
+                    {plan.id === 'professional' && <Brain className="w-8 h-8 text-starlight" />}
+                    {plan.id === 'enterprise' && <Globe className="w-8 h-8 text-starlight" />}
                   </div>
                   <CardTitle className="text-2xl text-starlight mb-4">{plan.name}</CardTitle>
                   <div className="mb-4">
@@ -174,7 +215,11 @@ const SubscriptionPage = () => {
                   </ul>
                   
                   <Button 
-                    className="w-full h-12 btn-cosmic"
+                    className={`w-full h-12 ${
+                      plan.isPopular 
+                        ? 'btn-cosmic' 
+                        : 'btn-outline-electric'
+                    }`}
                     disabled={subscription?.planId === plan.id}
                   >
                     {subscription?.planId === plan.id ? (
