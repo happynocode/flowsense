@@ -249,11 +249,29 @@ export const sourcesApi = {
       // 使用 CORS 代理来抓取内容
       const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(source.url)}`;
       
-      const response = await fetch(proxyUrl);
+      let response;
+      try {
+        response = await fetch(proxyUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+          // Add timeout to prevent hanging requests
+          signal: AbortSignal.timeout(30000) // 30 second timeout
+        });
+      } catch (fetchError) {
+        console.error('❌ 网络请求失败:', fetchError);
+        throw new Error(`Network request failed: ${fetchError instanceof Error ? fetchError.message : 'Unknown network error'}`);
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
       
       if (!data.contents) {
-        throw new Error('Failed to fetch content');
+        throw new Error('Failed to fetch content from proxy service');
       }
 
       // 解析 HTML 内容
@@ -351,13 +369,27 @@ export const sourcesApi = {
       
       // 更新 source 错误信息
       try {
-        await supabase
+        // First, get the current error_count
+        const { data: currentSource, error: fetchError } = await supabase
           .from('content_sources')
-          .update({ 
-            last_error: error instanceof Error ? error.message : 'Unknown error',
-            error_count: supabase.raw('error_count + 1')
-          })
-          .eq('id', parseInt(sourceId));
+          .select('error_count')
+          .eq('id', parseInt(sourceId))
+          .single();
+
+        if (fetchError) {
+          console.error('❌ 获取当前错误计数失败:', fetchError);
+        } else {
+          // Increment the error count
+          const newErrorCount = (currentSource?.error_count || 0) + 1;
+          
+          await supabase
+            .from('content_sources')
+            .update({ 
+              last_error: error instanceof Error ? error.message : 'Unknown error',
+              error_count: newErrorCount
+            })
+            .eq('id', parseInt(sourceId));
+        }
       } catch (updateError) {
         console.error('❌ 更新错误信息失败:', updateError);
       }
