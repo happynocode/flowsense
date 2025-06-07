@@ -246,41 +246,79 @@ export const sourcesApi = {
 
       console.log('📄 开始抓取网站内容:', source.url);
 
-      // 使用 CORS 代理来抓取内容
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(source.url)}`;
-      
+      // 使用多个 CORS 代理服务，提供 fallback 选项
+      const proxyServices = [
+        `https://corsproxy.io/?${encodeURIComponent(source.url)}`,
+        `https://cors-anywhere.herokuapp.com/${source.url}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(source.url)}`,
+        `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(source.url)}`
+      ];
+
       let response;
-      try {
-        response = await fetch(proxyUrl, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          },
-          // Add timeout to prevent hanging requests
-          signal: AbortSignal.timeout(30000) // 30 second timeout
-        });
-      } catch (fetchError) {
-        console.error('❌ 网络请求失败:', fetchError);
-        throw new Error(`Network request failed: ${fetchError instanceof Error ? fetchError.message : 'Unknown network error'}`);
+      let lastError;
+      
+      // 尝试多个代理服务
+      for (let i = 0; i < proxyServices.length; i++) {
+        const proxyUrl = proxyServices[i];
+        console.log(`🔄 尝试代理服务 ${i + 1}/${proxyServices.length}:`, proxyUrl);
+        
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15秒超时
+          
+          response = await fetch(proxyUrl, {
+            method: 'GET',
+            headers: {
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            console.log(`✅ 代理服务 ${i + 1} 成功响应`);
+            break;
+          } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+        } catch (fetchError) {
+          console.warn(`⚠️ 代理服务 ${i + 1} 失败:`, fetchError);
+          lastError = fetchError;
+          response = null;
+          
+          // 如果不是最后一个代理，继续尝试下一个
+          if (i < proxyServices.length - 1) {
+            continue;
+          }
+        }
       }
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // 如果所有代理都失败了
+      if (!response || !response.ok) {
+        throw new Error(`所有代理服务都失败了。最后错误: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`);
       }
-      
-      const data = await response.json();
-      
-      if (!data.contents) {
-        throw new Error('Failed to fetch content from proxy service');
+
+      // 获取响应内容
+      let htmlContent;
+      try {
+        htmlContent = await response.text();
+      } catch (textError) {
+        throw new Error(`无法读取响应内容: ${textError instanceof Error ? textError.message : 'Unknown error'}`);
+      }
+
+      if (!htmlContent || htmlContent.length < 100) {
+        throw new Error('获取的内容为空或过短');
       }
 
       // 解析 HTML 内容
       const parser = new DOMParser();
-      const doc = parser.parseFromString(data.contents, 'text/html');
+      const doc = parser.parseFromString(htmlContent, 'text/html');
       
       // 提取标题
-      const title = doc.querySelector('title')?.textContent || 
-                   doc.querySelector('h1')?.textContent || 
+      const title = doc.querySelector('title')?.textContent?.trim() || 
+                   doc.querySelector('h1')?.textContent?.trim() || 
                    'Untitled';
 
       // 提取主要内容
@@ -288,33 +326,48 @@ export const sourcesApi = {
       const contentSelectors = [
         'article', '.post', '.entry', '.content',
         '.post-content', '.entry-content', '.article-content',
-        'main', '.main-content', '#content'
+        'main', '.main-content', '#content', '.container'
       ];
 
       for (const selector of contentSelectors) {
         const element = doc.querySelector(selector);
         if (element) {
+          // 移除 script 和 style 标签
+          const scripts = element.querySelectorAll('script, style, nav, header, footer, aside');
+          scripts.forEach(script => script.remove());
+          
           content = element.textContent || '';
-          break;
+          if (content.trim().length > 200) {
+            break;
+          }
         }
       }
 
       // 如果没找到特定内容区域，使用 body
-      if (!content) {
+      if (!content || content.trim().length < 200) {
         const body = doc.querySelector('body');
         if (body) {
-          // 移除 script 和 style 标签
-          const scripts = body.querySelectorAll('script, style');
-          scripts.forEach(script => script.remove());
+          // 移除不需要的元素
+          const unwanted = body.querySelectorAll('script, style, nav, header, footer, aside, .navigation, .menu, .sidebar');
+          unwanted.forEach(element => element.remove());
           content = body.textContent || '';
         }
       }
 
       // 清理内容
-      content = content.replace(/\s+/g, ' ').trim();
+      content = content
+        .replace(/\s+/g, ' ')
+        .replace(/\n+/g, ' ')
+        .trim();
       
       if (content.length < 100) {
-        throw new Error('Content too short or not found');
+        throw new Error('提取的内容太短，可能网站结构不支持抓取');
+      }
+
+      // 限制内容长度以避免数据库限制
+      const maxContentLength = 10000;
+      if (content.length > maxContentLength) {
+        content = content.substring(0, maxContentLength) + '...';
       }
 
       // 创建 content_item 记录
@@ -324,7 +377,7 @@ export const sourcesApi = {
           source_id: parseInt(sourceId),
           title: title.substring(0, 500), // 限制标题长度
           content_url: source.url,
-          content_text: content.substring(0, 10000), // 限制内容长度
+          content_text: content,
           published_date: new Date().toISOString(),
           is_processed: false
         })
@@ -333,7 +386,7 @@ export const sourcesApi = {
 
       if (itemError) {
         console.error('❌ 创建 content_item 失败:', itemError);
-        throw itemError;
+        throw new Error(`数据库错误: ${itemError.message}`);
       }
 
       console.log('✅ 成功抓取内容并创建 content_item:', contentItem.id);
@@ -357,7 +410,7 @@ export const sourcesApi = {
           contentItem,
           summary: summaryResult,
           extractedContent: {
-            title,
+            title: title.substring(0, 100),
             contentLength: content.length,
             preview: content.substring(0, 200) + '...'
           }
@@ -463,19 +516,29 @@ const testAISummarization = async (contentItemId: number, content: string): Prom
 
 // 生成模拟 AI 总结
 const generateMockSummary = (content: string): string => {
-  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
+  // 提取前几个有意义的句子
+  const sentences = content
+    .split(/[.!?]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 20 && s.length < 200)
+    .slice(0, 5);
   
   if (sentences.length === 0) {
-    return "This content discusses various topics and provides information on the subject matter.";
+    return "This content discusses various topics and provides information on the subject matter. The article covers important points and insights relevant to the topic.";
   }
 
-  // 选择前几个有意义的句子作为总结
+  // 选择最有代表性的句子
   const selectedSentences = sentences.slice(0, Math.min(3, sentences.length));
   let summary = selectedSentences.join('. ').trim();
   
   // 确保总结以句号结尾
   if (!summary.endsWith('.')) {
     summary += '.';
+  }
+
+  // 添加总结性语句
+  if (summary.length < 200) {
+    summary += ' This article provides valuable insights and information on the topic.';
   }
 
   // 限制总结长度
@@ -667,3 +730,5 @@ export const subscriptionApi = {
 };
 
 export default { authApi, sourcesApi, digestsApi, subscriptionApi };
+
+export { digestsApi, sourcesApi }
