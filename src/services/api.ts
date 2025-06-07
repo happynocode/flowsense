@@ -730,5 +730,3 @@ export const subscriptionApi = {
 };
 
 export default { authApi, sourcesApi, digestsApi, subscriptionApi };
-
-export { digestsApi, sourcesApi }
