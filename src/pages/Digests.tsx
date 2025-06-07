@@ -135,7 +135,7 @@ const Digests = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingIndicator size="lg" text="Loading your digests..." />
+        <LoadingIndicator size="lg\" text="Loading your digests..." />
       </div>
     );
   }
