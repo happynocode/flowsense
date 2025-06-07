@@ -34,45 +34,11 @@ const Sources = () => {
   const fetchSources = async () => {
     try {
       setLoading(true);
-      
-      // Mock data for demonstration since we don't have a real backend
-      const mockSources: ContentSource[] = [
-        {
-          id: '1',
-          name: 'Tech News',
-          url: 'https://technews.com',
-          type: 'blog',
-          description: 'Latest technology news and updates',
-          isActive: true,
-          lastScraped: new Date().toISOString(),
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          name: 'AI Podcast',
-          url: 'https://aipodcast.com',
-          type: 'podcast',
-          description: 'Weekly AI discussions',
-          isActive: true,
-          lastScraped: new Date().toISOString(),
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '3',
-          name: 'Daily News',
-          url: 'https://dailynews.com',
-          type: 'news',
-          description: 'Breaking news and current events',
-          isActive: false,
-          lastScraped: new Date().toISOString(),
-          createdAt: new Date().toISOString()
-        }
-      ];
-      
-      setSources(mockSources || []);
+      const data = await sourcesApi.getSources();
+      setSources(data || []);
     } catch (error) {
       console.error('Failed to load sources:', error);
-      setSources([]); // Ensure sources is always an array
+      setSources([]);
       toast({
         title: "Failed to load sources",
         description: "There was an error loading your content sources.",
