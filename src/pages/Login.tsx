@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Brain, Zap, Shield, Globe, Mail, Lock, User, AlertCircle } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 import { Alert, AlertDescription } from '../components/ui/alert';
@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 const Login = () => {
   const { user, signIn, signUp, loading } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const [signInForm, setSignInForm] = useState({
     email: '',
@@ -30,7 +31,7 @@ const Login = () => {
   const [showSupabaseWarning, setShowSupabaseWarning] = useState(false);
 
   // 检查 Supabase 配置
-  React.useEffect(() => {
+  useEffect(() => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
@@ -38,6 +39,15 @@ const Login = () => {
       setShowSupabaseWarning(true);
     }
   }, []);
+
+  // 🎯 监听用户状态变化，登录成功后自动跳转
+  useEffect(() => {
+    if (user && !loading) {
+      console.log('🎯 用户已登录，准备跳转到首页:', user.email);
+      // 使用 navigate 而不是 Navigate 组件，确保跳转
+      navigate('/', { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   if (loading) {
     return (
@@ -52,7 +62,9 @@ const Login = () => {
     );
   }
 
+  // 如果用户已登录，直接跳转（备用保护）
   if (user) {
+    console.log('🔄 用户已登录，使用 Navigate 组件跳转');
     return <Navigate to="/" replace />;
   }
 
@@ -69,8 +81,12 @@ const Login = () => {
 
     setIsSubmitting(true);
     try {
+      console.log('🔐 开始登录流程...');
       await signIn(signInForm.email, signInForm.password);
+      console.log('✅ 登录流程完成');
+      // 登录成功后，useEffect 会自动处理跳转
     } catch (error) {
+      console.error('❌ 登录失败:', error);
       // Error is handled in the signIn function
     } finally {
       setIsSubmitting(false);
@@ -108,7 +124,9 @@ const Login = () => {
 
     setIsSubmitting(true);
     try {
+      console.log('📝 开始注册流程...');
       await signUp(signUpForm.email, signUpForm.password, signUpForm.name);
+      console.log('✅ 注册流程完成');
       // Reset form on success
       setSignUpForm({
         name: '',
@@ -116,7 +134,9 @@ const Login = () => {
         password: '',
         confirmPassword: ''
       });
+      // 注册成功后，如果直接登录，useEffect 会自动处理跳转
     } catch (error) {
+      console.error('❌ 注册失败:', error);
       // Error is handled in the signUp function
     } finally {
       setIsSubmitting(false);

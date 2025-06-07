@@ -12,7 +12,8 @@ const Index = () => {
   console.log('📄 Index 页面状态:', { 
     hasUser: !!user, 
     loading, 
-    userEmail: user?.email 
+    userEmail: user?.email,
+    userId: user?.id 
   });
 
   // 在开发环境中显示环境变量检查
@@ -47,7 +48,12 @@ const Index = () => {
     );
   }
 
-  console.log('✅ 已登录用户，显示 Home 页面');
+  console.log('✅ 已登录用户，显示 Home 页面，用户信息:', {
+    id: user.id,
+    email: user.email,
+    name: user.name
+  });
+  
   return <Home />;
 };
 

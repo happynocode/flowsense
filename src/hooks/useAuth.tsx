@@ -218,6 +218,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "注册成功",
           description: "请检查您的邮箱并点击确认链接来激活账户。",
         });
+      } else if (data.session) {
+        // 如果注册后直接有 session，说明邮箱确认被禁用，用户已登录
+        console.log('✅ 注册后直接登录成功');
+        toast({
+          title: "注册成功",
+          description: "欢迎加入 Neural Hub！",
+        });
       }
     } catch (error: any) {
       console.error('❌ Sign up error:', error);
@@ -261,6 +268,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "登录成功",
           description: "欢迎回到 Neural Hub！",
         });
+        
+        // 🎯 登录成功后立即刷新用户状态，确保页面跳转
+        console.log('🔄 登录成功，立即刷新用户状态...');
+        await refreshUser();
       }
     } catch (error: any) {
       console.error('❌ Sign in error:', error);
@@ -379,6 +390,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('✅ 用户已登录，刷新用户数据');
         try {
           await refreshUser();
+          console.log('🎯 认证状态变化后用户数据已更新');
         } catch (refreshError) {
           console.error('❌ 状态变化时刷新用户失败:', refreshError);
           setLoading(false);
@@ -387,6 +399,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('👋 用户已登出');
         setUser(null);
         setLoading(false);
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        console.log('🔄 Token 已刷新，更新用户数据');
+        try {
+          await refreshUser();
+        } catch (refreshError) {
+          console.error('❌ Token 刷新时更新用户失败:', refreshError);
+        }
       }
     });
 
