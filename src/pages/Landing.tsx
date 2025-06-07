@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
@@ -56,46 +57,19 @@ const Landing = () => {
     }
   ];
 
-  const pricingPlans = [
-    {
-      name: "Starter",
-      price: 9,
-      features: [
-        "Follow up to 10 sources",
-        "Daily summary delivered to your inbox",
-        "Key insights and takeaways",
-        "Mobile-friendly format",
-        "Email support"
-      ],
-      isPopular: false
-    },
-    {
-      name: "Professional",
-      price: 19,
-      features: [
-        "Follow unlimited sources",
-        "Real-time updates throughout the day",
-        "Advanced trend analysis",
-        "Audio summaries for listening",
-        "Custom delivery schedule",
-        "Priority support"
-      ],
-      isPopular: true
-    },
-    {
-      name: "Enterprise",
-      price: 49,
-      features: [
-        "Everything in Professional",
-        "Team sharing and collaboration",
-        "Custom branding options",
-        "Dedicated account manager",
-        "Advanced security features",
-        "Custom integrations"
-      ],
-      isPopular: false
-    }
-  ];
+  const starterPlan = {
+    name: "Starter",
+    price: 9,
+    features: [
+      "Follow up to 10 sources",
+      "Daily summary delivered to your inbox",
+      "Key insights and takeaways",
+      "Mobile-friendly format",
+      "Email support",
+      "Audio summaries for listening",
+      "Custom delivery schedule"
+    ]
+  };
 
   return (
     <div className="min-h-screen relative">
@@ -215,60 +189,45 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6">
-              <span className="text-starlight">Choose Your</span>{" "}
-              <span className="text-cosmic-gradient">Perfect Plan</span>
+              <span className="text-starlight">Simple</span>{" "}
+              <span className="text-cosmic-gradient">Pricing</span>
             </h2>
             <p className="text-xl text-lunar-grey max-w-2xl mx-auto">
-              Start free, then pick the plan that fits your information needs
+              One plan that gives you everything you need to stay informed
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {pricingPlans.map((plan, index) => (
-              <Card 
-                key={index} 
-                className={`relative glass-card border-0 ${
-                  plan.isPopular ? 'gradient-border glow-blue scale-105' : ''
-                }`}
-              >
-                {plan.isPopular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-sunset-gradient text-starlight text-sm font-medium py-2 px-4 rounded-full glow-pink">
-                      Most Popular
-                    </span>
-                  </div>
-                )}
+          <div className="max-w-md mx-auto">
+            <Card className="glass-card border-0 gradient-border glow-blue">
+              <CardHeader className="text-center pb-6">
+                <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-2xl flex items-center justify-center glow-purple">
+                  <Brain className="w-8 h-8 text-starlight" />
+                </div>
+                <CardTitle className="text-2xl text-starlight mb-4">{starterPlan.name}</CardTitle>
+                <div className="mb-4">
+                  <span className="text-4xl font-bold text-cosmic-gradient">${starterPlan.price}</span>
+                  <span className="text-lunar-grey">/month</span>
+                </div>
+              </CardHeader>
+              
+              <CardContent>
+                <ul className="space-y-4 mb-8">
+                  {starterPlan.features.map((feature, index) => (
+                    <li key={index} className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-astral-teal mr-3 mt-0.5 flex-shrink-0" />
+                      <span className="text-starlight text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
                 
-                <CardHeader className="text-center pb-6">
-                  <CardTitle className="text-2xl text-starlight mb-4">{plan.name}</CardTitle>
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold text-cosmic-gradient">${plan.price}</span>
-                    <span className="text-lunar-grey">/month</span>
-                  </div>
-                </CardHeader>
-                
-                <CardContent>
-                  <ul className="space-y-4 mb-8">
-                    {plan.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-start">
-                        <CheckCircle className="w-5 h-5 text-astral-teal mr-3 mt-0.5 flex-shrink-0" />
-                        <span className="text-starlight text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  
-                  <Button 
-                    className={`w-full h-12 ${
-                      plan.isPopular 
-                        ? 'btn-cosmic' 
-                        : 'btn-outline-electric'
-                    }`}
-                  >
-                    {plan.isPopular ? 'Start Free Trial' : `Try ${plan.name}`}
+                <Link to="/login">
+                  <Button className="w-full h-12 btn-cosmic">
+                    <Brain className="w-4 h-4 mr-2" />
+                    Start Free Trial
                   </Button>
-                </CardContent>
-              </Card>
-            ))}
+                </Link>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
