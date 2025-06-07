@@ -271,37 +271,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         console.log('✅ Supabase 客户端检查通过');
         
-        // 设置强制超时
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => {
-            reject(new Error('认证初始化超时'));
-          }, 5000); // 5秒超时
-        });
-        
-        // 获取会话的 Promise
-        const sessionPromise = supabase.auth.getSession();
-        
-        // 竞争：要么获取到会话，要么超时
-        const { data: { session }, error } = await Promise.race([
-          sessionPromise,
-          timeoutPromise
-        ]) as any;
-        
-        if (error) {
-          console.error('❌ 会话获取错误:', error);
-        } else if (session) {
-          console.log('✅ 找到现有会话，用户:', session.user?.email);
-          await refreshUser();
-        } else {
-          console.log('ℹ️ 未找到现有会话');
+        // 尝试获取会话，但不设置严格超时
+        try {
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('❌ 会话获取错误:', error);
+            // 即使有错误也继续，不阻止应用加载
+          } else if (session) {
+            console.log('✅ 找到现有会话，用户:', session.user?.email);
+            await refreshUser();
+          } else {
+            console.log('ℹ️ 未找到现有会话');
+          }
+        } catch (sessionError) {
+          console.warn('⚠️ 获取会话时出错，但继续加载应用:', sessionError);
+          // 不抛出错误，让应用继续加载
         }
         
       } catch (error) {
         console.error('❌ 认证初始化错误:', error);
-        
-        if (error instanceof Error && error.message.includes('超时')) {
-          console.warn('⏰ 认证初始化超时，继续加载应用');
-        }
+        // 不阻止应用加载，即使认证初始化失败
       } finally {
         console.log('🏁 认证初始化完成，设置 loading = false');
         setLoading(false);
