@@ -283,73 +283,95 @@ export const sourcesApi = {
             continue;
           }
 
-          // 抓取内容
-          const mockRSSData = getMockRSSData(source.url);
+          // 🎯 抓取RSS feed内容（获取最近一周的文章）
+          const rssArticles = await fetchRSSFeedContent(source.url);
           
-          // 创建content_item
-          const { data: contentItem, error: itemError } = await supabase
-            .from('content_items')
-            .insert({
-              source_id: source.id,
-              title: mockRSSData.title,
-              content_url: mockRSSData.link,
-              content_text: mockRSSData.content,
-              published_date: new Date(mockRSSData.publishedDate).toISOString(),
-              is_processed: false
-            })
-            .select()
-            .single();
-
-          if (itemError) {
-            console.error(`❌ 创建content_item失败 (${source.name}):`, itemError);
+          if (!rssArticles || rssArticles.length === 0) {
+            console.log(`⚠️ 跳过无内容源: ${source.name}`);
             skippedSources.push({
               id: source.id,
               name: source.name,
               url: source.url,
-              reason: `数据库错误: ${itemError.message}`
+              reason: '没有找到最近一周的文章'
             });
             continue;
           }
 
-          // 生成摘要
-          const summaryResult = await generateDeepSeekSummary(
-            mockRSSData.content,
-            mockRSSData.link
-          );
+          console.log(`📄 从 ${source.name} 获取到 ${rssArticles.length} 篇最新文章`);
 
-          // 保存摘要
-          const { data: summary, error: summaryError } = await supabase
-            .from('summaries')
-            .insert({
-              content_item_id: contentItem.id,
-              summary_text: summaryResult.summary,
-              summary_length: summaryResult.summary.length,
-              reading_time: summaryResult.readingTime,
-              model_used: summaryResult.modelUsed,
-              processing_time: summaryResult.processingTime
-            })
-            .select()
-            .single();
+          // 处理每篇文章
+          for (const article of rssArticles) {
+            try {
+              // 🌐 获取文章全文内容
+              const fullContent = await fetchFullArticleContent(article.link);
+              
+              // 创建content_item
+              const { data: contentItem, error: itemError } = await supabase
+                .from('content_items')
+                .insert({
+                  source_id: source.id,
+                  title: article.title,
+                  content_url: article.link,
+                  content_text: fullContent,
+                  published_date: new Date(article.publishedDate).toISOString(),
+                  is_processed: false
+                })
+                .select()
+                .single();
 
-          if (summaryError) {
-            console.error(`❌ 保存摘要失败 (${source.name}):`, summaryError);
-            skippedSources.push({
-              id: source.id,
-              name: source.name,
-              url: source.url,
-              reason: `摘要保存失败: ${summaryError.message}`
-            });
-            continue;
+              if (itemError) {
+                console.error(`❌ 创建content_item失败 (${article.title}):`, itemError);
+                continue;
+              }
+
+              // 生成摘要
+              const summaryResult = await generateDeepSeekSummary(
+                fullContent,
+                article.link
+              );
+
+              // 保存摘要
+              const { data: summary, error: summaryError } = await supabase
+                .from('summaries')
+                .insert({
+                  content_item_id: contentItem.id,
+                  summary_text: summaryResult.summary,
+                  summary_length: summaryResult.summary.length,
+                  reading_time: summaryResult.readingTime,
+                  model_used: summaryResult.modelUsed,
+                  processing_time: summaryResult.processingTime
+                })
+                .select()
+                .single();
+
+              if (summaryError) {
+                console.error(`❌ 保存摘要失败 (${article.title}):`, summaryError);
+                continue;
+              }
+
+              // 更新content_item为已处理
+              await supabase
+                .from('content_items')
+                .update({ 
+                  is_processed: true,
+                  processing_error: null
+                })
+                .eq('id', contentItem.id);
+
+              allSummaries.push({
+                ...summary,
+                sourceName: source.name,
+                contentTitle: article.title,
+                contentUrl: article.link
+              });
+
+              console.log(`✅ 成功处理文章: ${article.title.substring(0, 50)}...`);
+
+            } catch (articleError) {
+              console.error(`❌ 处理文章失败 (${article.title}):`, articleError);
+              continue;
+            }
           }
-
-          // 更新content_item为已处理
-          await supabase
-            .from('content_items')
-            .update({ 
-              is_processed: true,
-              processing_error: null
-            })
-            .eq('id', contentItem.id);
 
           // 更新source的last_scraped_at
           await supabase
@@ -366,23 +388,14 @@ export const sourcesApi = {
             id: source.id,
             name: source.name,
             url: source.url,
-            contentItem,
-            summary,
+            articlesProcessed: rssArticles.length,
             extractedContent: {
-              title: mockRSSData.title,
-              contentLength: mockRSSData.content.length,
-              preview: mockRSSData.content.substring(0, 200) + '...'
+              totalArticles: rssArticles.length,
+              latestTitle: rssArticles[0]?.title || 'N/A'
             }
           });
 
-          allSummaries.push({
-            ...summary,
-            sourceName: source.name,
-            contentTitle: mockRSSData.title,
-            contentUrl: mockRSSData.link
-          });
-
-          console.log(`✅ 成功处理source: ${source.name}`);
+          console.log(`✅ 成功处理source: ${source.name}，处理了 ${rssArticles.length} 篇文章`);
 
         } catch (error) {
           console.error(`❌ 处理source失败 (${source.name}):`, error);
@@ -434,6 +447,628 @@ export const sourcesApi = {
   }
 };
 
+// 🌐 获取RSS feed内容（最近一周的文章）
+const fetchRSSFeedContent = async (feedUrl: string): Promise<any[]> => {
+  try {
+    console.log('📡 抓取RSS feed内容:', feedUrl);
+    
+    // 🎯 在StackBlitz环境中，我们模拟RSS抓取，但会生成最近一周的文章
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    // 根据不同的RSS源生成不同数量的最新文章
+    const mockArticles = generateRecentArticles(feedUrl, oneWeekAgo);
+    
+    console.log(`📄 模拟获取到 ${mockArticles.length} 篇最近一周的文章`);
+    
+    return mockArticles;
+    
+  } catch (error) {
+    console.error('❌ 抓取RSS feed失败:', error);
+    return [];
+  }
+};
+
+// 🎯 生成最近一周的文章（模拟RSS抓取）
+const generateRecentArticles = (feedUrl: string, oneWeekAgo: Date): any[] => {
+  const lowerUrl = feedUrl.toLowerCase();
+  const articles: any[] = [];
+  
+  // 生成2-5篇最近的文章
+  const articleCount = Math.floor(Math.random() * 4) + 2;
+  
+  for (let i = 0; i < articleCount; i++) {
+    const daysAgo = Math.floor(Math.random() * 7); // 0-6天前
+    const publishDate = new Date();
+    publishDate.setDate(publishDate.getDate() - daysAgo);
+    publishDate.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60));
+    
+    if (lowerUrl.includes('waitbutwhy')) {
+      articles.push({
+        title: `AI and the Future of Work - Part ${i + 1}`,
+        link: `https://waitbutwhy.com/2024/ai-future-work-${i + 1}`,
+        publishedDate: publishDate.toISOString(),
+        summary: `Exploring how artificial intelligence will reshape the job market and human productivity in the coming decades...`
+      });
+    } else if (lowerUrl.includes('lexfridman')) {
+      const guests = ['Sam Altman', 'Demis Hassabis', 'Yann LeCun', 'Geoffrey Hinton', 'Andrej Karpathy'];
+      articles.push({
+        title: `${guests[i % guests.length]}: AI, Consciousness, and the Future of Intelligence`,
+        link: `https://lexfridman.com/podcast-${400 + i}`,
+        publishedDate: publishDate.toISOString(),
+        summary: `Deep conversation about artificial intelligence, consciousness, and the future of human-AI collaboration...`
+      });
+    } else if (lowerUrl.includes('substack')) {
+      articles.push({
+        title: `AI Tools Weekly Update - ${publishDate.toLocaleDateString()}`,
+        link: `https://oneusefulthing.substack.com/p/ai-tools-update-${i + 1}`,
+        publishedDate: publishDate.toISOString(),
+        summary: `Latest developments in AI tools and practical applications for professionals...`
+      });
+    } else {
+      // 通用技术文章
+      const topics = ['Machine Learning', 'Web Development', 'Cloud Computing', 'Cybersecurity', 'Data Science'];
+      articles.push({
+        title: `${topics[i % topics.length]} Trends in ${new Date().getFullYear()}`,
+        link: `https://example.com/article-${Date.now()}-${i}`,
+        publishedDate: publishDate.toISOString(),
+        summary: `Comprehensive analysis of current trends and future directions in ${topics[i % topics.length].toLowerCase()}...`
+      });
+    }
+  }
+  
+  return articles.sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime());
+};
+
+// 🌐 获取文章全文内容
+const fetchFullArticleContent = async (articleUrl: string): Promise<string> => {
+  try {
+    console.log('📖 获取文章全文:', articleUrl);
+    
+    // 🎯 在StackBlitz环境中，我们模拟全文抓取
+    // 实际应用中，这里会使用网页抓取工具获取完整文章内容
+    
+    const fullContent = generateFullArticleContent(articleUrl);
+    
+    console.log(`📄 获取到全文内容，长度: ${fullContent.length} 字符`);
+    
+    return fullContent;
+    
+  } catch (error) {
+    console.error('❌ 获取全文内容失败:', error);
+    // 如果获取全文失败，返回基础内容
+    return `This article discusses important topics related to technology and innovation. The content provides valuable insights and analysis. For the complete article, please visit: ${articleUrl}`;
+  }
+};
+
+// 🎯 生成完整文章内容（模拟全文抓取）
+const generateFullArticleContent = (articleUrl: string): string => {
+  const lowerUrl = articleUrl.toLowerCase();
+  
+  if (lowerUrl.includes('waitbutwhy')) {
+    return `# The AI Revolution: Understanding the Path to Superintelligence
+
+Artificial Intelligence represents one of the most significant technological developments in human history. Unlike previous innovations that enhanced our physical capabilities, AI has the potential to augment and eventually surpass our cognitive abilities.
+
+## The Current State of AI
+
+Today's AI systems excel in narrow domains. Machine learning algorithms can recognize images with superhuman accuracy, translate languages in real-time, and even generate human-like text. However, these systems lack the general intelligence that characterizes human cognition.
+
+"The key difference between narrow AI and artificial general intelligence (AGI) is the ability to transfer learning across domains," explains leading AI researcher Stuart Russell. "Current AI systems are like idiot savants - incredibly capable in specific areas but unable to apply their knowledge broadly."
+
+## The Path to AGI
+
+The journey toward artificial general intelligence involves several critical milestones:
+
+### 1. Improved Learning Efficiency
+Current AI systems require massive amounts of data to learn simple tasks that humans master with minimal examples. Future AI systems will need to learn more efficiently, potentially through techniques like few-shot learning and meta-learning.
+
+### 2. Common Sense Reasoning
+One of the biggest challenges in AI is developing systems that understand the world the way humans do. This includes understanding causality, physics, and social dynamics that we take for granted.
+
+### 3. Multimodal Integration
+Human intelligence seamlessly integrates information from multiple senses and sources. Advanced AI systems will need similar capabilities to understand and interact with the world effectively.
+
+## The Intelligence Explosion
+
+Once we achieve AGI, the next phase could be an "intelligence explosion" - a rapid escalation where AI systems improve themselves recursively. This concept, popularized by mathematician I.J. Good, suggests that an AI system capable of improving its own design could trigger a cascade of increasingly powerful iterations.
+
+"The first ultraintelligent machine is the last invention that man need ever make," Good wrote in 1965, "provided that the machine is docile enough to tell us how to keep it under control."
+
+## Implications and Challenges
+
+The development of superintelligent AI presents both unprecedented opportunities and existential risks:
+
+### Positive Potential
+- Solving climate change through advanced modeling and optimization
+- Curing diseases by accelerating medical research
+- Eliminating poverty through improved resource allocation
+- Advancing scientific discovery at an unprecedented pace
+
+### Risks and Concerns
+- Alignment problem: Ensuring AI goals remain compatible with human values
+- Economic disruption: Massive job displacement across industries
+- Security risks: AI systems being used for malicious purposes
+- Loss of human agency: Becoming overly dependent on AI decision-making
+
+## The Timeline Question
+
+Experts disagree significantly on when AGI might arrive. Surveys of AI researchers show estimates ranging from the next decade to several centuries. However, the consensus is shifting toward shorter timelines as recent breakthroughs demonstrate rapid progress.
+
+"I used to think AGI was 50 years away," notes AI pioneer Geoffrey Hinton. "Now I think it might be 20 years, or even less. The pace of progress has been extraordinary."
+
+## Preparing for the Future
+
+As we approach this technological inflection point, several priorities emerge:
+
+1. **Safety Research**: Developing robust methods to ensure AI systems remain beneficial and controllable
+2. **Policy Development**: Creating regulatory frameworks that promote beneficial AI while mitigating risks
+3. **Education**: Preparing society for the economic and social changes that advanced AI will bring
+4. **International Cooperation**: Ensuring that AI development proceeds safely across all nations
+
+## Conclusion
+
+The AI revolution is not a distant future scenario - it's happening now. While we cannot predict exactly when AGI will arrive or what form it will take, we can prepare by investing in safety research, developing appropriate governance structures, and fostering public understanding of these technologies.
+
+The choices we make today about AI development will shape the future of human civilization. By approaching this challenge with wisdom, caution, and collaboration, we can work toward a future where artificial intelligence amplifies the best of human potential while preserving our values and autonomy.
+
+The stakes could not be higher, but neither could the potential rewards. The AI revolution represents humanity's greatest challenge and greatest opportunity rolled into one.
+
+For more detailed analysis and ongoing updates on AI development, visit: ${articleUrl}`;
+  }
+  
+  if (lowerUrl.includes('lexfridman')) {
+    return `# Conversation with Leading AI Researcher: The Future of Intelligence
+
+In this wide-ranging conversation, we explore the frontiers of artificial intelligence, consciousness, and the future relationship between humans and machines.
+
+## On the Nature of Intelligence
+
+"Intelligence is not a single thing," our guest explains. "It's a collection of capabilities - pattern recognition, reasoning, creativity, emotional understanding. Current AI systems excel at some of these but lack others entirely."
+
+The discussion delves into what makes human intelligence unique:
+
+### Embodied Cognition
+Human intelligence is deeply connected to our physical experience in the world. We understand concepts like "heavy" or "smooth" because we've felt these properties. This embodied understanding shapes how we think about abstract concepts.
+
+### Social Intelligence
+Much of human cognition evolved for social interaction. We're constantly modeling other minds, predicting behavior, and navigating complex social hierarchies. This social intelligence remains one of the most challenging aspects to replicate in AI.
+
+### Creativity and Intuition
+While AI can generate novel combinations of existing ideas, true creativity - the ability to make unexpected connections and leaps of insight - remains largely mysterious.
+
+## The Consciousness Question
+
+One of the most profound questions in AI research is whether machines can become conscious. Our guest shares their perspective:
+
+"Consciousness might be substrate-independent. If the right patterns of information processing can give rise to subjective experience in biological brains, there's no fundamental reason why silicon-based systems couldn't achieve the same thing."
+
+However, this raises difficult questions:
+- How would we recognize consciousness in a machine?
+- What ethical obligations would we have toward conscious AI?
+- Could consciousness emerge gradually, or would it be a sudden phase transition?
+
+## Current AI Capabilities and Limitations
+
+The conversation covers the impressive capabilities of current AI systems while acknowledging their significant limitations:
+
+### What AI Does Well
+- Pattern recognition in high-dimensional data
+- Language generation and translation
+- Game playing and strategic reasoning
+- Scientific discovery in specific domains
+
+### Where AI Falls Short
+- Common sense reasoning about the physical world
+- Learning from limited examples like humans do
+- Maintaining coherent goals across different contexts
+- Understanding causality rather than just correlation
+
+"We've made tremendous progress in narrow AI," our guest notes, "but we're still missing key ingredients for general intelligence. The question is whether we need fundamentally new approaches or just better engineering of existing techniques."
+
+## The Path to Artificial General Intelligence
+
+Several research directions show promise for achieving AGI:
+
+### Multimodal Learning
+Integrating vision, language, and other sensory modalities could help AI systems develop more robust world models.
+
+### Meta-Learning
+Teaching AI systems to learn how to learn could dramatically improve their efficiency and generalization capabilities.
+
+### Neurosymbolic AI
+Combining neural networks with symbolic reasoning might bridge the gap between pattern recognition and logical thinking.
+
+### Embodied AI
+Giving AI systems physical bodies or realistic simulations could help them develop intuitive physics and spatial reasoning.
+
+## Implications for Society
+
+The development of AGI will have profound implications across all aspects of society:
+
+### Economic Transformation
+"We're looking at the potential for massive economic disruption," our guest explains. "But also unprecedented prosperity if we manage the transition well."
+
+Key considerations include:
+- Retraining workers for new roles
+- Potentially implementing universal basic income
+- Ensuring the benefits of AI are broadly distributed
+
+### Scientific Acceleration
+AGI could dramatically accelerate scientific discovery by:
+- Generating and testing hypotheses at superhuman speed
+- Finding patterns in complex datasets
+- Designing new experiments and technologies
+
+### Existential Considerations
+The conversation touches on longer-term existential questions:
+- How do we maintain human purpose and meaning in a world with superintelligent AI?
+- What happens to human identity when machines surpass us intellectually?
+- How do we ensure that advanced AI systems remain aligned with human values?
+
+## The Importance of Safety Research
+
+A significant portion of the discussion focuses on AI safety:
+
+"The alignment problem is perhaps the most important challenge in AI research," our guest emphasizes. "We need to solve it before we achieve AGI, not after."
+
+Key safety research areas include:
+- Value alignment: Ensuring AI systems pursue goals compatible with human welfare
+- Robustness: Making AI systems reliable and predictable
+- Interpretability: Understanding how AI systems make decisions
+- Control: Maintaining meaningful human oversight of AI systems
+
+## International Cooperation and Governance
+
+The global nature of AI development requires international cooperation:
+
+"AI development is happening worldwide. We need global coordination to ensure safety standards and prevent a race to the bottom," our guest argues.
+
+Important governance considerations include:
+- Establishing international AI safety standards
+- Sharing safety research while protecting competitive advantages
+- Preventing the militarization of AI technology
+- Ensuring democratic oversight of AI development
+
+## Personal Reflections
+
+The conversation concludes with personal reflections on working in AI:
+
+"Every day, I'm amazed by what these systems can do. But I'm also humbled by how much we still don't understand about intelligence, consciousness, and cognition. We're building incredibly powerful tools while still grappling with fundamental questions about the nature of mind."
+
+## Looking Forward
+
+As we stand on the brink of potentially achieving artificial general intelligence, the choices we make today will shape the future of human civilization. The conversation emphasizes the need for:
+
+- Continued investment in safety research
+- Thoughtful governance and regulation
+- Public education and engagement
+- International cooperation
+- Maintaining human agency and values
+
+"The future isn't predetermined," our guest concludes. "The choices we make about AI development will determine whether this technology becomes humanity's greatest achievement or its greatest challenge. I'm optimistic that with wisdom, caution, and collaboration, we can navigate toward a beneficial outcome."
+
+For the complete conversation and additional insights, visit: ${articleUrl}`;
+  }
+  
+  if (lowerUrl.includes('substack')) {
+    return `# Practical AI Tools for Modern Professionals: A Comprehensive Guide
+
+The landscape of AI tools is evolving rapidly, with new applications emerging weekly that can transform how we work, create, and solve problems. This guide provides practical insights for professionals looking to integrate AI into their daily workflows.
+
+## The Current AI Tools Ecosystem
+
+The AI tools market has exploded in recent years, with applications spanning every industry and use case imaginable. From writing assistants to code generators, from image creators to data analyzers, AI tools are becoming indispensable for modern professionals.
+
+### Categories of AI Tools
+
+**Content Creation and Writing**
+- GPT-based writing assistants for drafts, editing, and ideation
+- Specialized tools for marketing copy, technical documentation, and creative writing
+- Translation and localization services powered by neural networks
+
+**Visual and Design Tools**
+- AI image generators for marketing materials and concept art
+- Automated design tools for presentations, logos, and layouts
+- Video editing assistants that can cut, enhance, and generate content
+
+**Data Analysis and Research**
+- AI-powered research assistants that can summarize papers and extract insights
+- Automated data visualization and pattern recognition tools
+- Predictive analytics platforms for business intelligence
+
+**Code and Development**
+- AI coding assistants that can write, debug, and optimize code
+- Automated testing and quality assurance tools
+- Infrastructure management and deployment automation
+
+## Best Practices for AI Tool Integration
+
+### Start with Clear Objectives
+
+Before adopting any AI tool, define what you want to achieve. Are you looking to:
+- Save time on routine tasks?
+- Improve the quality of your output?
+- Explore new creative possibilities?
+- Analyze data more effectively?
+
+"The most successful AI implementations start with a clear problem statement," notes productivity expert Sarah Chen. "Tools should solve specific pain points, not just be adopted because they're trendy."
+
+### Develop Effective Prompting Skills
+
+The quality of AI output is directly related to the quality of your input. Effective prompting involves:
+
+**Being Specific**: Instead of "write a report," try "write a 500-word executive summary of Q3 sales performance, highlighting key trends and actionable insights for Q4 planning."
+
+**Providing Context**: Give the AI relevant background information, target audience, and desired tone.
+
+**Iterating and Refining**: Don't expect perfect results on the first try. Build on initial outputs through follow-up prompts.
+
+**Setting Constraints**: Specify format, length, style, and any limitations to guide the AI's output.
+
+### Maintain Human Oversight
+
+While AI tools are powerful, they require human judgment and oversight:
+
+**Fact-Checking**: AI can hallucinate facts or provide outdated information. Always verify important claims.
+
+**Quality Control**: Review AI-generated content for coherence, relevance, and appropriateness.
+
+**Ethical Considerations**: Ensure AI use aligns with your organization's values and ethical guidelines.
+
+**Legal Compliance**: Understand the legal implications of using AI-generated content, especially regarding copyright and liability.
+
+## Industry-Specific Applications
+
+### Marketing and Communications
+
+AI tools are revolutionizing marketing workflows:
+
+**Content Creation**: Generate blog posts, social media content, and email campaigns at scale while maintaining brand voice.
+
+**Personalization**: Create targeted content for different audience segments automatically.
+
+**Analytics**: Use AI to analyze campaign performance and optimize strategies in real-time.
+
+Case Study: A mid-sized marketing agency increased content output by 300% while reducing production time by 60% through strategic AI tool implementation.
+
+### Software Development
+
+Developers are leveraging AI to accelerate coding and improve quality:
+
+**Code Generation**: AI assistants can write boilerplate code, implement algorithms, and suggest optimizations.
+
+**Debugging**: Automated tools can identify bugs, suggest fixes, and even implement solutions.
+
+**Documentation**: Generate comprehensive documentation from code comments and function signatures.
+
+"AI has become my pair programming partner," says senior developer Maria Rodriguez. "It handles the routine stuff so I can focus on architecture and complex problem-solving."
+
+### Research and Analysis
+
+Researchers across disciplines are using AI to accelerate discovery:
+
+**Literature Review**: AI can quickly summarize research papers and identify relevant studies.
+
+**Data Processing**: Automated analysis of large datasets to identify patterns and trends.
+
+**Hypothesis Generation**: AI can suggest new research directions based on existing literature.
+
+### Creative Industries
+
+Creative professionals are finding new ways to enhance their work:
+
+**Ideation**: AI can generate concepts, themes, and creative directions.
+
+**Rapid Prototyping**: Quickly create mockups, drafts, and proof-of-concepts.
+
+**Style Transfer**: Apply different artistic styles or adapt content for various formats.
+
+## Common Pitfalls and How to Avoid Them
+
+### Over-Reliance on AI
+
+While AI tools are powerful, they shouldn't replace human creativity and judgment. Use AI to augment your capabilities, not replace them.
+
+### Ignoring Data Privacy
+
+Be mindful of what data you share with AI tools, especially when dealing with sensitive or proprietary information.
+
+### Lack of Training
+
+Invest time in learning how to use AI tools effectively. The learning curve can be steep, but the payoff is significant.
+
+### Tool Proliferation
+
+Avoid adopting too many tools at once. Start with one or two that address your most pressing needs, then expand gradually.
+
+## Measuring ROI and Success
+
+To justify AI tool investments, track relevant metrics:
+
+**Time Savings**: Measure how much time AI tools save on routine tasks.
+
+**Quality Improvements**: Assess whether AI-enhanced work meets higher standards.
+
+**Output Volume**: Track increases in productivity and content creation.
+
+**Cost Reduction**: Calculate savings from reduced manual labor and improved efficiency.
+
+## Future Trends and Considerations
+
+The AI tools landscape continues to evolve rapidly:
+
+**Integration**: Expect better integration between different AI tools and existing software ecosystems.
+
+**Specialization**: More industry-specific and task-specific AI tools will emerge.
+
+**Collaboration**: AI tools will become better at facilitating human-AI collaboration.
+
+**Accessibility**: AI capabilities will become more accessible to non-technical users.
+
+## Getting Started: A Practical Roadmap
+
+1. **Assess Your Needs**: Identify specific tasks that could benefit from AI assistance.
+
+2. **Research Options**: Explore available tools and read user reviews.
+
+3. **Start Small**: Begin with free or low-cost tools to test the waters.
+
+4. **Experiment**: Try different approaches and prompting strategies.
+
+5. **Measure Results**: Track the impact on your productivity and output quality.
+
+6. **Scale Gradually**: Expand your AI toolkit based on proven successes.
+
+7. **Stay Updated**: The AI landscape changes rapidly, so keep learning about new developments.
+
+## Conclusion
+
+AI tools represent a fundamental shift in how we approach work and creativity. By understanding their capabilities and limitations, developing effective usage strategies, and maintaining appropriate human oversight, professionals can harness these powerful technologies to enhance their productivity and capabilities.
+
+The key is to view AI as a collaborative partner rather than a replacement for human intelligence. When used thoughtfully, AI tools can free us from routine tasks, enhance our creative capabilities, and help us tackle more complex and meaningful challenges.
+
+As the technology continues to evolve, those who learn to work effectively with AI will have a significant advantage in their careers and endeavors. The future belongs to human-AI collaboration, and that future is already here.
+
+For more detailed guides and tool recommendations, visit: ${articleUrl}`;
+  }
+  
+  // 通用技术文章
+  return `# Technology Trends and Innovation in ${new Date().getFullYear()}
+
+The technology landscape continues to evolve at an unprecedented pace, driven by advances in artificial intelligence, cloud computing, and emerging technologies. This comprehensive analysis examines the key trends shaping our digital future.
+
+## Artificial Intelligence and Machine Learning
+
+AI has moved from experimental technology to mainstream adoption across industries. Key developments include:
+
+### Large Language Models
+The success of models like GPT-4 and Claude has demonstrated the potential of large-scale language understanding. These systems are being integrated into everything from customer service to content creation.
+
+"We're seeing a democratization of AI capabilities," explains tech analyst Dr. Jennifer Liu. "What once required specialized expertise is now accessible through simple interfaces."
+
+### Computer Vision Advances
+Image recognition and analysis have reached new levels of sophistication, enabling applications in:
+- Medical diagnosis and imaging
+- Autonomous vehicle navigation
+- Quality control in manufacturing
+- Security and surveillance systems
+
+### AI Ethics and Governance
+As AI becomes more prevalent, questions of ethics, bias, and governance become increasingly important. Organizations are developing frameworks for responsible AI deployment.
+
+## Cloud Computing Evolution
+
+The cloud computing landscape continues to mature with several key trends:
+
+### Multi-Cloud Strategies
+Organizations are increasingly adopting multi-cloud approaches to avoid vendor lock-in and optimize performance across different platforms.
+
+### Edge Computing Growth
+Processing data closer to its source reduces latency and improves performance for real-time applications.
+
+### Serverless Architecture
+Function-as-a-Service (FaaS) platforms are enabling developers to build applications without managing underlying infrastructure.
+
+## Cybersecurity in the Modern Era
+
+As digital transformation accelerates, cybersecurity becomes more critical:
+
+### Zero Trust Architecture
+The traditional perimeter-based security model is giving way to zero trust approaches that verify every user and device.
+
+### AI-Powered Security
+Machine learning is being used to detect anomalies and respond to threats in real-time.
+
+### Privacy-First Design
+Regulations like GDPR and CCPA are driving privacy-by-design approaches to software development.
+
+## Emerging Technologies
+
+Several emerging technologies show significant promise:
+
+### Quantum Computing
+While still in early stages, quantum computing could revolutionize cryptography, optimization, and scientific simulation.
+
+### Blockchain and Web3
+Distributed ledger technologies are finding applications beyond cryptocurrency in supply chain management, digital identity, and decentralized applications.
+
+### Extended Reality (XR)
+Virtual, augmented, and mixed reality technologies are creating new possibilities for training, entertainment, and remote collaboration.
+
+## Industry Transformation
+
+Technology is reshaping entire industries:
+
+### Healthcare
+Digital health platforms, telemedicine, and AI-assisted diagnosis are transforming patient care.
+
+### Finance
+Fintech innovations are democratizing financial services and creating new business models.
+
+### Education
+Online learning platforms and AI tutors are personalizing education at scale.
+
+### Manufacturing
+Industry 4.0 technologies are creating smart factories with unprecedented efficiency and flexibility.
+
+## Challenges and Considerations
+
+Despite the promise of new technologies, several challenges remain:
+
+### Skills Gap
+The rapid pace of technological change is creating a shortage of skilled workers in key areas.
+
+### Digital Divide
+Not everyone has equal access to new technologies, potentially exacerbating existing inequalities.
+
+### Sustainability
+The environmental impact of technology, particularly data centers and cryptocurrency mining, requires attention.
+
+### Regulation and Governance
+Policymakers struggle to keep pace with technological change, creating uncertainty for businesses and consumers.
+
+## Future Outlook
+
+Looking ahead, several trends are likely to shape the technology landscape:
+
+### Convergence
+Different technologies will increasingly work together, creating new possibilities and applications.
+
+### Democratization
+Advanced capabilities will become more accessible to non-technical users through improved interfaces and tools.
+
+### Sustainability Focus
+Environmental considerations will drive innovation in energy-efficient computing and green technologies.
+
+### Human-Centric Design
+Technology will increasingly focus on enhancing human capabilities rather than replacing them.
+
+## Practical Implications
+
+For organizations and individuals, these trends suggest several action items:
+
+1. **Invest in Learning**: Continuous education and skill development are essential in a rapidly changing landscape.
+
+2. **Embrace Experimentation**: Organizations should create space for testing new technologies and approaches.
+
+3. **Focus on Ethics**: Consider the broader implications of technology adoption, not just the immediate benefits.
+
+4. **Build Resilience**: Develop systems and processes that can adapt to technological change.
+
+5. **Collaborate**: Partner with others to share knowledge and resources in navigating technological transformation.
+
+## Conclusion
+
+The technology landscape of ${new Date().getFullYear()} is characterized by rapid innovation, increasing convergence, and growing impact on all aspects of society. While challenges remain, the potential for positive transformation is enormous.
+
+Success in this environment requires a combination of technical understanding, strategic thinking, and ethical consideration. Organizations and individuals who can navigate this complexity while maintaining focus on human needs and values will be best positioned for the future.
+
+The pace of change shows no signs of slowing, making adaptability and continuous learning more important than ever. By staying informed about emerging trends and maintaining a forward-looking perspective, we can harness the power of technology to create a better future for all.
+
+For more insights and analysis on technology trends, visit: ${articleUrl}`;
+};
+
 // 🤖 DeepSeek API 摘要生成函数
 const generateDeepSeekSummary = async (content: string, originalUrl: string): Promise<{
   summary: string;
@@ -455,13 +1090,35 @@ const generateDeepSeekSummary = async (content: string, originalUrl: string): Pr
       return generateHighQualityMockSummary(content, originalUrl, startTime);
     }
 
-    // 🎯 按照你的要求构建 prompt
-    const prompt = `summarize the main themes from this article in 5 to 10 sentences. each theme have some quotes from the original article. also link the original article URL
+    // 🎯 改进的 prompt，要求更好的格式和结构
+    const prompt = `Please create a well-structured summary of this article with the following format:
+
+## Article Summary
+
+Summarize the main themes from this article in 5-8 well-organized paragraphs. For each major theme, include relevant quotes from the original article to support your points.
+
+## Key Themes
+
+1. **Theme 1**: [Brief description]
+   - Quote: "[Relevant quote from article]"
+   - Analysis: [Your analysis of this theme]
+
+2. **Theme 2**: [Brief description]
+   - Quote: "[Relevant quote from article]"
+   - Analysis: [Your analysis of this theme]
+
+[Continue for 3-5 major themes]
+
+## Conclusion
+
+Provide a brief conclusion that ties the themes together and highlights the article's main insights.
+
+**Original Article**: ${originalUrl}
+
+---
 
 Article content:
-${content}
-
-Original URL: ${originalUrl}`;
+${content.substring(0, 8000)}`;
 
     console.log('📤 发送请求到 DeepSeek API...');
 
@@ -477,14 +1134,14 @@ Original URL: ${originalUrl}`;
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that creates concise, informative summaries with quotes from the original content.'
+            content: 'You are a professional content analyst who creates well-structured, insightful summaries with proper formatting and relevant quotes from the source material.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        max_tokens: 1000,
+        max_tokens: 1500,
         temperature: 0.3,
         stream: false
       })
@@ -541,7 +1198,7 @@ Original URL: ${originalUrl}`;
   }
 };
 
-// 🎯 生成高质量模拟摘要（模拟 DeepSeek 风格）
+// 🎯 生成高质量模拟摘要（模拟 DeepSeek 风格，改进格式）
 const generateHighQualityMockSummary = (content: string, originalUrl: string, startTime: number): {
   summary: string;
   readingTime: number;
@@ -555,55 +1212,74 @@ const generateHighQualityMockSummary = (content: string, originalUrl: string, st
   const sentences = content
     .split(/[.!?]+/)
     .map(s => s.trim())
-    .filter(s => s.length > 30 && s.length < 300)
-    .slice(0, 8);
+    .filter(s => s.length > 50 && s.length < 400)
+    .slice(0, 10);
   
   let summary = '';
   
   if (sentences.length === 0) {
-    summary = `This article discusses important topics and provides valuable insights. The content covers various themes relevant to the subject matter. For more details, please refer to the original article: ${originalUrl}`;
+    summary = `## Article Summary
+
+This article provides comprehensive insights into current technological developments and their implications for the future. The content explores various aspects of innovation and progress in the digital age.
+
+## Key Themes
+
+**1. Technological Innovation**
+The article discusses the rapid pace of technological advancement and its impact on society.
+
+**2. Future Implications**
+The content examines potential outcomes and considerations for upcoming developments.
+
+**3. Practical Applications**
+The discussion includes real-world applications and their significance.
+
+## Conclusion
+
+The article offers valuable perspectives on technology and innovation, providing readers with important insights for understanding current trends.
+
+**Original Article**: ${originalUrl}`;
   } else {
-    // 🎯 按照你的 prompt 要求生成摘要
-    summary = `This article explores several key themes with supporting evidence from the original content:\n\n`;
-    
-    // 主题 1: 技术发展
-    if (sentences.length > 0) {
-      summary += `**Technology and Innovation**: The article discusses technological advancement and its implications. As stated: "${sentences[0]}" This highlights the rapid pace of change in our digital landscape.\n\n`;
-    }
-    
-    // 主题 2: 实际应用
-    if (sentences.length > 1) {
-      summary += `**Practical Applications**: The content examines real-world implementations and their impact. The author notes: "${sentences[1]}" This demonstrates the tangible effects of these developments.\n\n`;
-    }
-    
-    // 主题 3: 未来考虑
-    if (sentences.length > 2) {
-      summary += `**Future Considerations**: The discussion addresses upcoming challenges and opportunities. According to the text: "${sentences[2]}" This perspective emphasizes strategic planning importance.\n\n`;
-    }
-    
-    // 主题 4: 社会影响
-    if (sentences.length > 3) {
-      summary += `**Societal Impact**: The article analyzes broader implications for various stakeholders. As mentioned: "${sentences[3]}" This provides valuable context for understanding the full scope.\n\n`;
-    }
-    
-    // 主题 5: 结论和建议
-    if (sentences.length > 4) {
-      summary += `**Conclusions and Recommendations**: The piece concludes with actionable insights. The author emphasizes: "${sentences[4]}" This forward-looking perspective offers practical guidance.\n\n`;
-    }
-    
-    summary += `For the complete analysis and additional details, please refer to the original article: ${originalUrl}`;
+    // 🎯 按照改进的格式生成摘要
+    summary = `## Article Summary
+
+This article presents a comprehensive analysis of key developments and trends in technology and innovation. The content explores multiple interconnected themes that shape our understanding of current and future technological landscapes.
+
+## Key Themes
+
+**1. Innovation and Progress**
+The article emphasizes the transformative nature of technological advancement. As noted in the original piece: "${sentences[0]}" This highlights the accelerating pace of change and its far-reaching implications for society and industry.
+
+**2. Practical Applications and Impact**
+The discussion focuses on real-world implementations and their significance. The author observes: "${sentences[1] || sentences[0]}" This demonstrates the tangible effects of technological developments on everyday life and business operations.
+
+**3. Future Considerations and Challenges**
+The content addresses upcoming opportunities and potential obstacles. According to the analysis: "${sentences[2] || sentences[1] || sentences[0]}" This perspective underscores the importance of strategic planning and thoughtful implementation.
+
+**4. Societal and Economic Implications**
+The article examines broader impacts on various stakeholders and communities. As mentioned: "${sentences[3] || sentences[2] || sentences[0]}" This analysis provides crucial context for understanding the full scope of technological transformation.
+
+**5. Strategic Recommendations**
+The piece concludes with actionable insights and forward-looking guidance. The author emphasizes: "${sentences[4] || sentences[3] || sentences[0]}" This practical approach offers valuable direction for navigating future developments.
+
+## Conclusion
+
+The article successfully synthesizes complex technological concepts into accessible insights, providing readers with a comprehensive understanding of current trends and future possibilities. The analysis balances technical depth with practical applicability, making it valuable for both industry professionals and general audiences interested in technological progress.
+
+The interconnected themes explored in this piece demonstrate the multifaceted nature of technological innovation and its wide-ranging implications for society, economy, and individual experience.
+
+**Original Article**: ${originalUrl}`;
   }
   
   // 计算阅读时间
   const wordCount = summary.split(/\s+/).length;
-  const readingTime = Math.max(1, Math.round(wordCount / 200));
+  const readingTime = Math.max(2, Math.round(wordCount / 200));
   
   return {
     summary,
     readingTime,
     modelUsed: 'deepseek-chat-simulated',
     processingTime,
-    apiUsage: { total_tokens: 850, prompt_tokens: 600, completion_tokens: 250 }
+    apiUsage: { total_tokens: 1200, prompt_tokens: 800, completion_tokens: 400 }
   };
 };
 
@@ -638,88 +1314,6 @@ const checkIfRSSFeedLocal = async (url: string): Promise<boolean> => {
   }
 };
 
-// 🎯 获取模拟 RSS 数据
-const getMockRSSData = (feedUrl: string) => {
-  const lowerUrl = feedUrl.toLowerCase();
-  
-  if (lowerUrl.includes('waitbutwhy')) {
-    return {
-      feedTitle: 'Wait But Why',
-      feedDescription: 'A blog about everything',
-      title: 'The AI Revolution: The Road to Superintelligence',
-      link: 'https://waitbutwhy.com/2015/01/artificial-intelligence-revolution-1.html',
-      content: `Artificial Intelligence. We've been thinking about it, writing about it, and making movies about it for decades. But despite all the speculation and science fiction, we're still not really sure what's going to happen when machines become smarter than humans.
-
-The thing is, AI isn't just another technology—it's the last invention humanity will ever need to make. Once we create machines that can improve themselves, they'll be able to design even better machines, which will design even better machines, and so on.
-
-This recursive self-improvement could lead to an intelligence explosion—a rapid escalation from human-level AI to superintelligent AI that far exceeds human cognitive abilities in all domains.
-
-The implications are staggering. A superintelligent AI could solve climate change, cure diseases, and unlock the secrets of the universe. But it could also pose existential risks if not aligned with human values.
-
-As researcher Stuart Russell puts it: "The real risk with AGI isn't malice—it's competence. A superintelligent AI system will be extremely good at accomplishing its goals, and if those goals aren't aligned with ours, we're in trouble."
-
-The timeline for AGI remains uncertain, but many experts believe we could see human-level AI within the next few decades. The question isn't whether this will happen, but when—and whether we'll be ready for it.`,
-      publishedDate: new Date().toISOString()
-    };
-  } else if (lowerUrl.includes('lexfridman')) {
-    return {
-      feedTitle: 'Lex Fridman Podcast',
-      feedDescription: 'Conversations about science, technology, history, philosophy and the nature of intelligence',
-      title: 'Elon Musk: Mars, AI, Neuralink, and the Future of Humanity',
-      link: 'https://lexfridman.com/elon-musk/',
-      content: `In this conversation, Elon Musk discusses his vision for making life multiplanetary, the development of artificial intelligence, and the future of human-computer interfaces through Neuralink.
-
-On Mars colonization: "I think it's important for humanity to become a multiplanetary species. Earth is 4.5 billion years old, but life as we know it could be wiped out by any number of catastrophic events. Having a self-sustaining city on Mars would serve as a backup drive for human civilization."
-
-Regarding AI development: "The pace of AI advancement is accelerating rapidly. We need to be very careful about how we develop artificial general intelligence. It's not that I think AI is necessarily bad, but I think we need to be proactive about safety rather than reactive."
-
-On Neuralink's potential: "The goal of Neuralink is to create a high-bandwidth brain-computer interface. In the long term, this could help humans keep pace with AI by creating a symbiosis between human and artificial intelligence."
-
-Musk emphasizes the importance of making these technologies beneficial for humanity: "The future is going to be weird, but hopefully it's going to be good weird rather than bad weird."`,
-      publishedDate: new Date().toISOString()
-    };
-  } else if (lowerUrl.includes('substack')) {
-    return {
-      feedTitle: 'One Useful Thing',
-      feedDescription: 'AI insights and practical applications',
-      title: 'How to Use AI Tools Effectively in Your Daily Work',
-      link: 'https://oneusefulthing.substack.com/p/how-to-use-ai-tools-effectively',
-      content: `AI tools are becoming increasingly sophisticated, but many people struggle to use them effectively. Here are some practical strategies for integrating AI into your daily workflow.
-
-Start with clear prompts: "The quality of your AI output is directly related to the quality of your input. Instead of asking 'write me a report,' try 'write a 500-word executive summary of our Q3 sales performance, highlighting key trends and actionable insights for Q4 planning.'"
-
-Iterate and refine: "Don't expect perfect results on the first try. AI works best when you treat it as a collaborative partner. Ask follow-up questions, request revisions, and build on the initial output."
-
-Understand the limitations: "AI tools are powerful, but they're not magic. They can hallucinate facts, struggle with recent events, and may reflect biases in their training data. Always verify important information and use your judgment."
-
-Focus on augmentation, not replacement: "The most effective AI users don't try to replace their thinking with AI—they use AI to enhance their capabilities. Use AI for brainstorming, first drafts, research assistance, and routine tasks, but keep human judgment at the center."
-
-As one user noted: "AI has become my thinking partner. It helps me explore ideas I wouldn't have considered and draft content faster than ever before."`,
-      publishedDate: new Date().toISOString()
-    };
-  } else {
-    // 通用模拟数据
-    return {
-      feedTitle: 'Tech Blog',
-      feedDescription: 'Latest technology insights and trends',
-      title: 'The Future of Technology: Trends to Watch in 2024',
-      link: 'https://example.com/future-tech-2024',
-      content: `Technology continues to evolve at an unprecedented pace, reshaping how we work, communicate, and live. Here are the key trends that will define the technological landscape in 2024.
-
-Artificial Intelligence Integration: "AI is moving beyond standalone applications to become deeply integrated into everyday tools and workflows. We're seeing AI-powered features in everything from email clients to design software."
-
-Quantum Computing Progress: "While still in early stages, quantum computing is making significant strides. Companies like IBM and Google are developing more stable quantum systems that could revolutionize cryptography and complex problem-solving."
-
-Sustainable Technology: "There's a growing focus on green technology solutions. From energy-efficient data centers to carbon-neutral cloud computing, the tech industry is prioritizing environmental responsibility."
-
-Extended Reality (XR): "The boundaries between virtual, augmented, and mixed reality are blurring. XR technologies are finding practical applications in education, healthcare, and remote collaboration."
-
-As one industry expert observes: "We're not just building better technology—we're building technology that better serves humanity's long-term interests."`,
-      publishedDate: new Date().toISOString()
-    };
-  }
-};
-
 // Digests API
 export const digestsApi = {
   getDigests: async (page = 1, limit = 10): Promise<PaginatedResponse<Digest[]>> => {
@@ -744,7 +1338,7 @@ export const digestsApi = {
       `)
       .eq('content_items.content_sources.user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(limit * 3); // 获取更多数据以便分组
+      .limit(limit * 5); // 获取更多数据以便分组
 
     if (summariesError) {
       console.error('❌ 获取摘要数据失败:', summariesError);
@@ -753,7 +1347,7 @@ export const digestsApi = {
 
     console.log('✅ 获取到摘要数据:', summariesData?.length || 0, '条');
 
-    // 🎯 将摘要按日期分组，创建虚拟的 digest
+    // 🎯 将摘要按日期分组，创建格式化的 digest
     const digestsMap = new Map<string, any>();
     
     (summariesData || []).forEach(summary => {
@@ -764,9 +1358,10 @@ export const digestsApi = {
       const dateKey = new Date(summary.created_at).toISOString().split('T')[0];
       
       if (!digestsMap.has(dateKey)) {
+        const digestDate = new Date(dateKey);
         digestsMap.set(dateKey, {
           id: `digest-${dateKey}`,
-          title: `Daily Digest - ${new Date(dateKey).toLocaleDateString('en-US', { 
+          title: `Daily Digest - ${digestDate.toLocaleDateString('en-US', { 
             weekday: 'long', 
             year: 'numeric', 
             month: 'long', 
@@ -863,9 +1458,10 @@ export const digestsApi = {
       };
     });
 
+    const digestDate = new Date(dateKey);
     const digest: Digest = {
       id,
-      title: `Daily Digest - ${new Date(dateKey).toLocaleDateString('en-US', { 
+      title: `Daily Digest - ${digestDate.toLocaleDateString('en-US', { 
         weekday: 'long', 
         year: 'numeric', 
         month: 'long', 
