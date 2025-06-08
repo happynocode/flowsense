@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
@@ -68,6 +67,18 @@ const DigestDetail = () => {
 
   const getTotalReadingTime = (digest: Digest) => {
     return digest.summaries.reduce((total, summary) => total + summary.readingTime, 0);
+  };
+
+  // 🎯 渲染格式化的摘要内容
+  const renderFormattedContent = (content: string) => {
+    // 将 markdown 格式转换为 HTML
+    const formattedContent = content
+      .replace(/## (.*)/g, '<h2 class="text-xl font-semibold text-gray-900 mt-6 mb-4">$1</h2>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+      .replace(/\n\n/g, '</p><p class="mb-4">')
+      .replace(/\n/g, '<br/>');
+
+    return `<div class="prose prose-gray max-w-none"><p class="mb-4">${formattedContent}</p></div>`;
   };
 
   if (loading) {
@@ -159,21 +170,25 @@ const DigestDetail = () => {
 
           {/* Reading Tab */}
           <TabsContent value="reading" className="space-y-6">
-            {digest.summaries.map((summary) => (
-              <Card key={summary.id}>
-                <CardHeader>
+            {digest.summaries.map((summary, index) => (
+              <Card key={summary.id} className="overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Badge variant="outline">{summary.sourceName}</Badge>
-                        <span className="text-sm text-gray-500">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <Badge variant="outline" className="bg-white border-blue-200 text-blue-700">
+                          {summary.sourceName}
+                        </Badge>
+                        <span className="text-sm text-gray-600">
                           {formatPublishedDate(summary.publishedAt)}
                         </span>
                         <span className="text-sm text-gray-500">
                           • {summary.readingTime} min read
                         </span>
                       </div>
-                      <CardTitle className="text-xl mb-2">{summary.title}</CardTitle>
+                      <CardTitle className="text-xl mb-2 text-gray-900">
+                        {index + 1}. {summary.title}
+                      </CardTitle>
                     </div>
                     <a
                       href={summary.sourceUrl}
@@ -181,16 +196,17 @@ const DigestDetail = () => {
                       rel="noopener noreferrer"
                       className="flex-shrink-0"
                     >
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="bg-white hover:bg-gray-50">
                         <ExternalLink className="h-4 w-4" />
                       </Button>
                     </a>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="prose prose-gray max-w-none">
-                    <div dangerouslySetInnerHTML={{ __html: summary.content }} />
-                  </div>
+                <CardContent className="p-6">
+                  <div 
+                    className="prose prose-gray max-w-none leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: renderFormattedContent(summary.content) }}
+                  />
                 </CardContent>
               </Card>
             ))}
