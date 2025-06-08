@@ -144,7 +144,7 @@ def process_content_source(source):
                             summary_text=summary_text,
                             summary_length=stats['character_count'],
                             reading_time=stats['reading_time'],
-                            model_used='gpt-3.5-turbo'
+                            model_used='deepseek-chat'
                         )
                         
                         db.session.add(summary)

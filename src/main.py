@@ -54,8 +54,10 @@ app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 app.config['STRIPE_SECRET_KEY'] = os.getenv('STRIPE_SECRET_KEY')
 app.config['STRIPE_PUBLISHABLE_KEY'] = os.getenv('STRIPE_PUBLISHABLE_KEY')
 
-# OpenAI configuration
+# AI configuration
 app.config['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY')
+app.config['DEEPSEEK_API_KEY'] = os.getenv('DEEPSEEK_API_KEY')
+app.config['DEEPSEEK_API_BASE'] = os.getenv('DEEPSEEK_API_BASE', 'https://api.deepseek.com')
 
 # Initialize extensions
 db = SQLAlchemy(app)

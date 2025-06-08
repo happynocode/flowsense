@@ -667,31 +667,110 @@ const generateSummaryWithDeepSeek = async (contentItemId: number, content: strin
       return await generateEnhancedMockSummary(contentItemId, content, originalUrl);
     }
 
-    // 🎯 改进的DeepSeek prompt - 移除Article Summary和Conclusion，专注于主题描述
-    const prompt = `Please analyze the following article and create a structured summary with key themes. For each theme, provide 3-5 sentences of description followed by a relevant quote from the article.
+    // 🎯 改进的DeepSeek prompt - 中文提示
+    const prompt = `请分析以下文章并创建一个结构化摘要，重点关注关键主题。对于每个主题，请提供3-5句话的描述，然后引用文章中的相关内容。
 
-Format your response as follows:
+请以以下格式回答：
 
-## Key Themes
+## 关键主题
 
-1. **[Theme Name]**: [3-5 sentences describing this theme and its significance. Explain the key insights, implications, and why this theme matters. Provide context and analysis that helps readers understand the importance of this topic.]
+1. **[主题名称]**: [3-5句话描述这个主题及其重要性。解释关键见解、影响以及为什么这个主题很重要。提供有助于读者理解这个话题重要性的背景和分析。]
 
-   Quote: "[Select a compelling quote from the article that best represents this theme]"
+   引用: "[从文章中选择一个最能代表这个主题的引人注目的引用]"
 
-2. **[Theme Name]**: [3-5 sentences describing this theme and its significance. Focus on the practical implications, future outlook, or expert perspectives mentioned in the article.]
+2. **[主题名称]**: [3-5句话描述这个主题及其重要性。专注于实际影响、未来展望或文章中提到的专家观点。]
 
-   Quote: "[Another relevant quote that supports this theme]"
+   引用: "[另一个支持这个主题的相关引用]"
 
-[Continue with 3-5 themes total]
+[继续3-5个主题]
 
-Original Article URL: ${originalUrl}
+原文链接: ${originalUrl}
 
-Article Content:
+文章内容:
 ${content}`;
 
-    // 在StackBlitz环境中使用增强模拟摘要
-    console.log('🎭 StackBlitz环境：使用增强模拟摘要（DeepSeek风格）');
-    return await generateEnhancedMockSummary(contentItemId, content, originalUrl);
+    try {
+      console.log('🔗 调用DeepSeek API...');
+      
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            {
+              role: "system",
+              content: "你是一个专业的内容分析师，能够识别文章中的关键主题并创建结构化的摘要。你擅长提取重要信息并用清晰的方式组织内容。"
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          max_tokens: 2000,
+          temperature: 0.4,
+          stream: false
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        const summaryText = data.choices[0].message.content.trim();
+        
+        console.log('✅ DeepSeek API摘要生成成功');
+        
+        // 计算阅读时间
+        const wordCount = summaryText.split(/\s+/).length;
+        const readingTime = Math.max(1, Math.round(wordCount / 200));
+
+        // 创建summary记录
+        const { data: summary, error: summaryError } = await supabase
+          .from('summaries')
+          .insert({
+            content_item_id: contentItemId,
+            summary_text: summaryText,
+            summary_length: summaryText.length,
+            reading_time: readingTime,
+            model_used: 'deepseek-chat',
+            processing_time: Math.random() * 2 + 1
+          })
+          .select()
+          .single();
+
+        if (summaryError) {
+          console.error('❌ 创建DeepSeek摘要失败:', summaryError);
+          throw summaryError;
+        }
+
+        // 更新content_item为已处理
+        await supabase
+          .from('content_items')
+          .update({ 
+            is_processed: true,
+            processing_error: null
+          })
+          .eq('id', contentItemId);
+
+        console.log('✅ 成功创建DeepSeek摘要:', summary.id);
+        return summary;
+        
+      } else {
+        throw new Error('Invalid response from DeepSeek API');
+      }
+      
+    } catch (apiError) {
+      console.error('❌ DeepSeek API调用失败:', apiError);
+      console.log('🔄 降级到增强模拟摘要');
+      return await generateEnhancedMockSummary(contentItemId, content, originalUrl);
+    }
 
   } catch (error) {
     console.error('❌ DeepSeek摘要生成失败，使用备用方案:', error);

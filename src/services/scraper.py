@@ -7,6 +7,13 @@ import logging
 from datetime import datetime
 from dateutil import parser as date_parser
 import time
+import re
+from newspaper import Article
+import ssl
+import urllib3
+
+# Disable SSL warnings for development
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
@@ -205,101 +212,307 @@ def scrape_rss_feed(rss_url, last_scraped=None):
         return []
 
 def scrape_website(url, selector=None, last_scraped=None):
-    """Scrape content from a website"""
+    """Scrape content from a website using enhanced extraction methods"""
     try:
+        logger.info(f"Scraping website: {url}")
+        
+        # First try using newspaper3k for better content extraction
+        try:
+            article = Article(url)
+            article.download()
+            article.parse()
+            
+            if article.text and len(article.text.strip()) > 100:
+                # Use newspaper3k extracted content
+                title = article.title if article.title else extract_title_fallback(url)
+                content = article.text
+                published_date = article.publish_date if article.publish_date else datetime.utcnow()
+                authors = ', '.join(article.authors) if article.authors else ''
+                
+                # Skip if older than last scraped
+                if last_scraped and published_date <= last_scraped:
+                    return []
+                
+                logger.info(f"Successfully extracted content using newspaper3k: {len(content)} characters")
+                return [{
+                    'title': title,
+                    'content': content,
+                    'url': url,
+                    'published_date': published_date,
+                    'author': authors
+                }]
+        except Exception as e:
+            logger.warning(f"Newspaper3k extraction failed for {url}: {str(e)}. Falling back to BeautifulSoup.")
+        
+        # Fallback to BeautifulSoup method with enhanced extraction
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
         }
         
-        response = requests.get(url, headers=headers, timeout=15)
+        session = requests.Session()
+        session.headers.update(headers)
+        
+        response = session.get(url, timeout=30, verify=False)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # If specific selector provided, use it
+        # Remove unwanted elements
+        for unwanted in soup(["script", "style", "nav", "header", "footer", "aside", "advertisement", "ads"]):
+            unwanted.decompose()
+        
+        # Extract content using multiple strategies
+        content = ''
+        title = ''
+        
+        # Strategy 1: Use specific selector if provided
         if selector:
             content_elements = soup.select(selector)
-        else:
-            # Try common content selectors
-            content_selectors = [
-                'article', '.post', '.entry', '.content',
-                '.post-content', '.entry-content', '.article-content',
-                'main', '.main-content', '#content'
+            if content_elements:
+                content = ' '.join([elem.get_text() for elem in content_elements])
+        
+        # Strategy 2: Try common article selectors
+        if not content:
+            article_selectors = [
+                'article',
+                '[role="main"]',
+                '.post-content', '.entry-content', '.article-content', '.content',
+                '.post-body', '.entry-body', '.article-body',
+                '.post', '.entry', '.article',
+                'main', '.main', '#main',
+                '.container .content', '.content-area'
             ]
             
-            content_elements = []
-            for sel in content_selectors:
+            for sel in article_selectors:
                 elements = soup.select(sel)
                 if elements:
-                    content_elements = elements
-                    break
+                    # Get the largest content block
+                    largest_element = max(elements, key=lambda x: len(x.get_text()))
+                    content = largest_element.get_text()
+                    if len(content.strip()) > 200:  # Minimum content threshold
+                        break
         
-        if not content_elements:
-            # Fallback to body content
-            content_elements = [soup.body] if soup.body else [soup]
-        
-        # Extract content
-        content = ''
-        for element in content_elements:
-            # Remove script and style elements
-            for script in element(["script", "style"]):
-                script.decompose()
-            
-            text = element.get_text()
-            content += text + '\n'
+        # Strategy 3: Use readability-style extraction
+        if not content or len(content.strip()) < 200:
+            content = extract_main_content(soup)
         
         # Clean up content
-        content = ' '.join(content.split())
+        if content:
+            content = clean_text_content(content)
         
         # Extract title
-        title = ''
-        if soup.title:
-            title = soup.title.string.strip()
-        else:
-            # Try to find h1
-            h1 = soup.find('h1')
-            if h1:
-                title = h1.get_text().strip()
+        title = extract_title(soup, url)
         
-        # Try to extract publication date
-        published_date = None
-        date_selectors = [
-            'time[datetime]', '.date', '.published', '.post-date',
-            '[class*="date"]', '[id*="date"]'
-        ]
+        # Extract publication date
+        published_date = extract_publication_date(soup)
         
-        for sel in date_selectors:
-            date_element = soup.select_one(sel)
-            if date_element:
-                date_text = date_element.get('datetime') or date_element.get_text()
-                try:
-                    published_date = date_parser.parse(date_text)
-                    break
-                except:
-                    continue
-        
-        # If no date found, use current time
-        if not published_date:
-            published_date = datetime.utcnow()
+        # Extract author
+        author = extract_author(soup)
         
         # Skip if older than last scraped
         if last_scraped and published_date <= last_scraped:
             return []
         
         if len(content.strip()) < 100:  # Too short to be useful
+            logger.warning(f"Content too short for {url}: {len(content)} characters")
             return []
         
+        logger.info(f"Successfully extracted content using BeautifulSoup: {len(content)} characters")
         return [{
             'title': title,
             'content': content,
             'url': url,
             'published_date': published_date,
-            'author': ''
+            'author': author
         }]
         
     except Exception as e:
         logger.error(f"Error scraping website {url}: {str(e)}")
         return []
+
+def extract_main_content(soup):
+    """Extract main content using readability-style approach"""
+    # Remove obviously non-content elements
+    for unwanted in soup(['script', 'style', 'nav', 'header', 'footer', 'aside', 'advertisement']):
+        unwanted.decompose()
+    
+    # Find text-heavy elements
+    text_blocks = []
+    for elem in soup.find_all(['p', 'div', 'article', 'section']):
+        text = elem.get_text().strip()
+        if len(text) > 50:  # Minimum text length
+            text_blocks.append((elem, len(text)))
+    
+    if not text_blocks:
+        return soup.get_text()
+    
+    # Sort by text length and take the largest blocks
+    text_blocks.sort(key=lambda x: x[1], reverse=True)
+    
+    # Combine the top text blocks
+    main_content = []
+    total_length = 0
+    for elem, length in text_blocks[:10]:  # Top 10 blocks
+        if total_length + length > 10000:  # Limit total content
+            break
+        main_content.append(elem.get_text().strip())
+        total_length += length
+    
+    return '\n\n'.join(main_content)
+
+def clean_text_content(content):
+    """Clean and normalize text content"""
+    # Remove excessive whitespace
+    content = re.sub(r'\s+', ' ', content)
+    
+    # Remove common unwanted patterns
+    content = re.sub(r'(Share|Tweet|Pin|Like|Follow)(\s+\d+)?', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'(Advertisement|Sponsored|Ad)', '', content, flags=re.IGNORECASE)
+    
+    # Remove email patterns
+    content = re.sub(r'\S+@\S+\.\S+', '', content)
+    
+    # Remove excessive punctuation
+    content = re.sub(r'[.]{3,}', '...', content)
+    
+    return content.strip()
+
+def extract_title(soup, url):
+    """Extract title using multiple strategies"""
+    # Strategy 1: Meta title
+    title_tag = soup.find('title')
+    if title_tag and title_tag.string:
+        title = title_tag.string.strip()
+        # Clean up title
+        title = re.sub(r'\s*[\|\-\–\—]\s*.*$', '', title)  # Remove site name
+        if len(title) > 10:
+            return title
+    
+    # Strategy 2: Open Graph title
+    og_title = soup.find('meta', property='og:title')
+    if og_title and og_title.get('content'):
+        return og_title.get('content').strip()
+    
+    # Strategy 3: H1 tag
+    h1 = soup.find('h1')
+    if h1:
+        return h1.get_text().strip()
+    
+    # Strategy 4: Extract from URL
+    return extract_title_fallback(url)
+
+def extract_title_fallback(url):
+    """Extract title from URL as fallback"""
+    try:
+        path = urlparse(url).path
+        # Remove file extension and clean up
+        title = path.split('/')[-1].split('.')[0]
+        title = re.sub(r'[-_]', ' ', title)
+        title = title.title()
+        return title if title else 'Untitled Article'
+    except:
+        return 'Untitled Article'
+
+def extract_publication_date(soup):
+    """Extract publication date using multiple strategies"""
+    # Strategy 1: JSON-LD structured data
+    try:
+        for script in soup.find_all('script', type='application/ld+json'):
+            import json
+            data = json.loads(script.string)
+            if isinstance(data, dict):
+                date_str = data.get('datePublished') or data.get('dateModified')
+                if date_str:
+                    return date_parser.parse(date_str)
+    except:
+        pass
+    
+    # Strategy 2: Meta tags
+    meta_selectors = [
+        'meta[property="article:published_time"]',
+        'meta[name="publish-date"]',
+        'meta[name="date"]',
+        'meta[name="DC.date.issued"]'
+    ]
+    
+    for selector in meta_selectors:
+        meta = soup.select_one(selector)
+        if meta and meta.get('content'):
+            try:
+                return date_parser.parse(meta.get('content'))
+            except:
+                continue
+    
+    # Strategy 3: Time elements
+    time_elements = soup.find_all('time')
+    for time_elem in time_elements:
+        datetime_attr = time_elem.get('datetime')
+        if datetime_attr:
+            try:
+                return date_parser.parse(datetime_attr)
+            except:
+                continue
+    
+    # Strategy 4: Date patterns in text
+    date_selectors = [
+        '.date', '.published', '.post-date', '.entry-date',
+        '[class*="date"]', '[id*="date"]'
+    ]
+    
+    for selector in date_selectors:
+        date_elem = soup.select_one(selector)
+        if date_elem:
+            date_text = date_elem.get_text().strip()
+            try:
+                return date_parser.parse(date_text)
+            except:
+                continue
+    
+    # Fallback to current time
+    return datetime.utcnow()
+
+def extract_author(soup):
+    """Extract author using multiple strategies"""
+    # Strategy 1: Meta tags
+    author_meta = soup.find('meta', attrs={'name': 'author'})
+    if author_meta and author_meta.get('content'):
+        return author_meta.get('content').strip()
+    
+    # Strategy 2: JSON-LD structured data
+    try:
+        for script in soup.find_all('script', type='application/ld+json'):
+            import json
+            data = json.loads(script.string)
+            if isinstance(data, dict) and 'author' in data:
+                author = data['author']
+                if isinstance(author, dict):
+                    return author.get('name', '')
+                elif isinstance(author, str):
+                    return author
+    except:
+        pass
+    
+    # Strategy 3: Common author selectors
+    author_selectors = [
+        '.author', '.byline', '.by-author', '.post-author',
+        '[rel="author"]', '.author-name', '.writer'
+    ]
+    
+    for selector in author_selectors:
+        author_elem = soup.select_one(selector)
+        if author_elem:
+            author_text = author_elem.get_text().strip()
+            # Clean up author text
+            author_text = re.sub(r'^(by|author:?)\s*', '', author_text, flags=re.IGNORECASE)
+            if len(author_text) > 0 and len(author_text) < 100:
+                return author_text
+    
+    return ''
 
 def scrape_content_source(source):
     """Scrape content from a ContentSource object"""

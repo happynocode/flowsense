@@ -21,6 +21,8 @@ newspaper3k==0.2.8
 
 # AI/LLM integration
 openai==0.28.1
+requests==2.31.0
+httpx==0.24.1
 
 # Payment processing
 stripe==6.6.0
