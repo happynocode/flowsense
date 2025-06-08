@@ -451,8 +451,8 @@ const processRSSSource = async (sourceId: number, feedUrl: string, sourceName: s
           continue;
         }
 
-        // 使用DeepSeek生成摘要
-        const summaryResult = await generateSummaryWithDeepSeek(contentItem.id, fullContent, article.link);
+        // 生成简单摘要
+        const summaryResult = await generateSimpleSummary(contentItem.id, fullContent, article.link);
         
         if (summaryResult) {
           summariesCount++;
@@ -654,137 +654,13 @@ The implications extend far beyond technology itself. These developments are res
   }
 };
 
-// 🤖 使用DeepSeek生成摘要
-const generateSummaryWithDeepSeek = async (contentItemId: number, content: string, originalUrl: string): Promise<any> => {
+// 🤖 生成简单摘要
+const generateSimpleSummary = async (contentItemId: number, content: string, originalUrl: string): Promise<any> => {
   try {
-    console.log('🤖 使用DeepSeek生成摘要...');
+    console.log('🤖 生成简单摘要...');
     
-    // 检查DeepSeek API Key
-    const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
-    
-    if (!DEEPSEEK_API_KEY) {
-      console.warn('⚠️ DeepSeek API Key未配置，使用增强模拟摘要');
-      return await generateEnhancedMockSummary(contentItemId, content, originalUrl);
-    }
-
-    // 🎯 改进的DeepSeek prompt - 中文提示
-    const prompt = `请分析以下文章并创建一个结构化摘要，重点关注关键主题。对于每个主题，请提供3-5句话的描述，然后引用文章中的相关内容。
-
-请以以下格式回答：
-
-## 关键主题
-
-1. **[主题名称]**: [3-5句话描述这个主题及其重要性。解释关键见解、影响以及为什么这个主题很重要。提供有助于读者理解这个话题重要性的背景和分析。]
-
-   引用: "[从文章中选择一个最能代表这个主题的引人注目的引用]"
-
-2. **[主题名称]**: [3-5句话描述这个主题及其重要性。专注于实际影响、未来展望或文章中提到的专家观点。]
-
-   引用: "[另一个支持这个主题的相关引用]"
-
-[继续3-5个主题]
-
-原文链接: ${originalUrl}
-
-文章内容:
-${content}`;
-
-    try {
-      console.log('🔗 调用DeepSeek API...');
-      
-      const response = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: "deepseek-chat",
-          messages: [
-            {
-              role: "system",
-              content: "你是一个专业的内容分析师，能够识别文章中的关键主题并创建结构化的摘要。你擅长提取重要信息并用清晰的方式组织内容。"
-            },
-            {
-              role: "user",
-              content: prompt
-            }
-          ],
-          max_tokens: 2000,
-          temperature: 0.4,
-          stream: false
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.choices && data.choices[0] && data.choices[0].message) {
-        const summaryText = data.choices[0].message.content.trim();
-        
-        console.log('✅ DeepSeek API摘要生成成功');
-        
-        // 计算阅读时间
-        const wordCount = summaryText.split(/\s+/).length;
-        const readingTime = Math.max(1, Math.round(wordCount / 200));
-
-        // 创建summary记录
-        const { data: summary, error: summaryError } = await supabase
-          .from('summaries')
-          .insert({
-            content_item_id: contentItemId,
-            summary_text: summaryText,
-            summary_length: summaryText.length,
-            reading_time: readingTime,
-            model_used: 'deepseek-chat',
-            processing_time: Math.random() * 2 + 1
-          })
-          .select()
-          .single();
-
-        if (summaryError) {
-          console.error('❌ 创建DeepSeek摘要失败:', summaryError);
-          throw summaryError;
-        }
-
-        // 更新content_item为已处理
-        await supabase
-          .from('content_items')
-          .update({ 
-            is_processed: true,
-            processing_error: null
-          })
-          .eq('id', contentItemId);
-
-        console.log('✅ 成功创建DeepSeek摘要:', summary.id);
-        return summary;
-        
-      } else {
-        throw new Error('Invalid response from DeepSeek API');
-      }
-      
-    } catch (apiError) {
-      console.error('❌ DeepSeek API调用失败:', apiError);
-      console.log('🔄 降级到增强模拟摘要');
-      return await generateEnhancedMockSummary(contentItemId, content, originalUrl);
-    }
-
-  } catch (error) {
-    console.error('❌ DeepSeek摘要生成失败，使用备用方案:', error);
-    return await generateEnhancedMockSummary(contentItemId, content, originalUrl);
-  }
-};
-
-// 🎯 增强版模拟摘要（模拟DeepSeek风格输出）
-const generateEnhancedMockSummary = async (contentItemId: number, content: string, originalUrl: string): Promise<any> => {
-  try {
-    console.log('🎭 生成增强版模拟摘要（DeepSeek风格）');
-
-    // 🎯 根据改进的prompt生成摘要
-    const mockSummary = createImprovedDeepSeekStyleSummary(content, originalUrl);
+    // 直接使用本地摘要生成
+    const mockSummary = createSimpleSummary(content, originalUrl);
     
     // 计算阅读时间
     const wordCount = mockSummary.split(/\s+/).length;
@@ -798,14 +674,14 @@ const generateEnhancedMockSummary = async (contentItemId: number, content: strin
         summary_text: mockSummary,
         summary_length: mockSummary.length,
         reading_time: readingTime,
-        model_used: 'deepseek-chat-enhanced',
+        model_used: 'local-summary',
         processing_time: Math.random() * 2 + 1
       })
       .select()
       .single();
 
     if (summaryError) {
-      console.error('❌ 创建增强摘要失败:', summaryError);
+      console.error('❌ 创建摘要失败:', summaryError);
       throw summaryError;
     }
 
@@ -818,35 +694,39 @@ const generateEnhancedMockSummary = async (contentItemId: number, content: strin
       })
       .eq('id', contentItemId);
 
-    console.log('✅ 成功创建增强版模拟摘要:', summary.id);
+    console.log('✅ 成功创建摘要:', summary.id);
     return summary;
 
   } catch (error) {
-    console.error('❌ 增强摘要失败:', error);
+    console.error('❌ 摘要生成失败:', error);
     throw error;
   }
 };
 
-// 🎯 创建改进的DeepSeek风格摘要（按照新的prompt要求）
-const createImprovedDeepSeekStyleSummary = (content: string, originalUrl: string): string => {
-  // 提取关键句子用于引用
+// 🎯 创建简单摘要
+const createSimpleSummary = (content: string, originalUrl: string): string => {
+  // 生成简单的摘要
+  const words = content.split(/\s+/);
   const sentences = content
     .split(/[.!?]+/)
     .map(s => s.trim())
-    .filter(s => s.length > 50 && s.length < 300)
-    .slice(0, 10);
+    .filter(s => s.length > 20)
+    .slice(0, 5);
   
   if (sentences.length === 0) {
-    return `## Key Themes
+    return `## Content Summary
 
-1. **Technology and Innovation**: This article discusses important technological developments and their implications for the future. The content explores how emerging technologies are reshaping various industries and creating new opportunities for innovation. These developments represent significant shifts in how we approach problem-solving and value creation. The analysis provides valuable insights into the trajectory of technological progress.
+This article covers important topics and provides insights into current developments. The content discusses key themes that are relevant to understanding the subject matter.
 
-   Quote: "Technology continues to evolve at an unprecedented pace, reshaping how we work and live."
+**Key Points:**
+- Important developments in the field
+- Analysis of current trends
+- Future implications and considerations
 
-Original Article URL: ${originalUrl}`;
+Original Article: ${originalUrl}`;
   }
 
-  // 🎯 按照新的格式要求生成摘要
+  // 创建简单摘要
   let summary = '## Key Themes\n\n';
   
   // 主题1 - 技术发展
