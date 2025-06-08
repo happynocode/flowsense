@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCircle, Sparkles, Zap } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCircle, Sparkles, Zap, Eraser } from 'lucide-react';
 import { sourcesApi } from '../services/api';
 import { ContentSource } from '../types';
 import { useToast } from '../hooks/use-toast';
@@ -27,6 +27,8 @@ const Sources = () => {
   const [deleteDialog, setDeleteDialog] = useState<ContentSource | null>(null);
   const [globalProcessing, setGlobalProcessing] = useState(false);
   const [processResults, setProcessResults] = useState<any>(null);
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -147,6 +149,35 @@ const Sources = () => {
     }
   };
 
+  // 🗑️ 清除已抓取内容的功能
+  const handleClearScrapedContent = async () => {
+    setClearing(true);
+    try {
+      await sourcesApi.clearScrapedContent();
+      
+      // 刷新sources列表以更新状态
+      fetchSources();
+      
+      // 清除处理结果显示
+      setProcessResults(null);
+      
+      toast({
+        title: "✅ 内容清除成功",
+        description: "所有已抓取的内容和摘要已清除，Sources保留。",
+      });
+    } catch (error) {
+      console.error('Failed to clear scraped content:', error);
+      toast({
+        title: "❌ 清除失败",
+        description: "清除内容时发生错误，请重试。",
+        variant: "destructive",
+      });
+    } finally {
+      setClearing(false);
+      setShowClearDialog(false);
+    }
+  };
+
   const getTypeIcon = (type: ContentSource['type']) => {
     switch (type) {
       case 'podcast':
@@ -172,7 +203,7 @@ const Sources = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingIndicator size="lg\" text="Loading your sources..." />
+        <LoadingIndicator size="lg" text="Loading your sources..." />
       </div>
     );
   }
@@ -229,6 +260,19 @@ const Sources = () => {
                 )}
               </Button>
             )}
+            
+            {/* 🗑️ 清除内容按钮 */}
+            {sourcesArray.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => setShowClearDialog(true)}
+                className="text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300"
+              >
+                <Eraser className="h-4 w-4 mr-2" />
+                Clear Content
+              </Button>
+            )}
+            
             <Button onClick={() => setShowForm(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Source
@@ -408,6 +452,37 @@ const Sources = () => {
                 className="bg-red-600 hover:bg-red-700"
               >
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Clear Content Confirmation Dialog */}
+        <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear Scraped Content</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to clear all scraped content and summaries? 
+                This will remove all generated digests and content items but keep your sources intact. 
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleClearScrapedContent}
+                disabled={clearing}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                {clearing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Clearing...
+                  </>
+                ) : (
+                  'Clear Content'
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
