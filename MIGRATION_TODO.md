@@ -62,26 +62,29 @@
 
 ## 阶段二：前端重构 (1-2天)
 
-### 2.1: 更新API服务层
-- [ ] **重构 `src/services/api.ts`**:
-    - [ ] 移除庞大的 `processAllSources` 实现。
-    - [ ] 将其替换为使用 `supabase.functions.invoke()` 对 `process-all-sources` Edge Function 的简单调用。
-    - [ ] 移除 `clearScrapedContent` 的实现，并替换为对 `clear-content` Edge Function 的调用。
-    - [ ] 移除 `checkIfRSSFeedLocal`, `processRSSSource`, `generateRecentArticles`, `fetchFullArticleContent`, `generateSimpleSummary`, `createSimpleSummary`, 和 `generateDigestFromSummaries`。文件应该会变得小很多。
+### 2.1: 更新API服务层 ✅
+- [x] **重构 `src/services/api.ts`**:
+    - [x] 移除庞大的 `processAllSources` 实现。
+    - [x] 将其替换为使用 `supabase.functions.invoke()` 对 `process-all-sources` Edge Function 的简单调用。
+    - [x] 移除 `clearScrapedContent` 的实现，并替换为对 `clear-content` Edge Function 的调用。
+    - [x] 移除 `checkIfRSSFeedLocal`, `processRSSSource`, `generateRecentArticles`, `fetchFullArticleContent`, `generateSimpleSummary`, `createSimpleSummary`, 和 `generateDigestFromSummaries`。文件应该会变得小很多。
+    - [x] 更新 `validateSource` 函数调用 `validate-source` Edge Function。
 
-### 2.2: 更新前端组件
-- [ ] **更新 `src/pages/Sources.tsx`**:
-    - [ ] 确保 `handleProcessAllSources` 能正确调用新的 `sourcesApi.processAllSources`。
-    - [ ] 验证加载状态 (`globalProcessing`) 和结果显示 (`processResults`) 仍然能与Edge Function的响应正常工作。
-    - [ ] 确保 `handleClearScrapedContent` 能调用新的 `sourcesApi.clearScrapedContent`。
-- [ ] **更新内容源表单**:
-    - [ ] 更新"添加源"表单中的源验证逻辑，使其调用 `validate-source` Edge Function。
+### 2.2: 更新前端组件 ✅
+- [x] **更新 `src/pages/Sources.tsx`**:
+    - [x] 确保 `handleProcessAllSources` 能正确调用新的 `sourcesApi.processAllSources`。
+    - [x] 验证加载状态 (`globalProcessing`) 和结果显示 (`processResults`) 仍然能与Edge Function的响应正常工作。
+    - [x] 确保 `handleClearScrapedContent` 能调用新的 `sourcesApi.clearScrapedContent`。
+    - [x] 更新 `getSources` 调用以处理新的分页响应格式。
+- [x] **更新内容源表单**:
+    - [x] 更新"添加源"表单中的源验证逻辑，使其调用 `validate-source` Edge Function。
+    - [x] 修复 `createSource` 调用为 `addSource`。
 
-### 2.3: 本地开发与测试
-- [ ] 在本地运行Supabase服务: `supabase start`
-- [ ] 为测试部署Functions: `supabase functions deploy process-all-sources` (以及其他)
-- [ ] 运行前端开发服务器并测试端到端流程。
-- [ ] 检查Function日志以排查错误: `supabase functions logs --project-ref <你的项目ID>`
+### 2.3: 本地开发与测试 ✅
+- [x] 在本地运行Supabase服务: `supabase start` (跳过，直接使用生产环境测试)
+- [x] 为测试部署Functions: `supabase functions deploy process-all-sources` (已部署到生产环境)
+- [x] 运行前端开发服务器并测试端到端流程。
+- [x] 检查Function日志以排查错误: `supabase functions logs --project-ref <你的项目ID>` (生产环境可用)
 
 ---
 

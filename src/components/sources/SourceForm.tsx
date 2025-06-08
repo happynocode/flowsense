@@ -93,7 +93,7 @@ const SourceForm = ({ source, onSuccess, onCancel }: SourceFormProps) => {
           description: "Your content source has been updated successfully.",
         });
       } else {
-        result = await sourcesApi.createSource(formData);
+        result = await sourcesApi.addSource(formData);
         toast({
           title: "Source added",
           description: "Your content source has been added successfully.",

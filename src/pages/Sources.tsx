@@ -38,8 +38,8 @@ const Sources = () => {
   const fetchSources = async () => {
     try {
       setLoading(true);
-      const data = await sourcesApi.getSources();
-      setSources(data || []);
+      const response = await sourcesApi.getSources();
+      setSources(response.data || []);
     } catch (error) {
       console.error('Failed to load sources:', error);
       setSources([]);
