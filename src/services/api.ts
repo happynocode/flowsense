@@ -719,13 +719,13 @@ const generateDigestFromSummaries = async (userId: string): Promise<void> => {
     // 获取今天的日期
     const today = new Date().toISOString().split('T')[0];
     
-    // 检查今天是否已有digest
+    // 检查今天是否已有digest - 使用 maybeSingle() 而不是 single()
     const { data: existingDigest } = await supabase
       .from('digests')
       .select('id')
       .eq('user_id', userId)
       .eq('generation_date', today)
-      .single();
+      .maybeSingle();
 
     if (existingDigest) {
       console.log('📰 今天已有digest，删除旧的重新生成');
