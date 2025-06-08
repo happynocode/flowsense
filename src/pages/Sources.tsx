@@ -263,18 +263,37 @@ const Sources = () => {
       
       if (result.success && result.task_id) {
         toast({
-          title: "🚀 任务已启动",
-          description: result.message || "正在后台处理，请稍候...",
+          title: "🚀 任务已创建",
+          description: result.message || "任务已创建，正在启动处理...",
         });
         
-        // 开始轮询任务状态
-        pollTaskStatus(result.task_id);
+        console.log('🔄 手动触发任务执行...');
+        
+        // 手动触发执行任务
+        const triggerResult = await sourcesApi.triggerTaskExecution(result.task_id.toString(), user?.id);
+        
+        if (triggerResult.success) {
+          toast({
+            title: "✅ 任务启动成功",
+            description: "正在后台处理，请稍候...",
+          });
+          
+          // 开始轮询任务状态
+          pollTaskStatus(result.task_id.toString());
+        } else {
+          toast({
+            title: "⚠️ 任务创建成功但启动失败",
+            description: triggerResult.error || "请稍后重试",
+            variant: "destructive",
+          });
+          setGlobalProcessing(false);
+        }
         
       } else {
         setGlobalProcessing(false);
         toast({
-          title: "❌ 任务启动失败",
-          description: result.error || "启动处理任务失败",
+          title: "❌ 任务创建失败",
+          description: result.error || "创建处理任务失败",
           variant: "destructive",
         });
       }

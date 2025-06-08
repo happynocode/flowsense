@@ -437,10 +437,10 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
     const items = doc!.querySelectorAll('item')
     console.log('🔍 Found', items.length, 'RSS items via DOM')
     
-    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)  // Changed to 30 days
     
     if (items.length > 0) {
-      items.forEach((item) => {
+      items.forEach((item, index) => {
         const title = item.querySelector('title')?.textContent?.trim()
         const link = item.querySelector('link')?.textContent?.trim()
         const pubDate = item.querySelector('pubDate')?.textContent?.trim()
@@ -448,8 +448,9 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
 
         if (title && link) {
           const articleDate = pubDate ? new Date(pubDate) : new Date()
+          console.log(`📅 Article ${index + 1}: "${title}" - Date: ${pubDate} -> ${articleDate.toISOString()}`)
           
-          if (articleDate >= oneWeekAgo) {
+          if (articleDate >= thirtyDaysAgo) {
             articles.push({
               title,
               link,
@@ -457,6 +458,9 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
               description,
               content: description
             })
+            console.log(`✅ Article ${index + 1} added to processing queue`)
+          } else {
+            console.log(`❌ Article ${index + 1} too old, skipping`)
           }
         }
       })
@@ -465,7 +469,7 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
       const entries = doc!.querySelectorAll('entry')
       console.log('🔍 Found', entries.length, 'Atom entries via DOM')
       
-      entries.forEach((entry) => {
+      entries.forEach((entry, index) => {
         const title = entry.querySelector('title')?.textContent?.trim()
         const linkElement = entry.querySelector('link')
         const link = linkElement?.getAttribute('href') || linkElement?.textContent?.trim()
@@ -476,8 +480,9 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
 
         if (title && link) {
           const articleDate = published ? new Date(published) : new Date()
+          console.log(`📅 Atom Entry ${index + 1}: "${title}" - Date: ${published} -> ${articleDate.toISOString()}`)
           
-          if (articleDate >= oneWeekAgo) {
+          if (articleDate >= thirtyDaysAgo) {
             articles.push({
               title,
               link,
@@ -485,6 +490,9 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
               description: summary,
               content: summary
             })
+            console.log(`✅ Atom Entry ${index + 1} added to processing queue`)
+          } else {
+            console.log(`❌ Atom Entry ${index + 1} too old, skipping`)
           }
         }
       })
@@ -503,7 +511,7 @@ async function parseRSSWithRegex(xmlContent: string): Promise<Article[]> {
   console.log('🔄 Starting regex-based RSS parsing')
   
   const articles: Article[] = []
-  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)  // Changed to 30 days
   
   try {
     const itemRegex = /<item\b[^>]*>([\s\S]*?)<\/item>/gi
@@ -511,7 +519,8 @@ async function parseRSSWithRegex(xmlContent: string): Promise<Article[]> {
     
     console.log('🔍 Found', items.length, 'items via regex')
     
-    for (const item of items.slice(0, 20)) {
+    for (let i = 0; i < Math.min(items.length, 20); i++) {
+      const item = items[i]
       const itemContent = item[1]
       
       const titleMatch = itemContent.match(/<title(?:\s[^>]*)?>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/i)
@@ -528,8 +537,9 @@ async function parseRSSWithRegex(xmlContent: string): Promise<Article[]> {
       
       if (title && link) {
         const articleDate = pubDateStr ? new Date(pubDateStr) : new Date()
+        console.log(`📅 Regex Item ${i + 1}: "${title}" - Date: ${pubDateStr} -> ${articleDate.toISOString()}`)
         
-        if (articleDate >= oneWeekAgo) {
+        if (articleDate >= thirtyDaysAgo) {
           articles.push({
             title: title.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'),
             link: link.replace(/&amp;/g, '&'),
@@ -537,6 +547,9 @@ async function parseRSSWithRegex(xmlContent: string): Promise<Article[]> {
             description: description?.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'),
             content: description?.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
           })
+          console.log(`✅ Regex Item ${i + 1} added to processing queue`)
+        } else {
+          console.log(`❌ Regex Item ${i + 1} too old, skipping`)
         }
       }
     }

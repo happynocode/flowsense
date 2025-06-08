@@ -426,6 +426,32 @@ export const sourcesApi = {
       console.error('❌ 清除内容失败:', error);
       throw error;
     }
+  },
+
+  // 🔄 手动触发执行任务
+  triggerTaskExecution: async (taskId: string, userId?: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      console.log('🔄 Manually triggering task execution for task ID:', taskId);
+      
+      const { data, error } = await supabase.functions.invoke('execute-processing-task', {
+        body: { task_id: parseInt(taskId) }
+      });
+
+      if (error) {
+        console.error('❌ Failed to trigger task execution:', error);
+        throw error;
+      }
+
+      console.log('✅ Task execution triggered successfully:', data);
+      return { success: true };
+
+    } catch (error) {
+      console.error('❌ triggerTaskExecution failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 };
 
