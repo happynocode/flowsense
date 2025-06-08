@@ -268,7 +268,88 @@ export const sourcesApi = {
     }
   },
 
-  // 🚀 全局处理所有sources的功能 (使用 Edge Function)
+  // 🚀 启动异步处理任务 (新的异步架构)
+  startProcessingTask: async (userId?: string): Promise<{ success: boolean; task_id?: string; message?: string; error?: string }> => {
+    try {
+      console.log('🚀 启动异步处理任务...');
+      
+      let user;
+      if (userId) {
+        user = { id: userId };
+        console.log('🔍 Using provided userId for startProcessingTask:', userId);
+      } else {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) throw new Error('Not authenticated');
+        user = authUser;
+      }
+
+      console.log('📡 调用 start-processing Edge Function...');
+
+      const { data, error } = await supabase.functions.invoke('start-processing', {
+        body: {}
+      });
+
+      if (error) {
+        console.error('❌ Edge Function 调用失败:', error);
+        throw error;
+      }
+
+      console.log('✅ 任务启动成功:', data);
+
+      return {
+        success: data.success,
+        task_id: data.task_id,
+        message: data.message,
+        error: data.error
+      };
+
+    } catch (error) {
+      console.error('❌ startProcessingTask 失败:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+  // 📊 查询任务状态
+  getTaskStatus: async (taskId: string, userId?: string): Promise<{ success: boolean; task?: any; error?: string }> => {
+    try {
+      let user;
+      if (userId) {
+        user = { id: userId };
+      } else {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) throw new Error('Not authenticated');
+        user = authUser;
+      }
+
+      const { data, error } = await supabase
+        .from('processing_tasks')
+        .select('*')
+        .eq('id', taskId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return {
+        success: true,
+        task: data
+      };
+
+    } catch (error) {
+      console.error('❌ getTaskStatus 失败:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+  // 🚀 全局处理所有sources的功能 (使用 Edge Function) - 保持向后兼容
   processAllSources: async (userId?: string): Promise<{ success: boolean; data?: any; error?: string }> => {
     try {
       console.log('🚀 开始全局处理所有sources (通过 Edge Function)...');

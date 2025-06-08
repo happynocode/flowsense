@@ -32,6 +32,12 @@ const Sources = () => {
   const [processResults, setProcessResults] = useState<any>(null);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [clearing, setClearing] = useState(false);
+  
+  // 新增异步任务相关状态
+  const [currentTask, setCurrentTask] = useState<any>(null);
+  const [taskProgress, setTaskProgress] = useState<any>(null);
+  const [isPollingTask, setIsPollingTask] = useState(false);
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -187,6 +193,102 @@ const Sources = () => {
     }
   };
 
+  // 🔄 轮询任务状态
+  const pollTaskStatus = async (taskId: string) => {
+    setIsPollingTask(true);
+    const pollInterval = setInterval(async () => {
+      try {
+        const statusResult = await sourcesApi.getTaskStatus(taskId, user?.id);
+        
+        if (statusResult.success && statusResult.task) {
+          const task = statusResult.task;
+          setCurrentTask(task);
+          setTaskProgress(task.progress);
+          
+          console.log('📊 Task status:', task.status, task.progress);
+          
+          // 任务完成
+          if (task.status === 'completed') {
+            clearInterval(pollInterval);
+            setIsPollingTask(false);
+            setGlobalProcessing(false);
+            
+            const result = task.result;
+            setProcessResults({ success: true, data: result });
+            
+            toast({
+              title: "🎉 全局处理完成！",
+              description: `成功处理 ${result.processedSources.length} 个sources，生成 ${result.totalSummaries} 个摘要。${result.skippedSources.length > 0 ? `跳过 ${result.skippedSources.length} 个sources。` : ''}`,
+            });
+            
+            // 刷新 sources 列表
+            fetchSources();
+            
+          } else if (task.status === 'failed') {
+            clearInterval(pollInterval);
+            setIsPollingTask(false);
+            setGlobalProcessing(false);
+            
+            toast({
+              title: "❌ 全局处理失败",
+              description: task.error_message || "处理过程中发生错误",
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (error) {
+        console.error('轮询任务状态失败:', error);
+      }
+    }, 2000); // 每2秒轮询一次
+    
+    // 设置最大轮询时间（10分钟）
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      setIsPollingTask(false);
+      setGlobalProcessing(false);
+    }, 10 * 60 * 1000);
+  };
+
+  // 🚀 新的异步处理函数
+  const handleProcessAllSourcesAsync = async () => {
+    setGlobalProcessing(true);
+    setProcessResults(null);
+    setCurrentTask(null);
+    setTaskProgress(null);
+
+    try {
+      console.log('🚀 启动异步处理任务...');
+      
+      const result = await sourcesApi.startProcessingTask(user?.id);
+      
+      if (result.success && result.task_id) {
+        toast({
+          title: "🚀 任务已启动",
+          description: result.message || "正在后台处理，请稍候...",
+        });
+        
+        // 开始轮询任务状态
+        pollTaskStatus(result.task_id);
+        
+      } else {
+        setGlobalProcessing(false);
+        toast({
+          title: "❌ 任务启动失败",
+          description: result.error || "启动处理任务失败",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('启动异步任务失败:', error);
+      setGlobalProcessing(false);
+      toast({
+        title: "❌ 任务启动失败",
+        description: "启动处理任务失败，请重试。",
+        variant: "destructive",
+      });
+    }
+  };
+
   // 🗑️ 清除已抓取内容的功能
   const handleClearScrapedContent = async () => {
     setClearing(true);
@@ -281,7 +383,7 @@ const Sources = () => {
             {/* 🚀 全局处理按钮 */}
             {sourcesArray.length > 0 && (
               <Button 
-                onClick={handleProcessAllSources}
+                onClick={handleProcessAllSourcesAsync}
                 disabled={globalProcessing}
                 className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
               >
@@ -317,6 +419,56 @@ const Sources = () => {
             </Button>
           </div>
         </div>
+
+        {/* 📊 任务进度显示 */}
+        {globalProcessing && taskProgress && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-semibold text-blue-800">
+                📊 Processing Progress
+              </h3>
+              <span className="text-sm text-blue-600">
+                {taskProgress.current || 0} / {taskProgress.total || 0}
+              </span>
+            </div>
+            
+            {/* 进度条 */}
+            <div className="w-full bg-blue-200 rounded-full h-2 mb-3">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                style={{ 
+                  width: `${taskProgress.total ? (taskProgress.current / taskProgress.total) * 100 : 0}%` 
+                }}
+              ></div>
+            </div>
+            
+            {/* 当前处理的源 */}
+            {taskProgress.current_source && (
+              <p className="text-sm text-blue-700 mb-2">
+                🔄 Currently processing: <strong>{taskProgress.current_source}</strong>
+              </p>
+            )}
+            
+            {/* 已处理和跳过的源统计 */}
+            <div className="flex space-x-4 text-sm">
+              {taskProgress.processed_sources && (
+                <span className="text-green-600">
+                  ✅ Processed: {taskProgress.processed_sources.length}
+                </span>
+              )}
+              {taskProgress.skipped_sources && (
+                <span className="text-orange-600">
+                  ⚠️ Skipped: {taskProgress.skipped_sources.length}
+                </span>
+              )}
+              {currentTask?.status && (
+                <span className="text-blue-600">
+                  📋 Status: {currentTask.status}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 全局处理结果显示 */}
         {processResults && (
