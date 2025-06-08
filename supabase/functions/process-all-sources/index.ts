@@ -112,19 +112,7 @@ Deno.serve(async (req) => {
       try {
         console.log('🔄 Processing source:', source.name)
         
-        // Check if it's an RSS feed
-        const isRSSFeed = await checkIfRSSFeed(source.url)
-        
-        if (!isRSSFeed) {
-          console.log('⚠️ Skipping non-RSS source:', source.name)
-          skippedSources.push({
-            name: source.name,
-            reason: '仅支持RSS feed格式'
-          })
-          continue
-        }
-
-        // Process RSS source
+        // Directly try to process as RSS source
         const result = await processRSSSource(
           supabaseClient,
           source.id,
