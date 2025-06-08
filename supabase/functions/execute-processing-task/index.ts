@@ -481,7 +481,8 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
             })
             console.log(`✅ Article ${index + 1} added to processing queue`)
           } else {
-            console.log(`❌ Article ${index + 1} too old, skipping`)
+            console.log(`❌ Article ${index + 1} too old, skipping. Stopping processing as RSS is time-ordered.`)
+            return articles.slice(0, 20) // Early exit - no need to check older articles
           }
         } else {
           console.log(`❌ Item ${index + 1} SKIPPED: Missing title (${!!title}) or link (${!!link})`)
@@ -515,7 +516,8 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
             })
             console.log(`✅ Atom Entry ${index + 1} added to processing queue`)
           } else {
-            console.log(`❌ Atom Entry ${index + 1} too old, skipping`)
+            console.log(`❌ Atom Entry ${index + 1} too old, skipping. Stopping processing as feed is time-ordered.`)
+            return articles.slice(0, 20) // Early exit - no need to check older entries
           }
         }
       })
@@ -585,7 +587,8 @@ async function parseRSSWithRegex(xmlContent: string): Promise<Article[]> {
           })
           console.log(`✅ Regex Item ${i + 1} added to processing queue`)
         } else {
-          console.log(`❌ Regex Item ${i + 1} too old, skipping`)
+          console.log(`❌ Regex Item ${i + 1} too old, skipping. Stopping regex parsing as RSS is time-ordered.`)
+          break // Early exit from loop - no need to check older items
         }
       }
     }
