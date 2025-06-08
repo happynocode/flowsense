@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link, Navigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -8,10 +8,12 @@ import { ArrowLeft, Clock, ExternalLink, Calendar, Play, FileText } from 'lucide
 import { digestsApi } from '../services/api';
 import { Digest } from '../types';
 import { useToast } from '../hooks/use-toast';
+import { useAuth } from '../hooks/useAuth';
 import LoadingIndicator from '../components/common/LoadingIndicator';
 import AudioPlayer from '../components/digests/AudioPlayer';
 
 const DigestDetail = () => {
+  const { user, loading: authLoading } = useAuth();
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const [digest, setDigest] = useState<Digest | null>(null);
@@ -21,15 +23,26 @@ const DigestDetail = () => {
   const defaultTab = searchParams.get('tab') === 'audio' ? 'audio' : 'reading';
 
   useEffect(() => {
-    if (id) {
+    // Only fetch digest when user is authenticated and auth loading is complete
+    if (user && !authLoading && id) {
+      console.log('✅ User authenticated, fetching digest...');
       fetchDigest(id);
+    } else if (!authLoading && !user) {
+      console.log('❌ User not authenticated');
+      setLoading(false);
     }
-  }, [id]);
+  }, [user, authLoading, id]);
+
+  // Redirect to login if not authenticated and auth loading is complete
+  if (!authLoading && !user) {
+    return <Navigate to="/login" replace />;
+  }
 
   const fetchDigest = async (digestId: string) => {
     try {
       setLoading(true);
-      const data = await digestsApi.getDigest(digestId);
+      // 传递用户ID到API调用
+      const data = await digestsApi.getDigest(digestId, user?.id);
       setDigest(data);
       
       // Mark as read

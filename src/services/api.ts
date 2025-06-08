@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import type { 
   ContentSource, 
   PaginatedResponse, 
@@ -6,15 +6,6 @@ import type {
   Subscription, 
   SubscriptionPlan 
 } from '../types';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const authApi = {
   signUp: async (email: string, password: string) => {
@@ -45,11 +36,47 @@ export const authApi = {
 };
 
 export const sourcesApi = {
-  getSources: async (page = 1, limit = 10): Promise<PaginatedResponse<ContentSource[]>> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  getSources: async (page = 1, limit = 10, userId?: string): Promise<PaginatedResponse<ContentSource[]>> => {
+    let user;
+    
+    // 如果传入了 userId，直接使用；否则尝试获取当前用户
+    if (userId) {
+      user = { id: userId };
+      console.log('🔍 Using provided userId:', userId);
+    } else {
+      // 🔧 增强认证检查 - 获取用户和session
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      
+      console.log('🔍 getSources 认证检查:', { 
+        hasUser: !!authUser, 
+        userId: authUser?.id,
+        authError: authError?.message 
+      });
+      
+      if (authError) {
+        console.error('❌ Auth error in getSources:', authError);
+        throw new Error('Authentication error: ' + authError.message);
+      }
+      
+      if (!authUser) {
+        console.error('❌ No user found in getSources');
+        throw new Error('Not authenticated');
+      }
+      
+      user = authUser;
+    }
 
     const offset = (page - 1) * limit;
+
+    console.log('📡 Fetching sources for user:', user.id);
+    
+    // 🔧 Debug: Log auth headers and session
+    const session = await supabase.auth.getSession();
+    console.log('🔍 Auth session debug:', {
+      hasSession: !!session.data.session,
+      sessionUserId: session.data.session?.user?.id,
+      sessionError: session.error?.message
+    });
 
     const { data, error, count } = await supabase
       .from('content_sources')
@@ -58,7 +85,12 @@ export const sourcesApi = {
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Database error in getSources:', error);
+      throw error;
+    }
+
+    console.log('✅ Sources fetched successfully:', { count, dataLength: data?.length });
 
     const sources: ContentSource[] = (data || []).map(source => ({
       id: source.id.toString(),
@@ -83,23 +115,58 @@ export const sourcesApi = {
     };
   },
 
-  addSource: async (source: Omit<ContentSource, 'id' | 'lastScraped' | 'createdAt'>): Promise<ContentSource> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  addSource: async (source: Omit<ContentSource, 'id' | 'lastScraped' | 'createdAt'>, userId?: string): Promise<ContentSource> => {
+    console.log('➕ Preparing to add source. Provided userId:', userId);
 
+    // 1. Get the most current session and user from Supabase
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('❌ Session error during addSource:', sessionError);
+      throw new Error('Could not get current session: ' + sessionError.message);
+    }
+
+    if (!session) {
+      console.error('❌ No active session found during addSource.');
+      throw new Error('Not authenticated. No session found.');
+    }
+
+    const authUser = session.user;
+    console.log('🔍 Current authenticated user from session:', { 
+      id: authUser.id, 
+      email: authUser.email 
+    });
+
+    // 2. Determine the final user ID to use for the insert
+    const finalUserId = userId || authUser.id;
+    if (finalUserId !== authUser.id) {
+        console.warn(`Mismatch warning: provided userId (${userId}) is different from session userId (${authUser.id}). Using session userId.`);
+    }
+    const userIdForInsert = authUser.id;
+
+    console.log(`📡 Inserting source for user ID: ${userIdForInsert}`);
+    
+    // 3. Perform the insert operation
     const { data, error } = await supabase
       .from('content_sources')
       .insert({
-        user_id: user.id,
+        user_id: userIdForInsert, // Always use the ID from the active session
         name: source.name,
         url: source.url,
         description: source.description,
-        is_active: source.isActive
+        is_active: source.isActive,
+        has_rss: source.hasRss || false,
+        rss_url: source.rssUrl || null
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Database error in addSource:', error);
+      throw error;
+    }
+    
+    console.log('✅ Source added successfully to database:', data);
 
     return {
       id: data.id.toString(),
@@ -162,10 +229,18 @@ export const sourcesApi = {
     if (error) throw error;
   },
 
-  validateSource: async (url: string): Promise<{ valid: boolean; message: string }> => {
+  validateSource: async (url: string, userId?: string): Promise<{ valid: boolean; message: string }> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      let user;
+      
+      if (userId) {
+        user = { id: userId };
+        console.log('🔍 Using provided userId for validation:', userId);
+      } else {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) throw new Error('Not authenticated');
+        user = authUser;
+      }
 
       console.log('🔍 Validating source URL via Edge Function:', url);
 
@@ -194,12 +269,19 @@ export const sourcesApi = {
   },
 
   // 🚀 全局处理所有sources的功能 (使用 Edge Function)
-  processAllSources: async (): Promise<{ success: boolean; data?: any; error?: string }> => {
+  processAllSources: async (userId?: string): Promise<{ success: boolean; data?: any; error?: string }> => {
     try {
       console.log('🚀 开始全局处理所有sources (通过 Edge Function)...');
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      let user;
+      if (userId) {
+        user = { id: userId };
+        console.log('🔍 Using provided userId for processAllSources:', userId);
+      } else {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) throw new Error('Not authenticated');
+        user = authUser;
+      }
 
       console.log('📡 调用 process-all-sources Edge Function...');
 
@@ -230,10 +312,17 @@ export const sourcesApi = {
   },
 
   // 🗑️ 清除已抓取内容的功能（使用 Edge Function）
-  clearScrapedContent: async (): Promise<void> => {
+  clearScrapedContent: async (userId?: string): Promise<void> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      let user;
+      if (userId) {
+        user = { id: userId };
+        console.log('🔍 Using provided userId for clearScrapedContent:', userId);
+      } else {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) throw new Error('Not authenticated');
+        user = authUser;
+      }
 
       console.log('🗑️ 开始清除已抓取的内容 (通过 Edge Function)...');
 
@@ -261,9 +350,17 @@ export const sourcesApi = {
 
 // Digests API
 export const digestsApi = {
-  getDigests: async (page = 1, limit = 10): Promise<PaginatedResponse<Digest[]>> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  getDigests: async (page = 1, limit = 10, userId?: string): Promise<PaginatedResponse<Digest[]>> => {
+    let user;
+    
+    if (userId) {
+      user = { id: userId };
+      console.log('🔍 Using provided userId for getDigests:', userId);
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Not authenticated');
+      user = authUser;
+    }
 
     const offset = (page - 1) * limit;
 
@@ -327,9 +424,17 @@ export const digestsApi = {
     };
   },
   
-  getDigest: async (id: string): Promise<Digest> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  getDigest: async (id: string, userId?: string): Promise<Digest> => {
+    let user;
+    
+    if (userId) {
+      user = { id: userId };
+      console.log('🔍 Using provided userId for getDigest:', userId);
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Not authenticated');
+      user = authUser;
+    }
 
     const { data, error } = await supabase
       .from('digests')
@@ -394,9 +499,17 @@ export const digestsApi = {
   },
 
   // 🗑️ 清除digests数据的功能（保留sources）
-  clearAllDigests: async (): Promise<void> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  clearAllDigests: async (userId?: string): Promise<void> => {
+    let user;
+    
+    if (userId) {
+      user = { id: userId };
+      console.log('🔍 Using provided userId for clearAllDigests:', userId);
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Not authenticated');
+      user = authUser;
+    }
 
     console.log('🗑️ 开始清除所有digests数据...');
 

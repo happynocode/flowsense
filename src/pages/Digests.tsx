@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -8,6 +8,7 @@ import { FileText, Play, Clock, Search, Calendar, Trash2 } from 'lucide-react';
 import { digestsApi } from '../services/api';
 import { Digest } from '../types';
 import { useToast } from '../hooks/use-toast';
+import { useAuth } from '../hooks/useAuth';
 import LoadingIndicator from '../components/common/LoadingIndicator';
 import {
   AlertDialog,
@@ -21,6 +22,7 @@ import {
 } from '../components/ui/alert-dialog';
 
 const Digests = () => {
+  const { user, loading: authLoading } = useAuth();
   const [digests, setDigests] = useState<Digest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,8 +34,20 @@ const Digests = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchDigests(1);
-  }, []);
+    // Only fetch digests when user is authenticated and auth loading is complete
+    if (user && !authLoading) {
+      console.log('✅ User authenticated, fetching digests...');
+      fetchDigests(1);
+    } else if (!authLoading && !user) {
+      console.log('❌ User not authenticated');
+      setLoading(false);
+    }
+  }, [user, authLoading]);
+
+  // Redirect to login if not authenticated and auth loading is complete
+  if (!authLoading && !user) {
+    return <Navigate to="/login" replace />;
+  }
 
   const fetchDigests = async (page: number, append = false) => {
     try {
@@ -43,7 +57,8 @@ const Digests = () => {
         setLoadingMore(true);
       }
 
-      const response = await digestsApi.getDigests(page, 10);
+      // 传递用户ID到API调用
+      const response = await digestsApi.getDigests(page, 10, user?.id);
       
       if (append) {
         setDigests(prev => [...(prev || []), ...(response.data || [])]);
@@ -90,7 +105,8 @@ const Digests = () => {
   const handleClearDigests = async () => {
     setClearing(true);
     try {
-      await digestsApi.clearAllDigests();
+      // 传递用户ID到API调用
+      await digestsApi.clearAllDigests(user?.id);
       setDigests([]);
       toast({
         title: "✅ Digests清除成功",
@@ -132,10 +148,10 @@ const Digests = () => {
     return digest.summaries.reduce((total, summary) => total + summary.readingTime, 0);
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingIndicator size="lg\" text="Loading your digests..." />
+        <LoadingIndicator size="lg" text="Loading your digests..." />
       </div>
     );
   }

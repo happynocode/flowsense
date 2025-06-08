@@ -14,7 +14,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,   // 👈 禁用 URL 检测，避免导航错误
     flowType: 'pkce',
     storage: window.localStorage, // 👈 使用 localStorage 替代 IndexedDB
-    multiTab: false,             // 👈 禁用多 tab 同步，避免冲突
     // 🔧 增加超时配置，适应 StackBlitz 环境
     storageKey: 'sb-auth-token',
     debug: import.meta.env.DEV
@@ -81,7 +80,7 @@ export type Database = {
     Tables: {
       users: {
         Row: {
-          id: number
+          id: string
           email: string
           google_id: string | null
           name: string
@@ -96,6 +95,7 @@ export type Database = {
           last_login: string | null
         }
         Insert: {
+          id?: string
           email: string
           google_id?: string | null
           name: string
@@ -126,7 +126,7 @@ export type Database = {
       content_sources: {
         Row: {
           id: number
-          user_id: number
+          user_id: string
           name: string
           url: string
           source_type: string
@@ -142,7 +142,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          user_id: number
+          user_id: string
           name: string
           url: string
           source_type: string
@@ -158,7 +158,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          user_id?: number
+          user_id?: string
           name?: string
           url?: string
           source_type?: string
@@ -176,7 +176,7 @@ export type Database = {
       digests: {
         Row: {
           id: number
-          user_id: number
+          user_id: string
           title: string
           generation_date: string
           email_sent: boolean
@@ -189,7 +189,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          user_id: number
+          user_id: string
           title: string
           generation_date: string
           email_sent?: boolean
@@ -202,7 +202,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          user_id?: number
+          user_id?: string
           title?: string
           generation_date?: string
           email_sent?: boolean
@@ -217,7 +217,7 @@ export type Database = {
       subscriptions: {
         Row: {
           id: number
-          user_id: number
+          user_id: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           stripe_price_id: string | null
@@ -233,7 +233,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          user_id: number
+          user_id: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           stripe_price_id?: string | null
@@ -249,7 +249,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          user_id?: number
+          user_id?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           stripe_price_id?: string | null

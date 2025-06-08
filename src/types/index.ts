@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   email: string;
@@ -16,6 +15,8 @@ export interface ContentSource {
   type: 'podcast' | 'blog' | 'news';
   description?: string;
   isActive: boolean;
+  hasRss?: boolean;
+  rssUrl?: string;
   lastScraped?: string;
   createdAt: string;
 }

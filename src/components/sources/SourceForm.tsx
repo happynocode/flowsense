@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -7,6 +6,7 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { useToast } from '../../hooks/use-toast';
+import { useAuth } from '../../hooks/useAuth';
 import { sourcesApi } from '../../services/api';
 import { ContentSource } from '../../types';
 import { Loader2, Check, X } from 'lucide-react';
@@ -18,6 +18,7 @@ interface SourceFormProps {
 }
 
 const SourceForm = ({ source, onSuccess, onCancel }: SourceFormProps) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: source?.name || '',
     url: source?.url || '',
@@ -38,7 +39,8 @@ const SourceForm = ({ source, onSuccess, onCancel }: SourceFormProps) => {
 
     setValidating(true);
     try {
-      const result = await sourcesApi.validateSource(url);
+      // 传递用户ID到validateSource调用
+      const result = await sourcesApi.validateSource(url, user?.id);
       setUrlValid(result.valid);
       if (!result.valid) {
         toast({
@@ -93,7 +95,7 @@ const SourceForm = ({ source, onSuccess, onCancel }: SourceFormProps) => {
           description: "Your content source has been updated successfully.",
         });
       } else {
-        result = await sourcesApi.addSource(formData);
+        result = await sourcesApi.addSource(formData, user?.id);
         toast({
           title: "Source added",
           description: "Your content source has been added successfully.",

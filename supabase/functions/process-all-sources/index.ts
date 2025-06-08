@@ -5,6 +5,7 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.45/deno-dom-wasm.ts"
 
 interface ProcessedSource {
   name: string;
@@ -21,6 +22,7 @@ interface Article {
   title: string;
   link: string;
   publishedDate: string;
+  description?: string;
 }
 
 interface ProcessResult {
@@ -208,28 +210,42 @@ Deno.serve(async (req) => {
   }
 })
 
-// Helper function to check if URL is RSS feed
+// Helper function to check if URL is RSS feed and fetch it
 async function checkIfRSSFeed(url: string): Promise<boolean> {
   try {
     console.log('🔍 Checking if RSS feed:', url)
     
-    const lowerUrl = url.toLowerCase()
-    const rssPatterns = [
-      '/feed', '/rss', '.xml', '/atom', 
-      '/feed/', '/rss/', '/feeds/', 
-      '/atom.xml', '/rss.xml', '/feed.xml'
-    ]
-    
-    // Quick pattern check first
-    const hasRSSPattern = rssPatterns.some(pattern => lowerUrl.includes(pattern))
-    if (hasRSSPattern) {
-      console.log('✅ URL contains RSS pattern')
+    // Fetch the URL to check content
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; DigestBot/1.0)',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+      },
+    })
+
+    if (!response.ok) {
+      console.log('❌ Failed to fetch URL:', response.status)
+      return false
+    }
+
+    const contentType = response.headers.get('content-type') || ''
+    const text = await response.text()
+
+    // Check content type
+    if (contentType.includes('xml') || contentType.includes('rss') || contentType.includes('atom')) {
+      console.log('✅ Content-Type indicates RSS/XML')
       return true
     }
 
-    // For now, assume URLs without obvious patterns might still be RSS
-    // In production, you might want to fetch and parse the content
-    console.log('⚠️ URL does not contain obvious RSS patterns, skipping')
+    // Check content for RSS/XML markers
+    const lowerText = text.toLowerCase()
+    if (lowerText.includes('<rss') || lowerText.includes('<feed') || lowerText.includes('<channel') || lowerText.includes('xmlns="http://www.w3.org/2005/atom"')) {
+      console.log('✅ Content contains RSS/Atom XML markers')
+      return true
+    }
+
+    console.log('❌ URL does not appear to be an RSS feed')
     return false
 
   } catch (error) {
@@ -248,16 +264,48 @@ async function processRSSSource(
   try {
     console.log('📡 Processing RSS source:', sourceName)
 
-    // Generate recent articles (mock data for now)
-    const articles = generateRecentArticles(feedUrl, sourceName)
+    // Fetch and parse RSS feed
+    const articles = await fetchRSSArticles(feedUrl)
+    
+    if (!articles || articles.length === 0) {
+      return {
+        success: false,
+        articlesCount: 0,
+        summariesCount: 0,
+        error: '未能从RSS feed中获取文章'
+      }
+    }
+
+    console.log('📰 Found', articles.length, 'articles from RSS feed')
     
     let summariesCount = 0
 
-    for (const article of articles) {
+    // Limit to most recent 5 articles to avoid overwhelming the system
+    const recentArticles = articles.slice(0, 5)
+
+    for (const article of recentArticles) {
       try {
-        // Get full article content
-        const fullContent = await fetchFullArticleContent(article.link, sourceName)
+        // Check if we already have this article
+        const { data: existingItem } = await supabaseClient
+          .from('content_items')
+          .select('id')
+          .eq('source_id', sourceId)
+          .eq('content_url', article.link)
+          .maybeSingle()
+
+        if (existingItem) {
+          console.log('⏭️ Article already exists, skipping:', article.title)
+          continue
+        }
+
+        // Get full article content by scraping the webpage
+        const fullContent = await fetchFullArticleContent(article.link)
         
+        if (!fullContent || fullContent.length < 100) {
+          console.log('⚠️ Article content too short, skipping:', article.title)
+          continue
+        }
+
         // Create content_item
         const { data: contentItem, error: itemError } = await supabaseClient
           .from('content_items')
@@ -277,7 +325,7 @@ async function processRSSSource(
           continue
         }
 
-        // Generate simple summary
+        // Generate AI summary using DeepSeek
         const summaryResult = await generateSimpleSummary(
           supabaseClient, 
           contentItem.id, 
@@ -287,6 +335,7 @@ async function processRSSSource(
         
         if (summaryResult) {
           summariesCount++
+          console.log('✅ Successfully created summary for:', article.title)
         }
 
       } catch (error) {
@@ -297,7 +346,7 @@ async function processRSSSource(
 
     return {
       success: true,
-      articlesCount: articles.length,
+      articlesCount: recentArticles.length,
       summariesCount
     }
 
@@ -312,106 +361,162 @@ async function processRSSSource(
   }
 }
 
-// Generate recent articles (mock implementation)
-function generateRecentArticles(feedUrl: string, sourceName: string): Article[] {
-  const lowerUrl = feedUrl.toLowerCase()
-  const articlesCount = Math.floor(Math.random() * 4) + 2 // 2-5 articles
-  const articles: Article[] = []
+// Fetch articles from RSS feed
+async function fetchRSSArticles(feedUrl: string): Promise<Article[]> {
+  try {
+    console.log('📡 Fetching RSS feed:', feedUrl)
+    
+    const response = await fetch(feedUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; DigestBot/1.0)',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+      },
+    })
 
-  // Generate articles from the past week
-  const oneWeekAgo = new Date()
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch RSS feed: ${response.status}`)
+    }
 
-  for (let i = 0; i < articlesCount; i++) {
-    const daysAgo = Math.floor(Math.random() * 7)
-    const publishDate = new Date()
-    publishDate.setDate(publishDate.getDate() - daysAgo)
+    const xmlText = await response.text()
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(xmlText, 'text/xml')
 
-    let article
+    if (!doc) {
+      throw new Error('Failed to parse XML')
+    }
 
-    if (lowerUrl.includes('waitbutwhy')) {
-      const baseUrl = 'https://waitbutwhy.com'
-      const slugs = ['ai-revolution-road-to-superintelligence', 'neuralink-and-the-brains-magical-future', 'the-fermi-paradox', 'putting-time-in-perspective', 'everything-you-should-know-about-sound']
-      const slug = slugs[i % slugs.length]
-      article = {
-        title: `The AI Revolution: Understanding Machine Intelligence - Part ${i + 1}`,
-        link: `${baseUrl}/${slug}-${Date.now()}-${i}`,
-        publishedDate: publishDate.toISOString()
-      }
-    } else if (lowerUrl.includes('lexfridman')) {
-      const baseUrl = 'https://lexfridman.com'
-      const guests = ['elon-musk', 'sam-altman', 'demis-hassabis', 'yann-lecun', 'geoffrey-hinton']
-      const guest = guests[i % guests.length]
-      article = {
-        title: `${guest.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}: AI, Technology, and the Future | Lex Fridman Podcast #${400 + i}`,
-        link: `${baseUrl}/${guest}-${400 + i}`,
-        publishedDate: publishDate.toISOString()
-      }
-    } else if (lowerUrl.includes('substack')) {
-      const urlParts = feedUrl.split('.')
-      const authorName = urlParts[0].replace('https://', '')
-      const baseUrl = `https://${authorName}.substack.com`
-      const topics = ['ai-tools-guide', 'productivity-hacks', 'technology-trends', 'future-of-work', 'innovation-insights']
-      const topic = topics[i % topics.length]
-      article = {
-        title: `How to Master ${topic.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())} in 2024: A Comprehensive Guide`,
-        link: `${baseUrl}/p/${topic}-${Date.now()}-${i}`,
-        publishedDate: publishDate.toISOString()
-      }
-    } else {
-      // Default format for other sources
-      try {
-        const urlObj = new URL(feedUrl)
-        const baseUrl = `${urlObj.protocol}//${urlObj.hostname}`
-        const topics = ['technology-insights', 'industry-analysis', 'market-trends', 'innovation-report', 'expert-opinion']
-        const topic = topics[i % topics.length]
-        article = {
-          title: `${topic.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())} ${i + 1}: Latest Developments`,
-          link: `${baseUrl}/${topic}-${Date.now()}-${i}`,
-          publishedDate: publishDate.toISOString()
+    const articles: Article[] = []
+
+    // Try RSS 2.0 format first
+    const items = doc.querySelectorAll('item')
+    if (items.length > 0) {
+      items.forEach((item) => {
+        const title = item.querySelector('title')?.textContent?.trim()
+        const link = item.querySelector('link')?.textContent?.trim()
+        const pubDate = item.querySelector('pubDate')?.textContent?.trim()
+        const description = item.querySelector('description')?.textContent?.trim()
+
+        if (title && link) {
+          articles.push({
+            title,
+            link,
+            publishedDate: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+            description
+          })
         }
-      } catch (error) {
-        article = {
-          title: `Technology Insights ${i + 1}: Latest Trends and Developments`,
-          link: `https://example.com/tech-insights-${Date.now()}-${i}`,
-          publishedDate: publishDate.toISOString()
+      })
+    } else {
+      // Try Atom format
+      const entries = doc.querySelectorAll('entry')
+      entries.forEach((entry) => {
+        const title = entry.querySelector('title')?.textContent?.trim()
+        const linkElement = entry.querySelector('link')
+        const link = linkElement?.getAttribute('href') || linkElement?.textContent?.trim()
+        const published = entry.querySelector('published')?.textContent?.trim() || 
+                         entry.querySelector('updated')?.textContent?.trim()
+        const summary = entry.querySelector('summary')?.textContent?.trim() ||
+                       entry.querySelector('content')?.textContent?.trim()
+
+        if (title && link) {
+          articles.push({
+            title,
+            link,
+            publishedDate: published ? new Date(published).toISOString() : new Date().toISOString(),
+            description: summary
+          })
+        }
+      })
+    }
+
+    console.log('✅ Successfully parsed', articles.length, 'articles from RSS feed')
+    
+    // Sort by published date (newest first)
+    return articles.sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime())
+
+  } catch (error) {
+    console.error('❌ Failed to fetch RSS articles:', error)
+    return []
+  }
+}
+
+// Fetch full article content by scraping the webpage
+async function fetchFullArticleContent(articleUrl: string): Promise<string> {
+  try {
+    console.log('🌐 Fetching full content from:', articleUrl)
+    
+    const response = await fetch(articleUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; DigestBot/1.0)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch article: ${response.status}`)
+    }
+
+    const html = await response.text()
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+
+    if (!doc) {
+      throw new Error('Failed to parse HTML')
+    }
+
+    // Try to extract main content using various selectors
+    const contentSelectors = [
+      'article',
+      '[role="main"]',
+      '.post-content',
+      '.entry-content',
+      '.article-content',
+      '.content',
+      '.post',
+      '.article',
+      '.main-content',
+      '#content',
+      '.story-body',
+      '.article-body'
+    ]
+
+    let content = ''
+    
+    for (const selector of contentSelectors) {
+      const element = doc.querySelector(selector)
+      if (element) {
+        content = element.textContent || ''
+        if (content.length > 500) {
+          break
         }
       }
     }
 
-    articles.push(article)
-  }
+    // If no content found with selectors, try to get body content
+    if (!content || content.length < 500) {
+      const bodyElement = doc.querySelector('body')
+      if (bodyElement) {
+        content = bodyElement.textContent || ''
+      }
+    }
 
-  return articles
-}
+    // Clean up the content
+    content = content
+      .replace(/\s+/g, ' ')  // Replace multiple whitespace with single space
+      .replace(/\n\s*\n/g, '\n')  // Remove empty lines
+      .trim()
 
-// Fetch full article content (mock implementation)
-async function fetchFullArticleContent(articleUrl: string, sourceName: string): Promise<string> {
-  // Return mock content based on source type
-  if (articleUrl.includes('waitbutwhy')) {
-    return `The landscape of artificial intelligence is evolving at an unprecedented pace, fundamentally reshaping how we understand intelligence itself. As we stand at the threshold of artificial general intelligence (AGI), we must grapple with questions that will define the future of human civilization.
+    if (content.length > 50000) {
+      content = content.substring(0, 50000) + '...'
+    }
 
-The current state of AI development reveals a fascinating paradox: while we've achieved remarkable breakthroughs in narrow AI applications, the path to general intelligence remains shrouded in uncertainty. Large language models demonstrate impressive capabilities in language understanding and generation, yet they lack the comprehensive reasoning abilities that characterize human intelligence.
+    console.log('✅ Successfully extracted', content.length, 'characters of content')
+    return content
 
-Consider the implications of recursive self-improvement - the theoretical point where AI systems become capable of enhancing their own capabilities. This concept suggests that once we create machines smarter than humans, they could design even better machines, leading to an "intelligence explosion" that could rapidly surpass human cognitive abilities across all domains.
-
-The technical challenges are immense. Current AI systems excel in pattern recognition and statistical inference but struggle with causal reasoning, common sense understanding, and the kind of flexible problem-solving that humans take for granted. The gap between narrow AI and general intelligence may be larger than many optimists believe.
-
-From a safety perspective, the alignment problem looms large. How do we ensure that superintelligent systems remain aligned with human values and goals? This work emphasizes the importance of uncertainty about human preferences - AI systems should be uncertain about what we want and should seek to learn our preferences rather than optimizing for fixed objectives.
-
-The economic implications are equally profound. AI automation could eliminate millions of jobs while creating new forms of economic value. The transition period may be particularly challenging, requiring new social safety nets and potentially fundamental changes to our economic systems.`
-  } else {
-    return `This comprehensive analysis explores the intersection of technology, innovation, and societal change in the modern era. The discussion reveals how emerging technologies are reshaping industries, creating new opportunities, and presenting both challenges and solutions for complex global problems.
-
-The technological landscape continues to evolve rapidly, with artificial intelligence, machine learning, and automation driving unprecedented changes across sectors. These developments are not occurring in isolation but are part of a broader transformation that affects how we work, communicate, and solve problems.
-
-Key themes emerge from this analysis: the importance of adaptability in rapidly changing environments, the need for ethical frameworks to guide technological development, and the critical role of education and skills development in preparing for future challenges.
-
-The implications for businesses and individuals are significant. Organizations must develop new capabilities and strategies to remain competitive, while individuals need to continuously update their skills and knowledge to stay relevant in an evolving job market.
-
-Looking ahead, the successful integration of new technologies with human capabilities will be crucial for maximizing benefits while minimizing potential risks. This requires thoughtful planning, stakeholder engagement, and a commitment to responsible innovation that considers long-term consequences.
-
-The path forward involves balancing technological advancement with human values, ensuring that progress serves the broader interests of society while addressing legitimate concerns about privacy, security, and equity in access to new opportunities.`
+  } catch (error) {
+    console.error('❌ Failed to fetch article content:', error)
+    return ''
   }
 }
 
@@ -428,14 +533,17 @@ async function generateSimpleSummary(
     // Get DeepSeek API key from environment
     const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY')
     
-    let summaryText: string
-    
-    if (deepseekApiKey) {
-      // Use actual DeepSeek API
-      summaryText = await callDeepSeekAPI(content, deepseekApiKey)
-    } else {
-      // Use local mock summary
-      summaryText = createSimpleSummary(content, originalUrl)
+    if (!deepseekApiKey) {
+      console.error('❌ DEEPSEEK_API_KEY not found in environment variables')
+      return null
+    }
+
+    // Use DeepSeek API for summarization
+    const summaryText = await callDeepSeekAPI(content, deepseekApiKey)
+
+    if (!summaryText) {
+      console.error('❌ Failed to generate summary from DeepSeek API')
+      return null
     }
 
     // Calculate reading time
@@ -449,7 +557,7 @@ async function generateSimpleSummary(
         content_item_id: contentItemId,
         summary_text: summaryText,
         reading_time: readingTime,
-        model_used: deepseekApiKey ? 'deepseek-chat' : 'local-mock'
+        model_used: 'deepseek-chat'
       })
       .select()
       .single()
@@ -477,6 +585,14 @@ async function generateSimpleSummary(
 // Call DeepSeek API
 async function callDeepSeekAPI(content: string, apiKey: string): Promise<string> {
   try {
+    console.log('🤖 Calling DeepSeek API...')
+    
+    // Limit content length to avoid API limits
+    const maxContentLength = 8000
+    const truncatedContent = content.length > maxContentLength 
+      ? content.substring(0, maxContentLength) + '...'
+      : content
+
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
@@ -488,11 +604,11 @@ async function callDeepSeekAPI(content: string, apiKey: string): Promise<string>
         messages: [
           {
             role: 'system',
-            content: '你是一个专业的内容摘要助手。请将文章内容总结为结构化的摘要，包含关键主题、要点和见解。使用中文回复。'
+            content: '你是一个专业的内容摘要助手。请将文章内容总结为结构化的摘要，包含关键主题、要点和见解。使用中文回复，格式要清晰易读。'
           },
           {
             role: 'user',
-            content: `请总结以下文章内容，提取3-5个关键主题，每个主题包含简洁的描述和要点：\n\n${content.substring(0, 8000)}`
+            content: `请总结以下文章内容，提取3-5个关键主题，每个主题包含简洁的描述和要点：\n\n${truncatedContent}`
           }
         ],
         max_tokens: 1000,
@@ -501,60 +617,25 @@ async function callDeepSeekAPI(content: string, apiKey: string): Promise<string>
     })
 
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ DeepSeek API error:', response.status, errorText)
       throw new Error(`DeepSeek API error: ${response.status}`)
     }
 
     const data = await response.json()
-    return data.choices[0].message.content
+    const summaryText = data.choices?.[0]?.message?.content
+
+    if (!summaryText) {
+      throw new Error('No summary text returned from DeepSeek API')
+    }
+
+    console.log('✅ Successfully generated summary from DeepSeek API')
+    return summaryText
 
   } catch (error) {
     console.error('❌ DeepSeek API call failed:', error)
-    // Fallback to local summary
     throw error
   }
-}
-
-// Create simple local summary
-function createSimpleSummary(content: string, originalUrl: string): string {
-  const sentences = content
-    .split(/[.!?]+/)
-    .map(s => s.trim())
-    .filter(s => s.length > 20)
-    .slice(0, 5)
-  
-  if (sentences.length === 0) {
-    return `## 内容摘要
-
-本文讨论了当前技术发展的重要主题，提供了对相关领域的深入见解和分析。内容涵盖了多个关键方面，有助于理解当前趋势和未来发展方向。
-
-**要点总结：**
-- 技术创新的重要进展
-- 当前趋势的深度分析  
-- 未来发展的考量和展望
-
-原文链接：${originalUrl}`
-  }
-
-  let summary = '## 核心主题\n\n'
-  
-  if (sentences.length > 0) {
-    summary += `1. **技术发展与创新**：文章探讨了前沿技术发展及其对社会的变革性影响。这些创新代表了我们处理复杂问题和创造价值方式的根本转变。讨论强调了变化的加速步伐以及在不断发展的技术环境中采用适应性策略的必要性。\n\n`
-    summary += `   关键引述："${sentences[0]}"\n\n`
-  }
-  
-  if (sentences.length > 1) {
-    summary += `2. **实际应用与现实影响**：内容审视了理论概念如何转化为切实的益处和实用解决方案。这一主题强调了缩小创新与实施之间差距的重要性，展示了新技术如何应对现实世界的挑战。\n\n`
-    summary += `   关键引述："${sentences[1]}"\n\n`
-  }
-  
-  if (sentences.length > 2) {
-    summary += `3. **未来展望与战略考量**：文章探讨了长期趋势及其对各利益相关者的潜在影响。这种分析帮助读者理解当前发展的更广泛背景及其随时间推移的轨迹。\n\n`
-    summary += `   关键引述："${sentences[2]}"\n\n`
-  }
-  
-  summary += `原文链接：${originalUrl}`
-  
-  return summary
 }
 
 // Generate digest from summaries

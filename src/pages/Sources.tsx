@@ -6,6 +6,8 @@ import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCi
 import { sourcesApi } from '../services/api';
 import { ContentSource } from '../types';
 import { useToast } from '../hooks/use-toast';
+import { useAuth } from '../hooks/useAuth';
+import { Navigate } from 'react-router-dom';
 import LoadingIndicator from '../components/common/LoadingIndicator';
 import SourceForm from '../components/sources/SourceForm';
 import {
@@ -20,6 +22,7 @@ import {
 } from '../components/ui/alert-dialog';
 
 const Sources = () => {
+  const { user, loading: authLoading } = useAuth();
   const [sources, setSources] = useState<ContentSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -32,20 +35,55 @@ const Sources = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchSources();
-  }, []);
+    // Only fetch sources when user is authenticated and auth loading is complete
+    if (user && !authLoading) {
+      console.log('✅ User authenticated, fetching sources...');
+      console.log('🔍 User details:', { id: user.id, email: user.email });
+      
+      // 🔧 Temporary debug info
+      console.log('🔍 Auth debug info:', {
+        userId: user.id,
+        userIdType: typeof user.id,
+        userIdLength: user.id.length,
+        isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id)
+      });
+      
+      // Add a small delay to ensure auth state is stable
+      const fetchWithDelay = async () => {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        fetchSources();
+      };
+      
+      fetchWithDelay();
+    } else if (!authLoading && !user) {
+      console.log('❌ User not authenticated');
+      setLoading(false);
+    } else {
+      console.log('⏳ Auth still loading...', { authLoading, hasUser: !!user });
+    }
+  }, [user, authLoading]);
+
+  // Redirect to login if not authenticated and auth loading is complete
+  if (!authLoading && !user) {
+    console.log('🔄 Redirecting to login...');
+    return <Navigate to="/login" replace />;
+  }
 
   const fetchSources = async () => {
     try {
+      console.log('📡 Starting fetchSources...');
       setLoading(true);
-      const response = await sourcesApi.getSources();
+      
+      // 传递用户ID到API调用，避免认证状态不同步问题
+      const response = await sourcesApi.getSources(1, 10, user?.id);
+      console.log('✅ Sources response:', response);
       setSources(response.data || []);
     } catch (error) {
-      console.error('Failed to load sources:', error);
+      console.error('❌ Failed to load sources:', error);
       setSources([]);
       toast({
         title: "Failed to load sources",
-        description: "There was an error loading your content sources.",
+        description: error instanceof Error ? error.message : "There was an error loading your content sources.",
         variant: "destructive",
       });
     } finally {
@@ -116,7 +154,7 @@ const Sources = () => {
     try {
       console.log('🚀 开始全局处理所有sources...');
       
-      const result = await sourcesApi.processAllSources();
+      const result = await sourcesApi.processAllSources(user?.id);
       
       setProcessResults(result);
 
@@ -153,7 +191,7 @@ const Sources = () => {
   const handleClearScrapedContent = async () => {
     setClearing(true);
     try {
-      await sourcesApi.clearScrapedContent();
+      await sourcesApi.clearScrapedContent(user?.id);
       
       // 刷新sources列表以更新状态
       fetchSources();
@@ -200,10 +238,10 @@ const Sources = () => {
     });
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingIndicator size="lg\" text="Loading your sources..." />
+        <LoadingIndicator size="lg" text="Loading your sources..." />
       </div>
     );
   }

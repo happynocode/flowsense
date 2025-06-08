@@ -118,10 +118,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(authUserData);
       console.log('✅ setUser 调用完成');
       
-      // 🔧 可选：后台同步到数据库（不阻塞主流程，有错误保护）
-      syncUserToDatabase(supabaseUser).catch(error => {
-        console.warn('⚠️ 后台数据库同步失败（不影响用户体验）:', error);
-      });
+      // 🔧 立即同步到数据库（这对RLS策略很重要）
+      try {
+        await syncUserToDatabase(supabaseUser);
+        console.log('✅ 用户数据库同步完成');
+      } catch (syncError) {
+        console.error('❌ 用户数据库同步失败，这可能导致后续API调用失败:', syncError);
+        // 不阻塞用户体验，但记录错误
+      }
 
     } catch (error) {
       console.warn('⚠️ refreshUser 异常:', error);
@@ -153,26 +157,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // 🔧 可选：数据库同步（仅当你有这个表时）
+      // 强制同步用户到数据库
       try {
-        await supabase
+        const { data, error } = await supabase
           .from('users')
-          .upsert([{ 
-            id: supabaseUser.id, 
-            email: supabaseUser.email,
-            name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-            avatar_url: supabaseUser.user_metadata?.avatar_url || null
-          }]);
-        console.log('✅ 用户数据库同步成功');
+          .upsert({
+            id: supabaseUser.id,
+            email: supabaseUser.email || '',
+            name: supabaseUser.user_metadata?.full_name || 
+                  supabaseUser.user_metadata?.name || 
+                  supabaseUser.email?.split('@')[0] || 'User',
+            avatar_url: supabaseUser.user_metadata?.avatar_url || null,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'id',
+            ignoreDuplicates: false
+          })
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('❌ 用户数据库同步失败:', error);
+          
+          // If it's a policy error, try to create the user record manually
+          if (error.code === '42501' || error.message.includes('policy')) {
+            console.log('🔧 尝试使用服务角色创建用户记录...');
+            // This would need to be done via an edge function or trigger
+            // For now, log the issue
+            console.error('RLS策略阻止了用户创建，需要手动修复');
+          }
+          
+          throw error;
+        }
+        
+        console.log('✅ 用户数据库同步成功:', data);
       } catch (dbError: any) {
         if (dbError?.message?.includes("relation") || dbError?.code === '42P01') {
           console.warn("🔧 users 表不存在，跳过同步");
         } else {
+          console.error('❌ 数据库同步失败:', dbError);
           throw dbError;
         }
       }
     } catch (error) {
       console.warn('⚠️ 数据库同步异常（不影响用户体验）:', error);
+      // 重新抛出错误，因为这可能导致后续API调用失败
+      throw error;
     }
   };
 
