@@ -152,46 +152,7 @@ const Sources = () => {
     }
   };
 
-  // 🚀 全局处理所有sources的功能
-  const handleProcessAllSources = async () => {
-    setGlobalProcessing(true);
-    setProcessResults(null);
 
-    try {
-      console.log('🚀 开始全局处理所有sources...');
-      
-      const result = await sourcesApi.processAllSources(user?.id);
-      
-      setProcessResults(result);
-
-      if (result.success) {
-        const { processedSources, skippedSources, totalSummaries } = result.data!;
-        
-        toast({
-          title: "🎉 全局处理完成！",
-          description: `成功处理 ${processedSources.length} 个sources，生成 ${totalSummaries} 个摘要。${skippedSources.length > 0 ? `跳过 ${skippedSources.length} 个sources。` : ''}`,
-        });
-        
-        // 刷新 sources 列表以更新 lastScraped 时间
-        fetchSources();
-      } else {
-        toast({
-          title: "❌ 全局处理失败",
-          description: result.error || "处理过程中发生错误",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('全局处理失败:', error);
-      toast({
-        title: "❌ 全局处理失败",
-        description: "处理过程中发生错误，请重试。",
-        variant: "destructive",
-      });
-    } finally {
-      setGlobalProcessing(false);
-    }
-  };
 
   // 🔄 轮询任务状态
   const pollTaskStatus = async (taskId: string) => {
