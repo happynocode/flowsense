@@ -442,9 +442,30 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
     if (items.length > 0) {
       items.forEach((item, index) => {
         const title = item.querySelector('title')?.textContent?.trim()
-        const link = item.querySelector('link')?.textContent?.trim()
+        
+        // Try multiple ways to get the link
+        let link = item.querySelector('link')?.textContent?.trim()
+        if (!link) {
+          // Try link as attribute (some RSS feeds use <link href="..."/>)
+          link = item.querySelector('link')?.getAttribute('href')?.trim()
+        }
+        if (!link) {
+          // Try guid as fallback
+          link = item.querySelector('guid')?.textContent?.trim()
+        }
+        if (!link) {
+          // Try enclosure url
+          link = item.querySelector('enclosure')?.getAttribute('url')?.trim()
+        }
+        
         const pubDate = item.querySelector('pubDate')?.textContent?.trim()
         const description = item.querySelector('description')?.textContent?.trim()
+
+        console.log(`🔍 Item ${index + 1} DEBUG:`)
+        console.log(`  - Title: "${title}"`)
+        console.log(`  - Link: "${link}"`)
+        console.log(`  - PubDate: "${pubDate}"`)
+        console.log(`  - Description length: ${description?.length || 0}`)
 
         if (title && link) {
           const articleDate = pubDate ? new Date(pubDate) : new Date()
@@ -462,6 +483,8 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
           } else {
             console.log(`❌ Article ${index + 1} too old, skipping`)
           }
+        } else {
+          console.log(`❌ Item ${index + 1} SKIPPED: Missing title (${!!title}) or link (${!!link})`)
         }
       })
     } else {
@@ -526,8 +549,21 @@ async function parseRSSWithRegex(xmlContent: string): Promise<Article[]> {
       const titleMatch = itemContent.match(/<title(?:\s[^>]*)?>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/i)
       const title = titleMatch?.[1]?.trim()
       
+      // Try multiple ways to get the link via regex
       const linkMatch = itemContent.match(/<link(?:\s[^>]*)?>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/link>/i)
-      const link = linkMatch?.[1]?.trim()
+      let link = linkMatch?.[1]?.trim()
+      
+      if (!link) {
+        // Try link with href attribute
+        const hrefMatch = itemContent.match(/<link[^>]*href=["']([^"']+)["'][^>]*\/?>/i)
+        link = hrefMatch?.[1]?.trim()
+      }
+      
+      if (!link) {
+        // Try guid as fallback
+        const guidMatch = itemContent.match(/<guid(?:\s[^>]*)?>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/guid>/i)
+        link = guidMatch?.[1]?.trim()
+      }
       
       const pubDateMatch = itemContent.match(/<pubDate(?:\s[^>]*)?>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/pubDate>/i)
       const pubDateStr = pubDateMatch?.[1]?.trim()
