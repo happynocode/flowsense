@@ -1,15 +1,8 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
-
-// Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.45/deno-dom-wasm.ts"
 
-// Timeout management constants  
-const MAX_PROCESSING_TIME = 4 * 60 * 1000; // 4 minutes total processing time (within Edge Function limits)
-const MAX_SOURCE_PROCESSING_TIME = 2 * 60 * 1000; // 2 minutes per source
+// No timeout limits - this function can run as long as needed
 const FETCH_TIMEOUT = 10 * 1000; // 10 seconds for individual fetch operations
 
 // Helper function to create timeout promise
@@ -19,34 +12,12 @@ function createTimeoutPromise<T>(ms: number, errorMessage: string): Promise<T> {
   });
 }
 
-interface ProcessedSource {
-  name: string;
-  articlesCount: number;
-  summariesCount: number;
-  type: 'RSS' | 'WebPage';
-}
-
-interface SkippedSource {
-  name: string;
-  reason: string;
-}
-
 interface Article {
   title: string;
   link: string;
   publishedDate: string;
   description?: string;
   content?: string;
-}
-
-interface ProcessResult {
-  success: boolean;
-  data?: {
-    processedSources: ProcessedSource[];
-    skippedSources: SkippedSource[];
-    totalSummaries: number;
-  };
-  error?: string;
 }
 
 interface ContentDetectionResult {
@@ -61,128 +32,104 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Max-Age': '86400', // Cache preflight for 24 hours
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    })
+    return new Response(null, { status: 200, headers: corsHeaders })
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    )
-
-    // Get user from JWT token
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    const { task_id } = await req.json()
     
-    if (userError || !user) {
-      throw new Error('Authentication required')
+    if (!task_id) {
+      throw new Error('task_id is required')
     }
 
-    console.log('🚀 Starting intelligent content processing for user:', user.id)
+    // Use service role key for unrestricted access
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    )
 
-    // Get all active content sources for the user
+    console.log('🔄 Starting execution of task:', task_id)
+
+    // Get task details
+    const { data: task, error: taskError } = await supabaseClient
+      .from('processing_tasks')
+      .select('*')
+      .eq('id', task_id)
+      .single()
+
+    if (taskError || !task) {
+      throw new Error(`Task not found: ${taskError?.message}`)
+    }
+
+    // Update task status to running
+    await supabaseClient
+      .from('processing_tasks')
+      .update({ 
+        status: 'running',
+        started_at: new Date().toISOString()
+      })
+      .eq('id', task_id)
+
+    // Get user's sources
     const { data: sources, error: sourcesError } = await supabaseClient
       .from('content_sources')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', task.user_id)
       .eq('is_active', true)
 
     if (sourcesError) {
       throw new Error(`Failed to fetch sources: ${sourcesError.message}`)
     }
 
-    if (!sources || sources.length === 0) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          data: {
-            processedSources: [],
-            skippedSources: [],
-            totalSummaries: 0
-          }
-        } as ProcessResult),
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      )
-    }
-
-    console.log('📊 Found', sources.length, 'active sources')
-
-    const processedSources: ProcessedSource[] = []
-    const skippedSources: SkippedSource[] = []
+    const processedSources: any[] = []
+    const skippedSources: any[] = []
     let totalSummaries = 0
-    
-    const startTime = Date.now()
 
-    // Process each source intelligently with timeout protection
+    // Process each source without any timeout pressure
     for (let i = 0; i < sources.length; i++) {
       const source = sources[i]
       
-      // Check total processing time
-      if (Date.now() - startTime > MAX_PROCESSING_TIME) {
-        console.log('⏰ Approaching total timeout, stopping processing')
-        // Add remaining sources as skipped
-        for (let j = i; j < sources.length; j++) {
-          skippedSources.push({
-            name: sources[j].name,
-            reason: 'Total processing timeout'
-          })
-        }
-        break
-      }
-      
       try {
-        console.log(`🔄 Processing source (${i + 1}/${sources.length}):`, source.name, '|', source.url)
+        console.log(`🔄 Processing source (${i + 1}/${sources.length}):`, source.name)
         
-        // Process each source with individual timeout
-        const sourceProcessingPromise = (async () => {
-          // Step 1: Intelligent content detection
-          const detection = await detectContentType(source.url)
-          
-          if (!detection) {
-            return {
-              success: false,
-              articlesCount: 0,
-              summariesCount: 0,
-              error: '无法访问该URL',
-              type: 'RSS' as const
+        // Update progress
+        await supabaseClient
+          .from('processing_tasks')
+          .update({
+            progress: {
+              current: i + 1,
+              total: sources.length,
+              processed_sources: processedSources,
+              skipped_sources: skippedSources,
+              current_source: source.name
             }
-          }
+          })
+          .eq('id', task_id)
 
-          // Step 2: Use appropriate processing strategy
-          if (detection.isRSS) {
-            console.log('📡 Detected RSS feed, using RSS processing strategy')
-            return await processAsRSS(supabaseClient, source.id, source.url, source.name, detection.content)
-          } else {
-            console.log('🌐 Detected regular webpage, using web scraping strategy')
-            return await processAsWebPage(supabaseClient, source.id, source.url, source.name, detection.content)
-          }
-        })()
+        // Detect content type
+        const detection = await detectContentType(source.url)
         
-        const timeoutPromise = createTimeoutPromise<typeof sourceProcessingPromise>(
-          MAX_SOURCE_PROCESSING_TIME, 
-          'Source processing timeout'
-        )
+        if (!detection) {
+          skippedSources.push({
+            name: source.name,
+            reason: '无法访问该URL'
+          })
+          continue
+        }
 
-        const result = await Promise.race([sourceProcessingPromise, timeoutPromise])
-        
+        let result
+        if (detection.isRSS) {
+          console.log('📡 Processing as RSS feed')
+          result = await processAsRSS(supabaseClient, source.id, source.url, source.name, detection.content)
+        } else {
+          console.log('🌐 Processing as webpage')
+          result = await processAsWebPage(supabaseClient, source.id, source.url, source.name, detection.content)
+        }
+
         if (result.success) {
           processedSources.push({
             name: source.name,
@@ -191,8 +138,8 @@ Deno.serve(async (req) => {
             type: result.type
           })
           totalSummaries += result.summariesCount
-          
-          // Update source's last_scraped_at
+
+          // Update source success status
           await supabaseClient
             .from('content_sources')
             .update({ 
@@ -206,8 +153,8 @@ Deno.serve(async (req) => {
             name: source.name,
             reason: result.error || '处理失败'
           })
-          
-          // Update error info
+
+          // Update source error status
           await supabaseClient
             .from('content_sources')
             .update({ 
@@ -228,50 +175,73 @@ Deno.serve(async (req) => {
 
     // Generate digest if we have summaries
     if (totalSummaries > 0) {
-      await generateDigestFromSummaries(supabaseClient, user.id)
+      await generateDigestFromSummaries(supabaseClient, task.user_id)
     }
 
-    const result: ProcessResult = {
-      success: true,
-      data: {
-        processedSources,
-        skippedSources,
-        totalSummaries
-      }
+    // Mark task as completed
+    const finalResult = {
+      processedSources,
+      skippedSources,
+      totalSummaries
     }
+
+    await supabaseClient
+      .from('processing_tasks')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        result: finalResult,
+        progress: {
+          current: sources.length,
+          total: sources.length,
+          processed_sources: processedSources,
+          skipped_sources: skippedSources,
+          completed: true
+        }
+      })
+      .eq('id', task_id)
+
+    console.log('✅ Task completed successfully:', task_id)
 
     return new Response(
-      JSON.stringify(result),
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
-      }
+      JSON.stringify({ success: true, result: finalResult }),
+      { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     )
 
   } catch (error) {
-    console.error('❌ Process all sources failed:', error)
+    console.error('❌ Task execution failed:', error)
     
-    const errorResult: ProcessResult = {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+    // Try to update task status to failed
+    try {
+      const { task_id } = await req.json()
+      if (task_id) {
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        )
+        
+        await supabaseClient
+          .from('processing_tasks')
+          .update({
+            status: 'failed',
+            completed_at: new Date().toISOString(),
+            error_message: error instanceof Error ? error.message : 'Unknown error'
+          })
+          .eq('id', task_id)
+      }
+    } catch (updateError) {
+      console.error('Failed to update task status:', updateError)
     }
 
     return new Response(
-      JSON.stringify(errorResult),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
-      }
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     )
   }
 })
 
-// Smart content type detection
+// All helper functions below...
+
 async function detectContentType(url: string): Promise<ContentDetectionResult | null> {
   const userAgents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -312,9 +282,7 @@ async function detectContentType(url: string): Promise<ContentDetectionResult | 
       
       console.log('📄 Content-Type:', contentType)
       console.log('📝 Content length:', content.length)
-      console.log('📝 First 300 chars:', content.substring(0, 300))
 
-      // Determine if it's RSS/Atom feed
       const isRSS = isRSSContent(contentType, content)
       
       return {
@@ -333,30 +301,24 @@ async function detectContentType(url: string): Promise<ContentDetectionResult | 
   return null
 }
 
-// Check if content is RSS/Atom feed
 function isRSSContent(contentType: string, content: string): boolean {
-  // Check content type first
   if (contentType.includes('rss') || contentType.includes('atom') || contentType.includes('xml')) {
     console.log('✅ RSS detected by content-type')
     return true
   }
 
-  // Check content for RSS/Atom markers
   const lowerContent = content.toLowerCase()
   
-  // RSS 2.0 indicators
   if (lowerContent.includes('<rss') && lowerContent.includes('<channel')) {
     console.log('✅ RSS 2.0 detected by content analysis')
     return true
   }
   
-  // Atom feed indicators
   if (lowerContent.includes('<feed') && lowerContent.includes('xmlns="http://www.w3.org/2005/atom"')) {
     console.log('✅ Atom feed detected by content analysis')
     return true
   }
   
-  // Additional RSS patterns
   if (lowerContent.includes('<rss') || (lowerContent.includes('<channel') && lowerContent.includes('<item'))) {
     console.log('✅ RSS detected by pattern matching')
     return true
@@ -366,7 +328,6 @@ function isRSSContent(contentType: string, content: string): boolean {
   return false
 }
 
-// Process content as RSS feed
 async function processAsRSS(
   supabaseClient: any,
   sourceId: number,
@@ -405,7 +366,6 @@ async function processAsRSS(
   }
 }
 
-// Process content as regular webpage
 async function processAsWebPage(
   supabaseClient: any,
   sourceId: number,
@@ -444,34 +404,26 @@ async function processAsWebPage(
   }
 }
 
-// Parse RSS/Atom content
 async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Article[]> {
   console.log('🔍 Starting RSS content parsing for:', feedUrl)
-  console.log('📄 Content length:', xmlContent.length)
   
   try {
     const parser = new DOMParser()
     let doc: Document | null = null
     
-    // Try multiple MIME types since Deno DOMParser is limited
     const mimeTypes = ['application/xml', 'text/html', 'application/xhtml+xml']
     
     for (const mimeType of mimeTypes) {
       try {
-        console.log(`🔄 Trying to parse with MIME type: ${mimeType}`)
         doc = parser.parseFromString(xmlContent, mimeType as any)
-        
-        // Check for parsing errors
         const parseErrors = doc.querySelectorAll('parsererror')
         if (parseErrors.length === 0) {
           console.log('✅ DOM parser succeeded')
           break
         } else {
-          console.log(`❌ DOM parsing failed with ${mimeType}:`, parseErrors[0]?.textContent)
           doc = null
         }
       } catch (error) {
-        console.log(`❌ Failed to parse with ${mimeType}:`, error)
         doc = null
       }
     }
@@ -482,22 +434,19 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
     }
 
     const articles: Article[] = []
-
-    // Try RSS 2.0 format first
     const items = doc!.querySelectorAll('item')
     console.log('🔍 Found', items.length, 'RSS items via DOM')
     
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     
     if (items.length > 0) {
-      items.forEach((item, index) => {
+      items.forEach((item) => {
         const title = item.querySelector('title')?.textContent?.trim()
         const link = item.querySelector('link')?.textContent?.trim()
         const pubDate = item.querySelector('pubDate')?.textContent?.trim()
         const description = item.querySelector('description')?.textContent?.trim()
 
         if (title && link) {
-          // Check if article is within the last week
           const articleDate = pubDate ? new Date(pubDate) : new Date()
           
           if (articleDate >= oneWeekAgo) {
@@ -506,7 +455,7 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
               link,
               publishedDate: articleDate.toISOString(),
               description,
-              content: description // For RSS, description is the initial content
+              content: description
             })
           }
         }
@@ -516,7 +465,7 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
       const entries = doc!.querySelectorAll('entry')
       console.log('🔍 Found', entries.length, 'Atom entries via DOM')
       
-      entries.forEach((entry, index) => {
+      entries.forEach((entry) => {
         const title = entry.querySelector('title')?.textContent?.trim()
         const linkElement = entry.querySelector('link')
         const link = linkElement?.getAttribute('href') || linkElement?.textContent?.trim()
@@ -526,7 +475,6 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
                        entry.querySelector('content')?.textContent?.trim()
 
         if (title && link) {
-          // Check if article is within the last week
           const articleDate = published ? new Date(published) : new Date()
           
           if (articleDate >= oneWeekAgo) {
@@ -542,142 +490,114 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
       })
     }
 
-    // If DOM parsing didn't find articles, try regex fallback
-    if (articles.length === 0) {
-      console.log('🔄 DOM parsing found no articles, trying regex fallback')
-      return await parseRSSWithRegex(xmlContent)
-    }
-
-    console.log('✅ Successfully parsed', articles.length, 'articles from RSS feed')
-
-    // Sort by published date (newest first)
-    return articles.sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime())
+    console.log('✅ Successfully parsed', articles.length, 'articles from RSS/Atom feed')
+    return articles.slice(0, 20)
 
   } catch (error) {
     console.error('❌ RSS parsing failed:', error)
-    throw error
+    return await parseRSSWithRegex(xmlContent)
   }
 }
 
-// Regex-based RSS parsing fallback
 async function parseRSSWithRegex(xmlContent: string): Promise<Article[]> {
-  console.log('🔄 Attempting regex parsing as fallback')
+  console.log('🔄 Starting regex-based RSS parsing')
   
   const articles: Article[] = []
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
   
-  // Use regex to find RSS items
-  const itemPattern = /<item[\s\S]*?<\/item>/gi
-  const items = xmlContent.match(itemPattern) || []
-  
-  console.log('🔍 Found', items.length, 'items via regex')
-  
-  items.forEach((itemXml, index) => {
-    if (index < 10) { // Limit to 10 most recent articles
-      console.log(`📰 Item ${index + 1} (regex):`)
+  try {
+    const itemRegex = /<item\b[^>]*>([\s\S]*?)<\/item>/gi
+    const items = Array.from(xmlContent.matchAll(itemRegex))
+    
+    console.log('🔍 Found', items.length, 'items via regex')
+    
+    for (const item of items.slice(0, 20)) {
+      const itemContent = item[1]
       
-      // Extract title
-      const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/s)
-      const title = (titleMatch?.[1] || titleMatch?.[2] || '').trim()
+      const titleMatch = itemContent.match(/<title(?:\s[^>]*)?>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/i)
+      const title = titleMatch?.[1]?.trim()
       
-      // Extract link
-      const linkMatch = itemXml.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>|<link>(.*?)<\/link>/s)
-      const link = (linkMatch?.[1] || linkMatch?.[2] || '').trim()
+      const linkMatch = itemContent.match(/<link(?:\s[^>]*)?>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/link>/i)
+      const link = linkMatch?.[1]?.trim()
       
-      // Extract description
-      const descMatch = itemXml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/s)
-      const description = (descMatch?.[1] || descMatch?.[2] || '').trim()
+      const pubDateMatch = itemContent.match(/<pubDate(?:\s[^>]*)?>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/pubDate>/i)
+      const pubDateStr = pubDateMatch?.[1]?.trim()
       
-      // Extract pub date
-      const dateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/s)
-      const pubDate = dateMatch?.[1]?.trim()
-      
-      console.log('   Title:', JSON.stringify(title))
-      console.log('   Link:', JSON.stringify(link))
-      console.log('   Description length:', description.length)
+      const descMatch = itemContent.match(/<description(?:\s[^>]*)?>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i)
+      const description = descMatch?.[1]?.trim()
       
       if (title && link) {
-        // Clean up HTML entities and URLs
-        const cleanTitle = title.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-        const cleanLink = link.replace(/&amp;/g, '&')
-        const cleanDescription = description.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        const articleDate = pubDateStr ? new Date(pubDateStr) : new Date()
         
-        articles.push({
-          title: cleanTitle,
-          link: cleanLink,
-          publishedDate: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
-          description: cleanDescription,
-          content: cleanDescription
-        })
-        
-        console.log('✅ Added via regex:', JSON.stringify(cleanTitle))
+        if (articleDate >= oneWeekAgo) {
+          articles.push({
+            title: title.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'),
+            link: link.replace(/&amp;/g, '&'),
+            publishedDate: articleDate.toISOString(),
+            description: description?.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'),
+            content: description?.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+          })
+        }
       }
     }
-  })
-  
-  console.log('✅ Successfully parsed', articles.length, 'articles from RSS feed')
-  
-  return articles.sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime())
+    
+    console.log('✅ Regex parsing completed, found', articles.length, 'valid articles')
+    return articles
+    
+  } catch (error) {
+    console.error('❌ Regex parsing failed:', error)
+    return []
+  }
 }
 
-// Extract articles from regular webpage
 async function extractArticlesFromWebPage(htmlContent: string, pageUrl: string): Promise<Article[]> {
   try {
     const parser = new DOMParser()
     const doc = parser.parseFromString(htmlContent, 'text/html')
-
-    // For now, treat the entire page as one article
-    // In the future, this could be enhanced to detect multiple articles
     
-    const titleElement = doc.querySelector('title, h1, .title, .headline')
-    const title = titleElement?.textContent?.trim() || 'Untitled Article'
-    
-    // Extract main content using common selectors
     const contentSelectors = [
-      'article',
-      '.content',
-      '.post-content', 
-      '.entry-content',
-      '.article-content',
-      'main',
-      '.main-content',
-      'body'
+      'article', '.post-content', '.entry-content', '.article-content',
+      '.content', 'main', '#content', '.main-content'
     ]
     
+    let title = ''
     let content = ''
+    
+    const titleElement = doc.querySelector('h1') || doc.querySelector('title')
+    title = titleElement?.textContent?.trim() || 'Untitled'
+    
     for (const selector of contentSelectors) {
       const element = doc.querySelector(selector)
       if (element) {
         content = element.textContent?.trim() || ''
-        if (content.length > 500) { // Use this content if it's substantial
+        if (content.length > 500) {
           break
         }
       }
     }
-
+    
     if (!content || content.length < 100) {
-      throw new Error('Could not extract meaningful content from webpage')
+      content = doc.querySelector('body')?.textContent?.trim() || ''
     }
-
-    // Limit content length
-    if (content.length > 8000) {
-      content = content.substring(0, 8000) + '...'
+    
+    if (title && content && content.length > 100) {
+      return [{
+        title,
+        link: pageUrl,
+        publishedDate: new Date().toISOString(),
+        description: content.substring(0, 500) + '...',
+        content: content.length > 8000 ? content.substring(0, 8000) + '...' : content
+      }]
     }
-
-    return [{
-      title,
-      link: pageUrl,
-      publishedDate: new Date().toISOString(),
-      description: content.substring(0, 200) + '...',
-      content
-    }]
-
+    
+    return []
+    
   } catch (error) {
-    console.error('❌ Web page extraction failed:', error)
-    throw error
+    console.error('❌ Failed to extract articles from webpage:', error)
+    return []
   }
 }
 
-// Common function to process articles (both RSS and web page)
 async function processArticles(
   supabaseClient: any,
   sourceId: number,
@@ -685,13 +605,12 @@ async function processArticles(
   sourceType: 'RSS' | 'WebPage'
 ): Promise<{ success: boolean; articlesCount: number; summariesCount: number; type: 'RSS' | 'WebPage' }> {
   let summariesCount = 0
-  const maxArticles = sourceType === 'RSS' ? 20 : 1 // Process up to 20 articles (balanced for timeout limits)
+  const maxArticles = sourceType === 'RSS' ? 20 : 1
 
   for (let i = 0; i < Math.min(articles.length, maxArticles); i++) {
     const article = articles[i]
     
     try {
-      // Check if we already have this article and its summary status
       const { data: existingItem } = await supabaseClient
         .from('content_items')
         .select(`
@@ -710,14 +629,12 @@ async function processArticles(
       if (existingItem) {
         console.log('🔍 Found duplicate article:', article.title)
         
-        // Check if summary already exists
         if (existingItem.summaries && existingItem.summaries.length > 0) {
           console.log('✅ Summary already exists, counting existing summary')
           summariesCount++
           continue
         }
         
-        // Article exists but no summary - generate summary for existing article
         if (existingItem.content_text && existingItem.content_text.length > 100) {
           console.log('🤖 Generating missing summary for existing article')
           const summaryResult = await generateAISummary(
@@ -730,7 +647,6 @@ async function processArticles(
           if (summaryResult.success) {
             summariesCount++
             
-            // Mark content as processed
             await supabaseClient
               .from('content_items')
               .update({ is_processed: true })
@@ -742,13 +658,11 @@ async function processArticles(
         continue
       }
 
-      // For RSS articles, try to get full content by scraping the article link
       let fullContent = article.content || ''
       
       if (sourceType === 'RSS' && article.link && (!fullContent || fullContent.length < 500)) {
         try {
           console.log('🔗 Fetching full content for new RSS article:', article.link)
-          // Add timeout protection for content fetching
           const contentFetchPromise = fetchFullArticleContent(article.link)
           const timeoutPromise = createTimeoutPromise<string>(8000, 'Article content fetch timeout')
           fullContent = await Promise.race([contentFetchPromise, timeoutPromise])
@@ -764,7 +678,6 @@ async function processArticles(
         continue
       }
 
-      // Create content_item
       const { data: contentItem, error: itemError } = await supabaseClient
         .from('content_items')
         .insert({
@@ -783,7 +696,6 @@ async function processArticles(
         continue
       }
 
-      // Generate AI summary using DeepSeek
       const summaryResult = await generateAISummary(
         supabaseClient,
         contentItem.id,
@@ -794,7 +706,6 @@ async function processArticles(
       if (summaryResult.success) {
         summariesCount++
         
-        // Mark content as processed
         await supabaseClient
           .from('content_items')
           .update({ is_processed: true })
@@ -817,7 +728,6 @@ async function processArticles(
   }
 }
 
-// Fetch full article content from URL (improved version)
 async function fetchFullArticleContent(articleUrl: string): Promise<string> {
   const userAgents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -827,7 +737,7 @@ async function fetchFullArticleContent(articleUrl: string): Promise<string> {
   for (const userAgent of userAgents) {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 6000) // 6 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 6000)
       
       const response = await fetch(articleUrl, {
         headers: {
@@ -850,55 +760,29 @@ async function fetchFullArticleContent(articleUrl: string): Promise<string> {
       const parser = new DOMParser()
       const doc = parser.parseFromString(html, 'text/html')
 
-      // Try multiple content selectors (enhanced for better full-text extraction)
       const contentSelectors = [
-        'article',
-        '.post-content',
-        '.entry-content', 
-        '.article-content',
-        '.article-body',
-        '.content',
-        '.story-body',
-        '.post-body',
-        '.blog-content',
-        '.main-content',
-        'main',
-        '[data-testid="ArticleBody"]',
-        '[data-testid="article-body"]',
-        '.article__content',
-        '.article__body',
-        '.post__content',
-        '.post__body',
-        '.content-body',
-        '.text-content',
-        '.entry-body',
-        '.story-content',
-        '.article-text',
-        '.post-text',
-        '#content',
-        '#main-content',
-        '#article-content',
-        '.wp-content',
-        '.single-content',
-        '.post-single-content'
+        'article', '.post-content', '.entry-content', '.article-content',
+        '.article-body', '.content', '.story-body', '.post-body',
+        '.blog-content', '.main-content', 'main', '[data-testid="ArticleBody"]',
+        '[data-testid="article-body"]', '.article__content', '.article__body',
+        '.post__content', '.post__body', '.content-body', '.text-content',
+        '.entry-body', '.story-content', '.article-text', '.post-text',
+        '#content', '#main-content', '#article-content', '.wp-content',
+        '.single-content', '.post-single-content'
       ]
 
       for (const selector of contentSelectors) {
         const element = doc.querySelector(selector)
         if (element) {
           let content = element.textContent?.trim() || ''
-          
-          // Clean up content
           content = content.replace(/\s+/g, ' ').trim()
           
           if (content.length > 500) {
-            // Limit content length for API processing
             return content.length > 8000 ? content.substring(0, 8000) + '...' : content
           }
         }
       }
 
-      // Fallback: try to get any meaningful text
       const bodyText = doc.querySelector('body')?.textContent?.trim() || ''
       if (bodyText.length > 500) {
         return bodyText.length > 8000 ? bodyText.substring(0, 8000) + '...' : bodyText
@@ -913,7 +797,6 @@ async function fetchFullArticleContent(articleUrl: string): Promise<string> {
   throw new Error('Could not fetch article content')
 }
 
-// Generate AI summary using DeepSeek
 async function generateAISummary(
   supabaseClient: any,
   contentItemId: number,
@@ -923,7 +806,6 @@ async function generateAISummary(
   try {
     console.log('🤖 Checking for existing summary for content item:', contentItemId)
 
-    // First check if summary already exists
     const { data: existingSummary } = await supabaseClient
       .from('summaries')
       .select('id, summary_text')
@@ -942,7 +824,6 @@ async function generateAISummary(
       throw new Error('DEEPSEEK_API_KEY environment variable is not set')
     }
 
-    // Limit content length for API
     const truncatedContent = content.length > 6000 ? content.substring(0, 6000) + '...' : content
 
     const summary = await callDeepSeekAPI(truncatedContent, apiKey)
@@ -951,7 +832,6 @@ async function generateAISummary(
       throw new Error('No summary generated from DeepSeek API')
     }
 
-    // Store summary in database
     const { error: summaryError } = await supabaseClient
       .from('summaries')
       .insert({
@@ -976,10 +856,9 @@ async function generateAISummary(
   }
 }
 
-// Call DeepSeek API for summarization
 async function callDeepSeekAPI(content: string, apiKey: string): Promise<string> {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout for API
+  const timeoutId = setTimeout(() => controller.abort(), 15000)
   
   try {
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -1025,12 +904,10 @@ async function callDeepSeekAPI(content: string, apiKey: string): Promise<string>
   }
 }
 
-// Generate digest from summaries
 async function generateDigestFromSummaries(supabaseClient: any, userId: string): Promise<void> {
   try {
     console.log('📝 Generating digest from summaries for user:', userId)
 
-    // Get recent summaries (last 7 days to ensure we catch all new summaries)
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
     
     const { data: summaries, error: summariesError } = await supabaseClient
@@ -1058,7 +935,6 @@ async function generateDigestFromSummaries(supabaseClient: any, userId: string):
       return
     }
 
-    // Create digest entry
     const digestTitle = `Weekly Digest - ${new Date().toLocaleDateString('zh-CN')}`
     const digestContent = `# ${digestTitle}\n\n` + 
       summaries.map((summary: any) => {
