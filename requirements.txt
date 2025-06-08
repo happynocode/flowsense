@@ -6,8 +6,8 @@ Flask-CORS==4.0.0
 Flask-Login==0.6.3
 Flask-Mail==0.9.1
 
-# Database
-psycopg2-binary==2.9.7
+# Database (using Supabase instead of local PostgreSQL)
+# psycopg2-binary==2.9.7  # Not needed with Supabase
 
 # Authentication
 Authlib==1.2.1
@@ -16,8 +16,8 @@ requests==2.31.0
 # Content processing
 feedparser==6.0.10
 beautifulsoup4==4.12.2
-lxml==4.9.3
-newspaper3k==0.2.8
+# lxml==4.9.3  # Commented out due to Windows compilation issues
+# newspaper3k==0.2.8  # Commented out due to lxml dependency
 
 # AI/LLM integration
 openai==0.28.1

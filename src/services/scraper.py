@@ -8,7 +8,7 @@ from datetime import datetime
 from dateutil import parser as date_parser
 import time
 import re
-from newspaper import Article
+# from newspaper import Article  # Commented out due to Windows compilation issues
 import ssl
 import urllib3
 
@@ -216,35 +216,7 @@ def scrape_website(url, selector=None, last_scraped=None):
     try:
         logger.info(f"Scraping website: {url}")
         
-        # First try using newspaper3k for better content extraction
-        try:
-            article = Article(url)
-            article.download()
-            article.parse()
-            
-            if article.text and len(article.text.strip()) > 100:
-                # Use newspaper3k extracted content
-                title = article.title if article.title else extract_title_fallback(url)
-                content = article.text
-                published_date = article.publish_date if article.publish_date else datetime.utcnow()
-                authors = ', '.join(article.authors) if article.authors else ''
-                
-                # Skip if older than last scraped
-                if last_scraped and published_date <= last_scraped:
-                    return []
-                
-                logger.info(f"Successfully extracted content using newspaper3k: {len(content)} characters")
-                return [{
-                    'title': title,
-                    'content': content,
-                    'url': url,
-                    'published_date': published_date,
-                    'author': authors
-                }]
-        except Exception as e:
-            logger.warning(f"Newspaper3k extraction failed for {url}: {str(e)}. Falling back to BeautifulSoup.")
-        
-        # Fallback to BeautifulSoup method with enhanced extraction
+        # Use enhanced BeautifulSoup method for content extraction
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',

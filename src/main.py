@@ -20,22 +20,14 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # Supabase Database Configuration
-# Use Supabase connection string from environment variables
+# Since we're using Supabase, we'll disable SQLAlchemy database connections
+# and use Supabase client directly in the frontend
 supabase_url = os.getenv('VITE_SUPABASE_URL')
 supabase_key = os.getenv('VITE_SUPABASE_ANON_KEY')
 
-# Extract database connection details from Supabase URL
-if supabase_url:
-    # Convert Supabase URL to PostgreSQL connection string
-    # Supabase URL format: https://xxx.supabase.co
-    project_id = supabase_url.replace('https://', '').replace('.supabase.co', '')
-    
-    # Use Supabase database connection
-    app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql://postgres:{os.getenv('SUPABASE_DB_PASSWORD', '')}@db.{project_id}.supabase.co:5432/postgres"
-else:
-    # Fallback to local PostgreSQL if Supabase not configured
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/content_digest')
-
+# For development/testing, we can use a simple SQLite database
+# or disable database entirely since Supabase handles data storage
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///temp.db'  # Temporary local database for development
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Google OAuth configuration
