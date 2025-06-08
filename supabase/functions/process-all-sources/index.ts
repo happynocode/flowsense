@@ -215,37 +215,62 @@ async function checkIfRSSFeed(url: string): Promise<boolean> {
   try {
     console.log('🔍 Checking if RSS feed:', url)
     
-    // Fetch the URL to check content
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; DigestBot/1.0)',
-        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-      },
-    })
+    // 尝试多种User-Agent
+    const userAgents = [
+      'Mozilla/5.0 (compatible; DigestBot/1.0)',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Feedly/1.0 (+http://www.feedly.com/fetcher.html; 1 subscribers)',
+      'FeedParser/1.0'
+    ]
 
-    if (!response.ok) {
-      console.log('❌ Failed to fetch URL:', response.status)
-      return false
+    for (const userAgent of userAgents) {
+      try {
+        console.log(`🤖 Trying with User-Agent: ${userAgent}`)
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'User-Agent': userAgent,
+            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+            'Accept-Encoding': 'gzip, deflate',
+          },
+          redirect: 'follow', // 自动跟随重定向
+        })
+
+        if (!response.ok) {
+          console.log(`❌ Failed to fetch URL with ${userAgent}: ${response.status} ${response.statusText}`)
+          continue
+        }
+
+        const contentType = response.headers.get('content-type') || ''
+        const text = await response.text()
+
+        console.log('📄 Content-Type:', contentType)
+        console.log('📝 Response length:', text.length)
+        console.log('📝 First 200 chars:', text.substring(0, 200))
+
+        // Check content type
+        if (contentType.includes('xml') || contentType.includes('rss') || contentType.includes('atom')) {
+          console.log('✅ Content-Type indicates RSS/XML')
+          return true
+        }
+
+        // Check content for RSS/XML markers
+        const lowerText = text.toLowerCase()
+        if (lowerText.includes('<rss') || lowerText.includes('<feed') || lowerText.includes('<channel') || lowerText.includes('xmlns="http://www.w3.org/2005/atom"')) {
+          console.log('✅ Content contains RSS/Atom XML markers')
+          return true
+        }
+
+        console.log(`❌ URL does not appear to be an RSS feed with ${userAgent}`)
+        
+      } catch (error) {
+        console.error(`❌ Error with ${userAgent}:`, error)
+        continue
+      }
     }
 
-    const contentType = response.headers.get('content-type') || ''
-    const text = await response.text()
-
-    // Check content type
-    if (contentType.includes('xml') || contentType.includes('rss') || contentType.includes('atom')) {
-      console.log('✅ Content-Type indicates RSS/XML')
-      return true
-    }
-
-    // Check content for RSS/XML markers
-    const lowerText = text.toLowerCase()
-    if (lowerText.includes('<rss') || lowerText.includes('<feed') || lowerText.includes('<channel') || lowerText.includes('xmlns="http://www.w3.org/2005/atom"')) {
-      console.log('✅ Content contains RSS/Atom XML markers')
-      return true
-    }
-
-    console.log('❌ URL does not appear to be an RSS feed')
+    console.log('❌ Failed to validate RSS feed with all user agents')
     return false
 
   } catch (error) {
@@ -363,81 +388,132 @@ async function processRSSSource(
 
 // Fetch articles from RSS feed
 async function fetchRSSArticles(feedUrl: string): Promise<Article[]> {
-  try {
-    console.log('📡 Fetching RSS feed:', feedUrl)
-    
-    const response = await fetch(feedUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; DigestBot/1.0)',
-        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-      },
-    })
+  const userAgents = [
+    'Mozilla/5.0 (compatible; DigestBot/1.0)',
+    'Feedly/1.0 (+http://www.feedly.com/fetcher.html; 1 subscribers)',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'FeedParser/1.0'
+  ]
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch RSS feed: ${response.status}`)
-    }
-
-    const xmlText = await response.text()
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(xmlText, 'text/xml')
-
-    if (!doc) {
-      throw new Error('Failed to parse XML')
-    }
-
-    const articles: Article[] = []
-
-    // Try RSS 2.0 format first
-    const items = doc.querySelectorAll('item')
-    if (items.length > 0) {
-      items.forEach((item) => {
-        const title = item.querySelector('title')?.textContent?.trim()
-        const link = item.querySelector('link')?.textContent?.trim()
-        const pubDate = item.querySelector('pubDate')?.textContent?.trim()
-        const description = item.querySelector('description')?.textContent?.trim()
-
-        if (title && link) {
-          articles.push({
-            title,
-            link,
-            publishedDate: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
-            description
-          })
-        }
+  for (const userAgent of userAgents) {
+    try {
+      console.log(`📡 Fetching RSS feed with ${userAgent}:`, feedUrl)
+      
+      const response = await fetch(feedUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': userAgent,
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+          'Accept-Encoding': 'gzip, deflate',
+        },
+        redirect: 'follow',
       })
-    } else {
-      // Try Atom format
-      const entries = doc.querySelectorAll('entry')
-      entries.forEach((entry) => {
-        const title = entry.querySelector('title')?.textContent?.trim()
-        const linkElement = entry.querySelector('link')
-        const link = linkElement?.getAttribute('href') || linkElement?.textContent?.trim()
-        const published = entry.querySelector('published')?.textContent?.trim() || 
-                         entry.querySelector('updated')?.textContent?.trim()
-        const summary = entry.querySelector('summary')?.textContent?.trim() ||
-                       entry.querySelector('content')?.textContent?.trim()
 
-        if (title && link) {
-          articles.push({
-            title,
-            link,
-            publishedDate: published ? new Date(published).toISOString() : new Date().toISOString(),
-            description: summary
-          })
-        }
-      })
+      if (!response.ok) {
+        console.log(`❌ Failed to fetch RSS feed with ${userAgent}: ${response.status} ${response.statusText}`)
+        continue
+      }
+
+      const xmlText = await response.text()
+      console.log('📝 XML length:', xmlText.length)
+      console.log('📝 First 500 chars:', xmlText.substring(0, 500))
+      
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(xmlText, 'text/xml')
+
+      // 检查解析错误
+      const parseErrors = doc.querySelectorAll('parsererror')
+      if (parseErrors.length > 0) {
+        console.error('❌ XML parsing errors:', parseErrors[0]?.textContent)
+        continue
+      }
+
+      if (!doc) {
+        console.error('❌ Failed to parse XML')
+        continue
+      }
+
+      const articles: Article[] = []
+
+      // Try RSS 2.0 format first
+      const items = doc.querySelectorAll('item')
+      console.log('🔍 Found', items.length, 'RSS items')
+      
+      if (items.length > 0) {
+        items.forEach((item, index) => {
+          if (index < 5) { // Log first 5 items for debugging
+            console.log(`📄 Item ${index + 1}:`, {
+              title: item.querySelector('title')?.textContent?.trim()?.substring(0, 50),
+              link: item.querySelector('link')?.textContent?.trim()?.substring(0, 50),
+              pubDate: item.querySelector('pubDate')?.textContent?.trim()
+            })
+          }
+          
+          const title = item.querySelector('title')?.textContent?.trim()
+          const link = item.querySelector('link')?.textContent?.trim()
+          const pubDate = item.querySelector('pubDate')?.textContent?.trim()
+          const description = item.querySelector('description')?.textContent?.trim()
+
+          if (title && link) {
+            articles.push({
+              title,
+              link,
+              publishedDate: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+              description
+            })
+          }
+        })
+      } else {
+        // Try Atom format
+        const entries = doc.querySelectorAll('entry')
+        console.log('🔍 Found', entries.length, 'Atom entries')
+        
+        entries.forEach((entry, index) => {
+          if (index < 5) { // Log first 5 entries for debugging
+            const linkElement = entry.querySelector('link')
+            console.log(`📄 Entry ${index + 1}:`, {
+              title: entry.querySelector('title')?.textContent?.trim()?.substring(0, 50),
+              link: (linkElement?.getAttribute('href') || linkElement?.textContent?.trim())?.substring(0, 50),
+              published: entry.querySelector('published')?.textContent?.trim() || entry.querySelector('updated')?.textContent?.trim()
+            })
+          }
+          
+          const title = entry.querySelector('title')?.textContent?.trim()
+          const linkElement = entry.querySelector('link')
+          const link = linkElement?.getAttribute('href') || linkElement?.textContent?.trim()
+          const published = entry.querySelector('published')?.textContent?.trim() || 
+                           entry.querySelector('updated')?.textContent?.trim()
+          const summary = entry.querySelector('summary')?.textContent?.trim() ||
+                         entry.querySelector('content')?.textContent?.trim()
+
+          if (title && link) {
+            articles.push({
+              title,
+              link,
+              publishedDate: published ? new Date(published).toISOString() : new Date().toISOString(),
+              description: summary
+            })
+          }
+        })
+      }
+
+      console.log('✅ Successfully parsed', articles.length, 'articles from RSS feed')
+      
+      if (articles.length === 0) {
+        console.log('⚠️ No articles found, but XML was valid. Continuing to try other user agents...')
+        continue
+      }
+      
+      // Sort by published date (newest first)
+      return articles.sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime())
+
+    } catch (error) {
+      console.error(`❌ Failed to fetch RSS articles with ${userAgent}:`, error)
+      continue
     }
-
-    console.log('✅ Successfully parsed', articles.length, 'articles from RSS feed')
-    
-    // Sort by published date (newest first)
-    return articles.sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime())
-
-  } catch (error) {
-    console.error('❌ Failed to fetch RSS articles:', error)
-    return []
   }
+
+  throw new Error('未能从RSS feed中获取文章')
 }
 
 // Fetch full article content by scraping the webpage
