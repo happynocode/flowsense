@@ -56,19 +56,35 @@ Deno.serve(async (req) => {
     if (existingTask) {
       console.log('⚠️ Found existing task:', existingTask.id, 'with status:', existingTask.status)
       
-      // Auto-cleanup stale tasks (older than 1 hour)
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+      // Auto-cleanup stale tasks
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
       
-      const { error: cleanupError } = await supabaseClient
+      // Clean up old pending tasks (older than 30 minutes)
+      const { error: cleanupPendingError } = await supabaseClient
         .from('processing_tasks')
         .update({ 
           status: 'failed',
           completed_at: new Date().toISOString(),
-          error_message: 'Task cleaned up due to timeout or stale state'
+          error_message: 'Pending task cleaned up due to timeout'
         })
         .eq('user_id', user.id)
-        .in('status', ['pending', 'running'])
-        .lt('created_at', oneHourAgo)
+        .eq('status', 'pending')
+        .lt('created_at', thirtyMinutesAgo)
+      
+      // Clean up stale running tasks (running for more than 5 minutes without updates)
+      const { error: cleanupRunningError } = await supabaseClient
+        .from('processing_tasks')
+        .update({ 
+          status: 'failed',
+          completed_at: new Date().toISOString(),
+          error_message: 'Running task cleaned up - likely crashed or stalled'
+        })
+        .eq('user_id', user.id)
+        .eq('status', 'running')
+        .or(`started_at.lt.${fiveMinutesAgo},started_at.is.null`)
+      
+      const cleanupError = cleanupPendingError || cleanupRunningError
       
       if (cleanupError) {
         console.error('Failed to cleanup stale tasks:', cleanupError)
