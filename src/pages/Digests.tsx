@@ -86,21 +86,21 @@ const Digests = () => {
     }
   };
 
-  // 🗑️ 清除所有数据功能
-  const handleClearAllData = async () => {
+  // 🗑️ 清除digests数据功能（保留sources）
+  const handleClearDigests = async () => {
     setClearing(true);
     try {
-      await digestsApi.clearAllData();
+      await digestsApi.clearAllDigests();
       setDigests([]);
       toast({
-        title: "✅ 数据清除成功",
-        description: "所有内容和摘要数据已清除。",
+        title: "✅ Digests清除成功",
+        description: "所有摘要和内容数据已清除，Sources保留。",
       });
     } catch (error) {
-      console.error('Failed to clear data:', error);
+      console.error('Failed to clear digests:', error);
       toast({
         title: "❌ 清除失败",
-        description: "清除数据时发生错误，请重试。",
+        description: "清除digests时发生错误，请重试。",
         variant: "destructive",
       });
     } finally {
@@ -135,7 +135,7 @@ const Digests = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingIndicator size="lg\" text="Loading your digests..." />
+        <LoadingIndicator size="lg" text="Loading your digests..." />
       </div>
     );
   }
@@ -159,7 +159,7 @@ const Digests = () => {
                 className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Clear All Data
+                Clear Digests
               </Button>
             )}
           </div>
@@ -316,20 +316,21 @@ const Digests = () => {
           </div>
         )}
 
-        {/* Clear All Data Confirmation Dialog */}
+        {/* Clear Digests Confirmation Dialog */}
         <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Clear All Data</AlertDialogTitle>
+              <AlertDialogTitle>Clear All Digests</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to clear all your content sources, articles, and summaries? 
-                This action cannot be undone and will remove all your data permanently.
+                Are you sure you want to clear all your digests and content summaries? 
+                This will remove all generated content but keep your sources intact. 
+                This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleClearAllData}
+                onClick={handleClearDigests}
                 disabled={clearing}
                 className="bg-red-600 hover:bg-red-700"
               >
@@ -339,7 +340,7 @@ const Digests = () => {
                     <span className="ml-2">Clearing...</span>
                   </>
                 ) : (
-                  'Clear All Data'
+                  'Clear Digests'
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>

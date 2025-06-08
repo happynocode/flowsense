@@ -942,26 +942,15 @@ export const digestsApi = {
     if (error) throw error;
   },
 
-  // 🗑️ 清除所有数据的功能
-  clearAllData: async (): Promise<void> => {
+  // 🗑️ 清除digests数据的功能（保留sources）
+  clearAllDigests: async (): Promise<void> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    console.log('🗑️ 开始清除所有数据...');
+    console.log('🗑️ 开始清除所有digests数据...');
 
     try {
-      // 删除用户的所有content_sources（级联删除会自动删除相关的content_items, summaries, digests等）
-      const { error: sourcesError } = await supabase
-        .from('content_sources')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (sourcesError) {
-        console.error('❌ 删除content_sources失败:', sourcesError);
-        throw sourcesError;
-      }
-
-      // 删除用户的所有digests（以防有孤立的digests）
+      // 只删除用户的所有digests（级联删除会自动删除相关的digest_items）
       const { error: digestsError } = await supabase
         .from('digests')
         .delete()
@@ -972,10 +961,31 @@ export const digestsApi = {
         throw digestsError;
       }
 
-      console.log('✅ 成功清除所有数据');
+      // 删除所有content_items和summaries（但保留content_sources）
+      const { data: sources } = await supabase
+        .from('content_sources')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (sources && sources.length > 0) {
+        const sourceIds = sources.map(s => s.id);
+        
+        // 删除content_items（级联删除会自动删除相关的summaries）
+        const { error: itemsError } = await supabase
+          .from('content_items')
+          .delete()
+          .in('source_id', sourceIds);
+
+        if (itemsError) {
+          console.error('❌ 删除content_items失败:', itemsError);
+          throw itemsError;
+        }
+      }
+
+      console.log('✅ 成功清除所有digests数据（保留sources）');
 
     } catch (error) {
-      console.error('❌ 清除数据失败:', error);
+      console.error('❌ 清除digests数据失败:', error);
       throw error;
     }
   }
