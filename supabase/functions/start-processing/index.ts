@@ -54,20 +54,52 @@ Deno.serve(async (req) => {
       .maybeSingle()
 
     if (existingTask) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: '已有处理任务正在运行中',
-          task_id: existingTask.id
-        } as StartTaskResponse),
-        {
-          status: 409, // Conflict
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      )
+      console.log('⚠️ Found existing task:', existingTask.id, 'with status:', existingTask.status)
+      
+      // Auto-cleanup stale tasks (older than 1 hour)
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+      
+      const { error: cleanupError } = await supabaseClient
+        .from('processing_tasks')
+        .update({ 
+          status: 'failed',
+          completed_at: new Date().toISOString(),
+          error_message: 'Task cleaned up due to timeout or stale state'
+        })
+        .eq('user_id', user.id)
+        .in('status', ['pending', 'running'])
+        .lt('created_at', oneHourAgo)
+      
+      if (cleanupError) {
+        console.error('Failed to cleanup stale tasks:', cleanupError)
+      } else {
+        console.log('✅ Cleaned up stale tasks older than 1 hour')
+      }
+      
+      // Re-check for existing tasks after cleanup
+      const { data: stillExistingTask } = await supabaseClient
+        .from('processing_tasks')
+        .select('id, status, created_at')
+        .eq('user_id', user.id)
+        .in('status', ['pending', 'running'])
+        .maybeSingle()
+      
+      if (stillExistingTask) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: `已有处理任务正在运行中 (ID: ${stillExistingTask.id}, 状态: ${stillExistingTask.status})`,
+            task_id: stillExistingTask.id
+          } as StartTaskResponse),
+          {
+            status: 409, // Conflict
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders,
+            },
+          }
+        )
+      }
     }
 
     // Get sources count for progress tracking
