@@ -47,4 +47,4 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_processing_tasks_updated_at
   BEFORE UPDATE ON processing_tasks
   FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column(); 
+  EXECUTE FUNCTION update_updated_at_column();
