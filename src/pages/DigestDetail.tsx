@@ -4,7 +4,8 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ArrowLeft, Clock, ExternalLink, Calendar, Play, FileText } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
+import { ArrowLeft, Clock, ExternalLink, Calendar, Play, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { digestsApi } from '../services/api';
 import { Digest } from '../types';
 import { useToast } from '../hooks/use-toast';
@@ -18,6 +19,7 @@ const DigestDetail = () => {
   const [searchParams] = useSearchParams();
   const [digest, setDigest] = useState<Digest | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const defaultTab = searchParams.get('tab') === 'audio' ? 'audio' : 'reading';
@@ -82,6 +84,25 @@ const DigestDetail = () => {
     return digest.summaries.reduce((total, summary) => total + summary.readingTime, 0);
   };
 
+  // 🎯 按source分组summaries
+  const groupSummariesBySource = (digest: Digest) => {
+    const grouped = new Map<string, typeof digest.summaries>();
+    
+    digest.summaries.forEach(summary => {
+      const sourceName = summary.sourceName;
+      if (!grouped.has(sourceName)) {
+        grouped.set(sourceName, []);
+      }
+      grouped.get(sourceName)?.push(summary);
+    });
+    
+    return Array.from(grouped.entries()).map(([sourceName, summaries]) => ({
+      sourceName,
+      summaries,
+      totalReadingTime: summaries.reduce((total, summary) => total + summary.readingTime, 0)
+    }));
+  };
+
   // 🎯 渲染格式化的摘要内容
   const renderFormattedContent = (content: string) => {
     // 将 markdown 格式转换为 HTML
@@ -92,6 +113,19 @@ const DigestDetail = () => {
       .replace(/\n/g, '<br/>');
 
     return `<div class="prose prose-gray max-w-none"><p class="mb-4">${formattedContent}</p></div>`;
+  };
+
+  // 🎯 切换source展开状态
+  const toggleSourceExpansion = (sourceName: string) => {
+    setExpandedSources(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sourceName)) {
+        newSet.delete(sourceName);
+      } else {
+        newSet.add(sourceName);
+      }
+      return newSet;
+    });
   };
 
   if (loading) {
@@ -119,6 +153,8 @@ const DigestDetail = () => {
       </div>
     );
   }
+
+  const groupedSources = groupSummariesBySource(digest);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -181,46 +217,75 @@ const DigestDetail = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Reading Tab */}
-          <TabsContent value="reading" className="space-y-6">
-            {digest.summaries.map((summary, index) => (
-              <Card key={summary.id} className="overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <Badge variant="outline" className="bg-white border-blue-200 text-blue-700">
-                          {summary.sourceName}
-                        </Badge>
-                        <span className="text-sm text-gray-600">
-                          {formatPublishedDate(summary.publishedAt)}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          • {summary.readingTime} min read
-                        </span>
+          {/* Reading Tab - 按source分组 */}
+          <TabsContent value="reading" className="space-y-4">
+            {groupedSources.map((sourceGroup, groupIndex) => (
+              <Card key={sourceGroup.sourceName} className="overflow-hidden">
+                <Collapsible
+                  open={expandedSources.has(sourceGroup.sourceName)}
+                  onOpenChange={() => toggleSourceExpansion(sourceGroup.sourceName)}
+                >
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b cursor-pointer hover:bg-gradient-to-r hover:from-blue-100 hover:to-indigo-100 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-2">
+                            {expandedSources.has(sourceGroup.sourceName) ? (
+                              <ChevronDown className="h-5 w-5 text-gray-600" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5 text-gray-600" />
+                            )}
+                            <Badge variant="outline" className="bg-white border-blue-200 text-blue-700">
+                              {sourceGroup.sourceName}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600">
+                            <span>{sourceGroup.summaries.length} articles</span>
+                            <span>• {sourceGroup.totalReadingTime} min read</span>
+                          </div>
+                        </div>
                       </div>
-                      <CardTitle className="text-xl mb-2 text-gray-900">
-                        {index + 1}. {summary.title}
-                      </CardTitle>
-                    </div>
-                    <a
-                      href={summary.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-shrink-0"
-                    >
-                      <Button variant="outline" size="sm" className="bg-white hover:bg-gray-50">
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </a>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div 
-                    className="prose prose-gray max-w-none leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: renderFormattedContent(summary.content) }}
-                  />
-                </CardContent>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  
+                  <CollapsibleContent>
+                    <CardContent className="p-0">
+                      {sourceGroup.summaries.map((summary, summaryIndex) => (
+                        <div key={summary.id} className="border-b last:border-b-0 p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-3 mb-3">
+                                <span className="text-sm text-gray-600">
+                                  {formatPublishedDate(summary.publishedAt)}
+                                </span>
+                                <span className="text-sm text-gray-500">
+                                  • {summary.readingTime} min read
+                                </span>
+                              </div>
+                              <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                                {summary.title}
+                              </h3>
+                            </div>
+                            <a
+                              href={summary.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-shrink-0 ml-4"
+                            >
+                              <Button variant="outline" size="sm" className="bg-white hover:bg-gray-50">
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </a>
+                          </div>
+                          <div 
+                            className="prose prose-gray max-w-none leading-relaxed text-gray-700"
+                            dangerouslySetInnerHTML={{ __html: renderFormattedContent(summary.content) }}
+                          />
+                        </div>
+                      ))}
+                    </CardContent>
+                  </CollapsibleContent>
+                </Collapsible>
               </Card>
             ))}
           </TabsContent>

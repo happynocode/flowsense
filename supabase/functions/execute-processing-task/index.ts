@@ -2,8 +2,14 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.45/deno-dom-wasm.ts"
 
-// No timeout limits - this function can run as long as needed
-const FETCH_TIMEOUT = 10 * 1000; // 10 seconds for individual fetch operations
+// Configuration for batch processing
+const PROCESSING_CONFIG = {
+  FETCH_TIMEOUT: 8 * 1000, // 8 seconds for individual fetch operations
+  FUNCTION_TIMEOUT: 2.5 * 60 * 1000, // 2.5 minutes (留0.5分钟缓冲)
+  SOURCES_PER_BATCH: 3, // 每批处理3个源（平衡性能与稳定性）
+  ARTICLES_PER_SOURCE: 50, // 每个源最多50篇文章
+  MAX_TOTAL_SOURCES: 10, // 最多处理10个源
+}
 
 // Helper function to create timeout promise
 function createTimeoutPromise<T>(ms: number, errorMessage: string): Promise<T> {
@@ -39,15 +45,19 @@ Deno.serve(async (req) => {
     return new Response(null, { status: 200, headers: corsHeaders })
   }
 
+  let task_id: number | null = null
+  let supabaseClient: any = null
+
   try {
-    const { task_id } = await req.json()
+    const body = await req.json()
+    task_id = body.task_id
     
     if (!task_id) {
       throw new Error('task_id is required')
     }
 
     // Use service role key for unrestricted access
-    const supabaseClient = createClient(
+    supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
@@ -65,6 +75,10 @@ Deno.serve(async (req) => {
       throw new Error(`Task not found: ${taskError?.message}`)
     }
 
+    // Get time range from task config
+    const timeRange = task.config?.time_range || 'week'
+    console.log('📅 Processing with time range:', timeRange)
+
     // Update task status to running
     await supabaseClient
       .from('processing_tasks')
@@ -74,38 +88,70 @@ Deno.serve(async (req) => {
       })
       .eq('id', task_id)
 
-    // Get user's sources
+    // Get user's sources with consistent ordering
     const { data: sources, error: sourcesError } = await supabaseClient
       .from('content_sources')
       .select('*')
       .eq('user_id', task.user_id)
       .eq('is_active', true)
+      .order('id', { ascending: true })
 
     if (sourcesError) {
       throw new Error(`Failed to fetch sources: ${sourcesError.message}`)
     }
 
+    // Get batch info from task config  
+    const currentBatch = task.config?.current_batch || 0
+    const totalBatches = Math.ceil(Math.min(sources.length, PROCESSING_CONFIG.MAX_TOTAL_SOURCES) / PROCESSING_CONFIG.SOURCES_PER_BATCH)
+    
+    console.log(`🔄 Processing batch ${currentBatch + 1}/${totalBatches}`)
+    console.log(`📊 Total sources: ${sources.length}, Processing ${PROCESSING_CONFIG.SOURCES_PER_BATCH} sources per batch`)
+    
+    // Calculate which sources to process in this batch
+    const startIndex = currentBatch * PROCESSING_CONFIG.SOURCES_PER_BATCH
+    const endIndex = Math.min(startIndex + PROCESSING_CONFIG.SOURCES_PER_BATCH, sources.length, PROCESSING_CONFIG.MAX_TOTAL_SOURCES)
+    const batchSources = sources.slice(startIndex, endIndex)
+    
+    console.log(`🎯 Batch ${currentBatch + 1}: Processing sources ${startIndex + 1} to ${endIndex} (${batchSources.length} sources)`)
+    console.log(`🔍 DEBUG: currentBatch=${currentBatch}, startIndex=${startIndex}, endIndex=${endIndex}`)
+    console.log(`🔍 DEBUG: All sources:`, sources.map(s => s.name))
+    console.log(`🔍 DEBUG: Batch sources:`, batchSources.map(s => s.name))
+    
     const processedSources: any[] = []
     const skippedSources: any[] = []
     let totalSummaries = 0
 
-    // Process each source without any timeout pressure
-    for (let i = 0; i < sources.length; i++) {
-      const source = sources[i]
+    // Process each source in the current batch
+    const startTime = Date.now()
+    for (let i = 0; i < batchSources.length; i++) {
+      const source = batchSources[i]
+      
+      // ⏰ 检查函数执行时间，如果超过2.5分钟就提前退出
+      const elapsedTime = Date.now() - startTime
+      if (elapsedTime > PROCESSING_CONFIG.FUNCTION_TIMEOUT) {
+        console.log(`⏰ Function approaching timeout limit (${elapsedTime}ms), exiting gracefully...`)
+        console.log(`✅ Successfully processed ${processedSources.length} sources before timeout`)
+        break
+      }
       
       try {
-        console.log(`🔄 Processing source (${i + 1}/${sources.length}):`, source.name)
+        console.log(`🔄 Processing source (${i + 1}/${batchSources.length}) in batch ${currentBatch + 1}:`, source.name)
         
-        // Update progress
+        // Update progress with batch information
         await supabaseClient
           .from('processing_tasks')
           .update({
             progress: {
-              current: i + 1,
-              total: sources.length,
+              current_batch: currentBatch + 1,
+              total_batches: totalBatches,
+              batch_current: i + 1,
+              batch_total: batchSources.length,
+              global_current: startIndex + i + 1,
+              global_total: Math.min(sources.length, PROCESSING_CONFIG.MAX_TOTAL_SOURCES),
               processed_sources: processedSources,
               skipped_sources: skippedSources,
-              current_source: source.name
+              current_source: source.name,
+              elapsed_time: elapsedTime
             }
           })
           .eq('id', task_id)
@@ -124,10 +170,10 @@ Deno.serve(async (req) => {
         let result
         if (detection.isRSS) {
           console.log('📡 Processing as RSS feed')
-          result = await processAsRSS(supabaseClient, source.id, source.url, source.name, detection.content)
+          result = await processAsRSS(supabaseClient, source.id, source.url, source.name, detection.content, timeRange)
         } else {
           console.log('🌐 Processing as webpage')
-          result = await processAsWebPage(supabaseClient, source.id, source.url, source.name, detection.content)
+          result = await processAsWebPage(supabaseClient, source.id, source.url, source.name, detection.content, timeRange)
         }
 
         if (result.success) {
@@ -164,6 +210,16 @@ Deno.serve(async (req) => {
             .eq('id', source.id)
         }
 
+        // 📊 记录处理结果，但不生成digest（为了减少执行时间）
+        if (result.success && result.summariesCount > 0) {
+          console.log(`\n📊 Source Processing Summary:`)
+          console.log(`  - Source: ${source.name}`)
+          console.log(`  - Articles Found: ${result.articlesCount}`)
+          console.log(`  - Summaries Generated: ${result.summariesCount}`)
+          console.log(`  - Type: ${result.type}`)
+          console.log(`⚠️ Digest generation deferred to end of processing to prevent timeout`)
+        }
+
       } catch (error) {
         console.error('❌ Failed to process source:', source.name, error)
         skippedSources.push({
@@ -173,9 +229,112 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Generate digest if we have summaries
-    if (totalSummaries > 0) {
-      await generateDigestFromSummaries(supabaseClient, task.user_id)
+    // 📋 生成最终处理总结
+    console.log(`\n🎯 ===== TASK EXECUTION SUMMARY =====`)
+    console.log(`📋 Task ID: ${task_id}`)
+    console.log(`👤 User ID: ${task.user_id}`)
+    console.log(`📅 Time Range: ${timeRange}`)
+    console.log(`📊 Total Sources: ${sources.length}`)
+    console.log(`✅ Successfully Processed: ${processedSources.length}`)
+    console.log(`⚠️ Skipped Sources: ${skippedSources.length}`)
+    console.log(`📝 Total Summaries Generated: ${totalSummaries}`)
+    
+    if (processedSources.length > 0) {
+      console.log(`\n📈 Processed Sources Details:`)
+      processedSources.forEach((source, index) => {
+        console.log(`  ${index + 1}. ${source.name} - ${source.summariesCount} summaries (${source.articlesCount} articles)`)
+      })
+    }
+    
+    if (skippedSources.length > 0) {
+      console.log(`\n⚠️ Skipped Sources Details:`)
+      skippedSources.forEach((source, index) => {
+        console.log(`  ${index + 1}. ${source.name} - Reason: ${source.reason}`)
+      })
+    }
+
+    // Check if there are more batches to process
+    const hasMoreBatches = currentBatch + 1 < totalBatches
+    
+    if (hasMoreBatches) {
+      console.log(`\n🔄 Batch ${currentBatch + 1} completed. Scheduling next batch...`)
+      
+      // Update task config for next batch
+      await supabaseClient
+        .from('processing_tasks')
+        .update({
+          config: {
+            ...task.config,
+            current_batch: currentBatch + 1
+          },
+          progress: {
+            current_batch: currentBatch + 1,
+            total_batches: totalBatches,
+            batch_status: 'completed',
+            message: `Batch ${currentBatch + 1} completed. Starting batch ${currentBatch + 2}...`
+          }
+        })
+        .eq('id', task_id)
+      
+      // Trigger next batch by calling execute-processing-task again
+      console.log(`🚀 Triggering next batch (${currentBatch + 2}/${totalBatches})...`)
+      
+      try {
+        const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/execute-processing-task`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ task_id })
+        })
+        
+        if (!response.ok) {
+          console.error('❌ Failed to trigger next batch:', await response.text())
+        } else {
+          console.log('✅ Next batch triggered successfully')
+        }
+      } catch (triggerError) {
+        console.error('❌ Error triggering next batch:', triggerError)
+      }
+      
+      // Return current batch results (don't mark as completed yet)
+      return new Response(
+        JSON.stringify({
+          success: true,
+          batch_completed: currentBatch + 1,
+          total_batches: totalBatches,
+          has_more_batches: true,
+          processed_sources: processedSources.length,
+          total_summaries: totalSummaries
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // All batches completed - generate the final digest
+    console.log('\n🔄 All batches completed. Generating final digest...')
+    
+    // Get all summaries for final digest generation
+    const { data: allSummaries } = await supabaseClient
+      .from('summaries')
+      .select('*')
+      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
+    
+    const summaryCount = allSummaries?.length || 0
+    console.log(`📊 Found ${summaryCount} total summaries for final digest`)
+    
+    if (summaryCount > 0) {
+      console.log(`\n🔄 Generating final digest with ${summaryCount} summaries...`)
+      try {
+        await generateDigestFromSummaries(supabaseClient, task.user_id, timeRange)
+        console.log(`✅ Final digest successfully generated`)
+      } catch (digestError) {
+        console.error('❌ Failed to generate final digest:', digestError)
+        // 不影响任务完成状态
+      }
+    } else {
+      console.log('⚠️ No summaries available, skipping digest generation')
     }
 
     // Mark task as completed
@@ -185,7 +344,8 @@ Deno.serve(async (req) => {
       totalSummaries
     }
 
-    await supabaseClient
+    console.log(`\n🔄 Updating task status to 'completed'...`)
+    const { error: updateError } = await supabaseClient
       .from('processing_tasks')
       .update({
         status: 'completed',
@@ -201,7 +361,18 @@ Deno.serve(async (req) => {
       })
       .eq('id', task_id)
 
-    console.log('✅ Task completed successfully:', task_id)
+    if (updateError) {
+      console.error('❌ Failed to update task status:', updateError)
+    } else {
+      console.log(`✅ Task status successfully updated to 'completed'`)
+    }
+
+    console.log(`\n🎉 ===== TASK EXECUTION COMPLETED SUCCESSFULLY =====`)
+    console.log(`📋 Task ID: ${task_id} - Status: COMPLETED`)
+    console.log(`⏰ Completed at: ${new Date().toISOString()}`)
+    console.log(`📊 Final Result: ${totalSummaries} summaries from ${processedSources.length} sources`)
+    console.log(`🎯 Digests have been generated and are ready for user viewing`)
+    console.log(`===== END OF TASK EXECUTION =====\n`)
 
     return new Response(
       JSON.stringify({ success: true, result: finalResult }),
@@ -211,15 +382,9 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('❌ Task execution failed:', error)
     
-    // Try to update task status to failed
-    try {
-      const { task_id } = await req.json()
-      if (task_id) {
-        const supabaseClient = createClient(
-          Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-        )
-        
+    // Try to update task status to failed using the task_id we already have
+    if (task_id && supabaseClient) {
+      try {
         await supabaseClient
           .from('processing_tasks')
           .update({
@@ -228,9 +393,10 @@ Deno.serve(async (req) => {
             error_message: error instanceof Error ? error.message : 'Unknown error'
           })
           .eq('id', task_id)
+        console.log('✅ Task status updated to failed')
+      } catch (updateError) {
+        console.error('❌ Failed to update task status:', updateError)
       }
-    } catch (updateError) {
-      console.error('Failed to update task status:', updateError)
     }
 
     return new Response(
@@ -255,7 +421,7 @@ async function detectContentType(url: string): Promise<ContentDetectionResult | 
       console.log(`🤖 Trying content detection with: ${userAgent}`)
       
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
+      const timeoutId = setTimeout(() => controller.abort(), PROCESSING_CONFIG.FETCH_TIMEOUT)
       
       const response = await fetch(url, {
         method: 'GET',
@@ -333,12 +499,13 @@ async function processAsRSS(
   sourceId: number,
   feedUrl: string,
   sourceName: string,
-  xmlContent: string
+  xmlContent: string,
+  timeRange: string = 'week'
 ): Promise<{ success: boolean; articlesCount: number; summariesCount: number; error?: string; type: 'RSS' }> {
   try {
     console.log('📡 Processing as RSS feed:', sourceName)
 
-    const articles = await parseRSSContent(xmlContent, feedUrl)
+    const articles = await parseRSSContent(xmlContent, feedUrl, timeRange)
     
     if (!articles || articles.length === 0) {
       return {
@@ -371,7 +538,8 @@ async function processAsWebPage(
   sourceId: number,
   pageUrl: string,
   sourceName: string,
-  htmlContent: string
+  htmlContent: string,
+  timeRange: string = 'week'
 ): Promise<{ success: boolean; articlesCount: number; summariesCount: number; error?: string; type: 'WebPage' }> {
   try {
     console.log('🌐 Processing as web page:', sourceName)
@@ -404,8 +572,8 @@ async function processAsWebPage(
   }
 }
 
-async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Article[]> {
-  console.log('🔍 Starting RSS content parsing for:', feedUrl)
+async function parseRSSContent(xmlContent: string, feedUrl: string, timeRange: string = 'week'): Promise<Article[]> {
+  console.log('🔍 Starting RSS content parsing for:', feedUrl, 'with time range:', timeRange)
   
   try {
     const parser = new DOMParser()
@@ -437,10 +605,17 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
     const items = doc!.querySelectorAll('item')
     console.log('🔍 Found', items.length, 'RSS items via DOM')
     
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)  // Changed to 30 days
+    // Set cutoff date based on time range
+    const cutoffDate = timeRange === 'today' 
+      ? new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)  // 1 day ago
+      : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)  // 7 days ago (week)
+    
+    console.log(`📅 Using cutoff date: ${cutoffDate.toISOString()} (${timeRange} range)`)
     
     if (items.length > 0) {
-      items.forEach((item, index) => {
+      // 使用传统for循环支持早退
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index]
         const title = item.querySelector('title')?.textContent?.trim()
         
         // Try multiple ways to get the link
@@ -471,7 +646,7 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
           const articleDate = pubDate ? new Date(pubDate) : new Date()
           console.log(`📅 Article ${index + 1}: "${title}" - Date: ${pubDate} -> ${articleDate.toISOString()}`)
           
-          if (articleDate >= thirtyDaysAgo) {
+          if (articleDate >= cutoffDate) {
             articles.push({
               title,
               link,
@@ -482,18 +657,26 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
             console.log(`✅ Article ${index + 1} added to processing queue`)
           } else {
             console.log(`❌ Article ${index + 1} too old, skipping. Stopping processing as RSS is time-ordered.`)
-            return articles.slice(0, 20) // Early exit - no need to check older articles
+            break // 正确的早退：跳出for循环
           }
         } else {
           console.log(`❌ Item ${index + 1} SKIPPED: Missing title (${!!title}) or link (${!!link})`)
         }
-      })
+        
+        // 限制处理数量，避免处理过多数据
+        if (articles.length >= PROCESSING_CONFIG.ARTICLES_PER_SOURCE) {
+          console.log(`📊 Reached maximum of ${PROCESSING_CONFIG.ARTICLES_PER_SOURCE} articles, stopping processing`)
+          break
+        }
+      }
     } else {
       // Try Atom format
       const entries = doc!.querySelectorAll('entry')
       console.log('🔍 Found', entries.length, 'Atom entries via DOM')
       
-      entries.forEach((entry, index) => {
+      // 使用传统for循环支持早退
+      for (let index = 0; index < entries.length; index++) {
+        const entry = entries[index]
         const title = entry.querySelector('title')?.textContent?.trim()
         const linkElement = entry.querySelector('link')
         const link = linkElement?.getAttribute('href') || linkElement?.textContent?.trim()
@@ -506,7 +689,7 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
           const articleDate = published ? new Date(published) : new Date()
           console.log(`📅 Atom Entry ${index + 1}: "${title}" - Date: ${published} -> ${articleDate.toISOString()}`)
           
-          if (articleDate >= thirtyDaysAgo) {
+          if (articleDate >= cutoffDate) {
             articles.push({
               title,
               link,
@@ -517,14 +700,27 @@ async function parseRSSContent(xmlContent: string, feedUrl: string): Promise<Art
             console.log(`✅ Atom Entry ${index + 1} added to processing queue`)
           } else {
             console.log(`❌ Atom Entry ${index + 1} too old, skipping. Stopping processing as feed is time-ordered.`)
-            return articles.slice(0, 20) // Early exit - no need to check older entries
+            break // 正确的早退：跳出for循环
           }
         }
-      })
+        
+        // 限制处理数量，避免处理过多数据  
+        if (articles.length >= PROCESSING_CONFIG.ARTICLES_PER_SOURCE) {
+          console.log(`📊 Reached maximum of ${PROCESSING_CONFIG.ARTICLES_PER_SOURCE} articles, stopping processing`)
+          break
+        }
+      }
     }
 
     console.log('✅ Successfully parsed', articles.length, 'articles from RSS/Atom feed')
-    return articles.slice(0, 20)
+    
+    // 如果没有找到符合条件的文章，提前返回空数组
+    if (articles.length === 0) {
+      console.log('⚠️ No articles found within time range, returning empty array')
+      return []
+    }
+    
+    return articles.slice(0, 10)
 
   } catch (error) {
     console.error('❌ RSS parsing failed:', error)
@@ -544,7 +740,7 @@ async function parseRSSWithRegex(xmlContent: string): Promise<Article[]> {
     
     console.log('🔍 Found', items.length, 'items via regex')
     
-    for (let i = 0; i < Math.min(items.length, 20); i++) {
+    for (let i = 0; i < Math.min(items.length, 10); i++) {
       const item = items[i]
       const itemContent = item[1]
       
@@ -657,7 +853,20 @@ async function processArticles(
   sourceType: 'RSS' | 'WebPage'
 ): Promise<{ success: boolean; articlesCount: number; summariesCount: number; type: 'RSS' | 'WebPage' }> {
   let summariesCount = 0
-  const maxArticles = sourceType === 'RSS' ? 20 : 1
+  
+  // 智能限制：根据是否需要全文抓取来调整数量
+  let maxArticles = sourceType === 'RSS' ? PROCESSING_CONFIG.ARTICLES_PER_SOURCE : 1
+  
+  // 检测是否为高频源（需要大量全文抓取）
+  const needsFullFetch = articles.some(article => 
+    !article.description || article.description.length < 100
+  )
+  
+  if (needsFullFetch && sourceType === 'RSS') {
+    // 对于需要全文抓取的源（如TechCrunch），限制更严格
+    maxArticles = Math.min(5, maxArticles)
+    console.log(`🎯 High-fetch source detected, limiting to ${maxArticles} articles to prevent timeout`)
+  }
 
   for (let i = 0; i < Math.min(articles.length, maxArticles); i++) {
     const article = articles[i]
@@ -710,23 +919,28 @@ async function processArticles(
         continue
       }
 
-      let fullContent = article.content || ''
+      let fullContent = article.content || article.description || ''
       
-      if (sourceType === 'RSS' && article.link && (!fullContent || fullContent.length < 500)) {
+      // 如果RSS内容太短或为空，尝试全文抓取
+      if (sourceType === 'RSS' && (!fullContent || fullContent.length < 100)) {
+        console.log('📰 RSS content too short, attempting full article fetch for:', article.title)
         try {
-          console.log('🔗 Fetching full content for new RSS article:', article.link)
-          const contentFetchPromise = fetchFullArticleContent(article.link)
-          const timeoutPromise = createTimeoutPromise<string>(8000, 'Article content fetch timeout')
-          fullContent = await Promise.race([contentFetchPromise, timeoutPromise])
-          console.log('📄 Successfully fetched content, length:', fullContent.length)
-        } catch (error) {
-          console.log('⚠️ Could not fetch full content, using RSS description')
-          fullContent = article.description || article.content || ''
+          const fetchedContent = await fetchFullArticleContent(article.link)
+          if (fetchedContent && fetchedContent.length > 100) {
+            fullContent = fetchedContent
+            console.log('✅ Successfully fetched full article content')
+          } else {
+            console.log('⚠️ Full fetch also returned short content, using title as fallback')
+            fullContent = article.title + '. ' + (article.description || article.content || '')
+          }
+        } catch (fetchError) {
+          console.log('⚠️ Full fetch failed, using title as fallback:', fetchError)
+          fullContent = article.title + '. ' + (article.description || article.content || '')
         }
       }
       
-      if (!fullContent || fullContent.length < 100) {
-        console.log('⚠️ Article content too short, skipping:', article.title)
+      if (!fullContent || fullContent.length < 50) {
+        console.log('⚠️ Article content still too short after all attempts, skipping:', article.title)
         continue
       }
 
@@ -956,12 +1170,15 @@ async function callDeepSeekAPI(content: string, apiKey: string): Promise<string>
   }
 }
 
-async function generateDigestFromSummaries(supabaseClient: any, userId: string): Promise<void> {
+async function generateDigestFromSummaries(supabaseClient: any, userId: string, timeRange: string = 'week'): Promise<void> {
   try {
-    console.log('📝 Generating digest from summaries for user:', userId)
+    console.log('📝 Generating digest from summaries for user:', userId, 'timeRange:', timeRange)
 
-    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    // 根据时间范围设置查询条件
+    const timeRangeMs = timeRange === 'today' ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000
+    const timeAgo = new Date(Date.now() - timeRangeMs).toISOString()
     
+    // 1. 获取指定时间范围的摘要数据
     const { data: summaries, error: summariesError } = await supabaseClient
       .from('summaries')
       .select(`
@@ -978,7 +1195,7 @@ async function generateDigestFromSummaries(supabaseClient: any, userId: string):
           )
         )
       `)
-      .gte('created_at', oneWeekAgo)
+      .gte('created_at', timeAgo)
       .eq('content_items.content_sources.user_id', userId)
       .order('created_at', { ascending: false })
 
@@ -987,7 +1204,12 @@ async function generateDigestFromSummaries(supabaseClient: any, userId: string):
       return
     }
 
-    const digestTitle = `Weekly Digest - ${new Date().toLocaleDateString('zh-CN')}`
+    console.log(`📊 Found ${summaries.length} summaries for digest generation`)
+
+    // 2. 创建 digest 记录
+    const digestTitle = timeRange === 'today' 
+      ? `Daily Digest - ${new Date().toLocaleDateString('zh-CN')}`
+      : `Weekly Digest - ${new Date().toLocaleDateString('zh-CN')}`
     const digestContent = `# ${digestTitle}\n\n` + 
       summaries.map((summary: any) => {
         const publishedDate = summary.content_items.published_date ? 
@@ -998,20 +1220,54 @@ async function generateDigestFromSummaries(supabaseClient: any, userId: string):
         return `## ${summary.content_items.title}\n\n**来源**: ${sourceName} | **发布**: ${publishedDate}\n\n${summary.summary_text}\n\n[阅读原文](${summary.content_items.content_url})\n\n---\n`
       }).join('\n')
 
-    const { error: digestError } = await supabaseClient
+    const { data: digest, error: digestError } = await supabaseClient
       .from('digests')
       .insert({
         user_id: userId,
         title: digestTitle,
         content: digestContent,
-        digest_type: 'weekly'
+        generation_date: new Date().toISOString().split('T')[0] // YYYY-MM-DD format
       })
+      .select()
+      .single()
 
-    if (digestError) {
+    if (digestError || !digest) {
       console.error('❌ Failed to create digest:', digestError)
-    } else {
-      console.log('✅ Successfully created digest')
+      return
     }
+
+    console.log('✅ Successfully created digest with ID:', digest.id)
+    console.log(`📋 Digest Details:`)
+    console.log(`  - Title: ${digestTitle}`)
+    console.log(`  - User ID: ${userId}`)
+    console.log(`  - Time Range: ${timeRange}`)
+    console.log(`  - Summaries Count: ${summaries.length}`)
+
+    // 3. 创建 digest_items 关联记录
+    const digestItems = summaries.map((summary: any, index: number) => ({
+      digest_id: digest.id,
+      summary_id: summary.id,
+      order_position: index + 1
+    }))
+
+    const { error: digestItemsError } = await supabaseClient
+      .from('digest_items')
+      .insert(digestItems)
+
+    if (digestItemsError) {
+      console.error('❌ Failed to create digest items:', digestItemsError)
+      // 删除刚创建的 digest，因为没有关联的 items
+      await supabaseClient
+        .from('digests')
+        .delete()
+        .eq('id', digest.id)
+      return
+    }
+
+    console.log(`✅ Successfully created ${digestItems.length} digest items`)
+    console.log(`🎉 Digest generation completed successfully!`)
+    console.log(`📖 Digest ID ${digest.id} is now available for user viewing`)
+    console.log(`🔗 User can access digest through the frontend digest page`)
 
   } catch (error) {
     console.error('❌ Digest generation failed:', error)

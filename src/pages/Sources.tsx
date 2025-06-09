@@ -156,6 +156,7 @@ const Sources = () => {
 
   // 🔄 轮询任务状态
   const pollTaskStatus = async (taskId: string) => {
+    console.log('🔄 开始轮询任务状态, TaskID:', taskId);
     setIsPollingTask(true);
     const pollInterval = setInterval(async () => {
       try {
@@ -166,7 +167,14 @@ const Sources = () => {
           setCurrentTask(task);
           setTaskProgress(task.progress);
           
-          console.log('📊 Task status:', task.status, task.progress);
+          console.log('📊 Task status:', {
+            taskId,
+            status: task.status,
+            progress: task.progress,
+            created_at: task.created_at,
+            started_at: task.started_at,
+            elapsed_time: task.progress?.elapsed_time
+          });
           
           // 任务完成
           if (task.status === 'completed') {
@@ -177,9 +185,20 @@ const Sources = () => {
             const result = task.result;
             setProcessResults({ success: true, data: result });
             
+            // 🎉 任务完成通知，引导用户查看digest
             toast({
-              title: "🎉 全局处理完成！",
-              description: `成功处理 ${result.processedSources.length} 个sources，生成 ${result.totalSummaries} 个摘要。${result.skippedSources.length > 0 ? `跳过 ${result.skippedSources.length} 个sources。` : ''}`,
+              title: "🎉 Processing Complete!",
+              description: `Successfully processed ${result.processedSources.length} sources and generated ${result.totalSummaries} summaries. Click to view your digest!`,
+              action: (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => window.location.href = '/digests'}
+                  className="ml-2"
+                >
+                  View Digest
+                </Button>
+              ),
             });
             
             // 刷新 sources 列表
@@ -191,16 +210,24 @@ const Sources = () => {
             setGlobalProcessing(false);
             
             toast({
-              title: "❌ 全局处理失败",
-              description: task.error_message || "处理过程中发生错误",
+              title: "❌ Processing Failed",
+              description: task.error_message || "An error occurred during processing",
               variant: "destructive",
             });
           }
         }
       } catch (error) {
-        console.error('轮询任务状态失败:', error);
+        console.error('❌ 轮询任务状态失败:', {
+          taskId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          errorDetails: error,
+          timestamp: new Date().toISOString()
+        });
+        
+        // 记录轮询失败
+        console.warn('⚠️ Polling failure, this may indicate the task has failed or timed out');
       }
-    }, 2000); // 每2秒轮询一次
+    }, 10000); // 每10秒轮询一次
     
     // 设置最大轮询时间（10分钟）
     setTimeout(() => {
@@ -210,22 +237,33 @@ const Sources = () => {
     }, 10 * 60 * 1000);
   };
 
-  // 🚀 新的异步处理函数
-  const handleProcessAllSourcesAsync = async () => {
+  // 🚀 新的异步处理函数 - 支持时间范围参数
+  const handleProcessAllSourcesAsync = async (timeRange: 'today' | 'week') => {
+    console.log('🔴 ===== handleProcessAllSourcesAsync CALLED =====');
+    console.log('🔴 timeRange:', timeRange);
+    console.log('🔴 user:', user);
+    console.log('🔴 globalProcessing before:', globalProcessing);
+    
     setGlobalProcessing(true);
     setProcessResults(null);
     setCurrentTask(null);
     setTaskProgress(null);
 
     try {
-      console.log('🚀 启动异步处理任务...');
+      const timeRangeText = timeRange === 'today' ? '今天' : '过去一周';
+      console.log(`🚀 启动异步处理任务 (${timeRangeText})...`);
+      console.log('🔴 About to call sourcesApi.startProcessingTask...');
       
-      const result = await sourcesApi.startProcessingTask(user?.id);
+      const result = await sourcesApi.startProcessingTask(user?.id, timeRange);
+      
+      console.log('🔴 startProcessingTask result:', result);
       
       if (result.success && result.task_id) {
+        const timeRangeText = timeRange === 'today' ? 'today' : 'this week';
+        
         toast({
-          title: "🚀 任务已创建",
-          description: result.message || "任务已创建，正在启动处理...",
+          title: "🚀 Task Started",
+          description: `Processing ${timeRangeText}'s content has begun. This will take approximately 1-5 minutes.`,
         });
         
         console.log('🔄 手动触发任务执行...');
@@ -234,17 +272,19 @@ const Sources = () => {
         const triggerResult = await sourcesApi.triggerTaskExecution(result.task_id.toString(), user?.id);
         
         if (triggerResult.success) {
+          console.log('✅ 任务触发成功，开始轮询 TaskID:', result.task_id);
+          
           toast({
-            title: "✅ 任务启动成功",
-            description: "正在后台处理，请稍候...",
+            title: "✅ Processing Started Successfully",
+            description: `Processing ${timeRangeText}'s content in background. You'll be notified when complete.`,
           });
           
           // 开始轮询任务状态
           pollTaskStatus(result.task_id.toString());
         } else {
           toast({
-            title: "⚠️ 任务创建成功但启动失败",
-            description: triggerResult.error || "请稍后重试",
+            title: "⚠️ Failed to Start Processing",
+            description: triggerResult.error || "Please try again",
             variant: "destructive",
           });
           setGlobalProcessing(false);
@@ -253,17 +293,23 @@ const Sources = () => {
       } else {
         setGlobalProcessing(false);
         toast({
-          title: "❌ 任务创建失败",
-          description: result.error || "创建处理任务失败",
+          title: "❌ Task Creation Failed",
+          description: result.error || "Failed to create processing task",
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error('启动异步任务失败:', error);
+      console.error('🔴 ===== CATCH BLOCK =====');
+      console.error('🔴 启动异步任务失败:', error);
+      console.error('🔴 Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack',
+        error: error
+      });
       setGlobalProcessing(false);
       toast({
-        title: "❌ 任务启动失败",
-        description: "启动处理任务失败，请重试。",
+        title: "❌ Task Start Failed",
+        description: "Failed to start processing task. Please try again.",
         variant: "destructive",
       });
     }
@@ -320,6 +366,88 @@ const Sources = () => {
     });
   };
 
+  // 🎯 将技术错误信息转换为用户友好的信息
+  const getFriendlyErrorMessage = (originalError: string): string => {
+    const errorMap: { [key: string]: string } = {
+      '未能从RSS feed中解析文章': 'No new articles found for the selected time period',
+      '无法访问该URL': 'Unable to access this source - the website may be down or blocking our requests',
+      'RSS处理失败': 'Technical error while processing RSS feed',
+      '网页处理失败': 'Technical error while processing webpage content',
+      '未能从网页中提取文章内容': 'No articles could be extracted from this webpage',
+      'Failed to access URL': 'Unable to access this source - the website may be down or blocking our requests',
+      'Could not fetch article content': 'Unable to fetch article content from this source',
+      'Article content too short': 'Articles found but content was too short to process',
+      'No articles found': 'No articles found in the specified time range'
+    };
+
+    // 检查是否包含特定关键词
+    const lowerError = originalError.toLowerCase();
+    
+    if (lowerError.includes('too old') || lowerError.includes('time-ordered')) {
+      return 'No new articles published in the selected time period';
+    }
+    
+    if (lowerError.includes('timeout') || lowerError.includes('fetch')) {
+      return 'Connection timeout - the source website is too slow to respond';
+    }
+    
+    if (lowerError.includes('403') || lowerError.includes('forbidden')) {
+      return 'Access denied - the website is blocking automated requests';
+    }
+    
+    if (lowerError.includes('404') || lowerError.includes('not found')) {
+      return 'Source not found - the URL may have changed or been removed';
+    }
+    
+    if (lowerError.includes('500') || lowerError.includes('server error')) {
+      return 'Server error on the source website - try again later';
+    }
+
+    // 查找完全匹配
+    for (const [key, value] of Object.entries(errorMap)) {
+      if (originalError.includes(key)) {
+        return value;
+      }
+    }
+
+    // 如果没有匹配，返回稍微清理过的原始错误信息
+    return originalError.length > 100 
+      ? originalError.substring(0, 100) + '...' 
+      : originalError;
+  };
+
+  // 🎯 根据错误类型提供解决建议
+  const getErrorSuggestion = (originalError: string): string | null => {
+    const lowerError = originalError.toLowerCase();
+    
+    if (lowerError.includes('未能从rss feed中解析文章') || 
+        lowerError.includes('no new articles') ||
+        lowerError.includes('too old')) {
+      return 'Try selecting "Process Week" instead of "Process Today" for a longer time range, or check if this source publishes content regularly.';
+    }
+    
+    if (lowerError.includes('无法访问') || 
+        lowerError.includes('failed to access') ||
+        lowerError.includes('timeout')) {
+      return 'Check if the website is accessible in your browser. Some websites may block automated requests.';
+    }
+    
+    if (lowerError.includes('403') || lowerError.includes('forbidden')) {
+      return 'This website blocks automated access. Try finding an alternative RSS feed URL for this source.';
+    }
+    
+    if (lowerError.includes('404') || lowerError.includes('not found')) {
+      return 'Update the source URL or check if the website has moved to a new address.';
+    }
+    
+    if (lowerError.includes('rss处理失败') || 
+        lowerError.includes('technical error')) {
+      return 'This is likely a temporary issue. Try processing again in a few minutes.';
+    }
+
+    return null;
+  };
+
   if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -347,6 +475,16 @@ const Sources = () => {
 
   // Ensure sources is always an array before checking length
   const sourcesArray = sources || [];
+  
+  console.log('🔴 Sources state:', { 
+    sources, 
+    sourcesArray, 
+    sourcesLength: sourcesArray.length,
+    loading,
+    authLoading,
+    globalProcessing,
+    user: user ? { id: user.id, email: user.email } : null
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -360,22 +498,47 @@ const Sources = () => {
             </p>
           </div>
           <div className="flex space-x-3">
-            {/* 🚀 全局处理按钮 */}
+            {/* 🚀 处理按钮 - 今天的内容 */}
             {sourcesArray.length > 0 && (
               <Button 
-                onClick={handleProcessAllSourcesAsync}
+                onClick={() => handleProcessAllSourcesAsync('today')}
+                disabled={globalProcessing}
+                className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white"
+              >
+                {globalProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Process Today
+                  </>
+                )}
+              </Button>
+            )}
+            
+            {/* 🚀 处理按钮 - 过去一周的内容 */}
+            {sourcesArray.length > 0 && (
+              <Button 
+                onClick={() => {
+                  console.log('🔴 Process Week button clicked!');
+                  console.log('🔴 Button state - disabled:', globalProcessing);
+                  handleProcessAllSourcesAsync('week');
+                }}
                 disabled={globalProcessing}
                 className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
               >
                 {globalProcessing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing All...
+                    Processing...
                   </>
                 ) : (
                   <>
                     <Zap className="h-4 w-4 mr-2" />
-                    Process All Sources
+                    Process Week
                   </>
                 )}
               </Button>
@@ -397,56 +560,99 @@ const Sources = () => {
               <Plus className="h-4 w-4 mr-2" />
               Add Source
             </Button>
+            
+            {/* 🔧 调试重置按钮 */}
+            {globalProcessing && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  console.log('🔧 Resetting global processing state');
+                  setGlobalProcessing(false);
+                  setCurrentTask(null);
+                  setTaskProgress(null);
+                  setIsPollingTask(false);
+                }}
+                className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+              >
+                🔧 Reset State
+              </Button>
+            )}
           </div>
         </div>
 
         {/* 📊 任务进度显示 */}
-        {globalProcessing && taskProgress && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold text-blue-800">
-                📊 Processing Progress
+        {globalProcessing && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-blue-800 flex items-center">
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Processing in Progress
               </h3>
-              <span className="text-sm text-blue-600">
-                {taskProgress.current || 0} / {taskProgress.total || 0}
-              </span>
+              {taskProgress && (
+                <span className="text-sm text-blue-600 font-medium">
+                  {taskProgress.current || 0} / {taskProgress.total || 0} sources
+                </span>
+              )}
+            </div>
+            
+            {/* 预计时间提示 */}
+            <div className="text-sm text-blue-700 mb-4 bg-blue-100 rounded-md p-3">
+              ⏱️ <strong>Estimated time:</strong> 1-5 minutes • Processing each source and generating AI summaries
             </div>
             
             {/* 进度条 */}
-            <div className="w-full bg-blue-200 rounded-full h-2 mb-3">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                style={{ 
-                  width: `${taskProgress.total ? (taskProgress.current / taskProgress.total) * 100 : 0}%` 
-                }}
-              ></div>
-            </div>
+            {taskProgress && (
+              <div className="w-full bg-blue-200 rounded-full h-3 mb-4">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-500 ease-out" 
+                  style={{ 
+                    width: `${taskProgress.total ? Math.max(5, (taskProgress.current / taskProgress.total) * 100) : 5}%` 
+                  }}
+                ></div>
+              </div>
+            )}
             
             {/* 当前处理的源 */}
-            {taskProgress.current_source && (
-              <p className="text-sm text-blue-700 mb-2">
-                🔄 Currently processing: <strong>{taskProgress.current_source}</strong>
-              </p>
+            {taskProgress?.current_source && (
+              <div className="text-sm text-blue-700 mb-3 bg-white rounded-md p-3 border border-blue-100">
+                🔄 <strong>Currently processing:</strong> {taskProgress.current_source}
+                <div className="text-xs text-blue-600 mt-1">
+                  Fetching articles and generating summaries...
+                </div>
+              </div>
             )}
             
             {/* 已处理和跳过的源统计 */}
-            <div className="flex space-x-4 text-sm">
-              {taskProgress.processed_sources && (
-                <span className="text-green-600">
-                  ✅ Processed: {taskProgress.processed_sources.length}
-                </span>
-              )}
-              {taskProgress.skipped_sources && (
-                <span className="text-orange-600">
-                  ⚠️ Skipped: {taskProgress.skipped_sources.length}
-                </span>
-              )}
-              {currentTask?.status && (
-                <span className="text-blue-600">
-                  📋 Status: {currentTask.status}
-                </span>
-              )}
-            </div>
+            {taskProgress && (
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="text-lg font-semibold text-green-600">
+                    {taskProgress.processed_sources?.length || 0}
+                  </div>
+                  <div className="text-green-700">Completed</div>
+                </div>
+                <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="text-lg font-semibold text-orange-600">
+                    {taskProgress.skipped_sources?.length || 0}
+                  </div>
+                  <div className="text-orange-700">Skipped</div>
+                </div>
+                <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-lg font-semibold text-blue-600">
+                    {currentTask?.status || 'running'}
+                  </div>
+                  <div className="text-blue-700">Status</div>
+                </div>
+              </div>
+            )}
+            
+            {/* 如果没有taskProgress，显示初始状态 */}
+            {!taskProgress && (
+              <div className="text-center text-blue-700">
+                <div className="text-lg font-medium mb-2">🚀 Initializing...</div>
+                <div className="text-sm">Preparing to process your sources</div>
+              </div>
+            )}
           </div>
         )}
 
@@ -455,53 +661,88 @@ const Sources = () => {
           <div className="mb-8">
             <Card className={`${
               processResults.success 
-                ? 'bg-green-50 border-green-200' 
+                ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-md' 
                 : 'bg-red-50 border-red-200'
             }`}>
               <CardHeader>
-                <CardTitle className={`flex items-center ${
-                  processResults.success ? 'text-green-800' : 'text-red-800'
-                }`}>
-                  {processResults.success ? (
-                    <CheckCircle className="h-5 w-5 mr-2" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5 mr-2" />
+                <div className="flex items-center justify-between">
+                  <CardTitle className={`flex items-center ${
+                    processResults.success ? 'text-green-800' : 'text-red-800'
+                  }`}>
+                    {processResults.success ? (
+                      <CheckCircle className="h-6 w-6 mr-2" />
+                    ) : (
+                      <AlertCircle className="h-6 w-6 mr-2" />
+                    )}
+                    {processResults.success ? 'Processing Complete!' : 'Processing Failed'}
+                  </CardTitle>
+                  {processResults.success && (
+                    <Button 
+                      onClick={() => window.location.href = '/digests'}
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                    >
+                      📖 View Digest
+                    </Button>
                   )}
-                  全局处理结果
-                </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 {processResults.success ? (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
+                    {/* 成功摘要信息 */}
+                    <div className="bg-white rounded-lg p-4 border border-green-100">
+                      <p className="text-green-800 font-medium mb-2">
+                        🎉 Your digest has been generated successfully!
+                      </p>
+                      <p className="text-green-700 text-sm">
+                        All processed content has been summarized and organized. 
+                        Click "View Digest" to read your personalized content summary.
+                      </p>
+                    </div>
+                    
                     <div className="grid md:grid-cols-3 gap-4">
-                      <div className="text-center p-4 bg-white rounded-lg">
+                      <div className="text-center p-4 bg-white rounded-lg border border-green-100">
                         <div className="text-2xl font-bold text-green-600">
                           {processResults.data.processedSources.length}
                         </div>
-                        <div className="text-sm text-green-700">成功处理</div>
+                        <div className="text-sm text-green-700">Sources Processed</div>
                       </div>
-                      <div className="text-center p-4 bg-white rounded-lg">
+                      <div className="text-center p-4 bg-white rounded-lg border border-green-100">
                         <div className="text-2xl font-bold text-blue-600">
                           {processResults.data.totalSummaries}
                         </div>
-                        <div className="text-sm text-blue-700">生成摘要</div>
+                        <div className="text-sm text-blue-700">Summaries Generated</div>
                       </div>
-                      <div className="text-center p-4 bg-white rounded-lg">
+                      <div className="text-center p-4 bg-white rounded-lg border border-green-100">
                         <div className="text-2xl font-bold text-orange-600">
                           {processResults.data.skippedSources.length}
                         </div>
-                        <div className="text-sm text-orange-700">跳过源</div>
+                        <div className="text-sm text-orange-700">Sources Skipped</div>
                       </div>
                     </div>
                     
                     {processResults.data.skippedSources.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="font-medium text-orange-800 mb-2">跳过的Sources:</h4>
-                        <div className="space-y-2">
+                      <div className="mt-4 bg-orange-50 rounded-lg p-4 border border-orange-200">
+                        <h4 className="font-medium text-orange-800 mb-3 flex items-center">
+                          ⚠️ Skipped Sources
+                        </h4>
+                        <div className="space-y-3">
                           {processResults.data.skippedSources.map((source: any, index: number) => (
-                            <div key={index} className="flex items-center justify-between p-2 bg-orange-100 rounded">
-                              <span className="font-medium">{source.name}</span>
-                              <span className="text-sm text-orange-700">{source.reason}</span>
+                            <div key={index} className="bg-white rounded-lg border border-orange-100 p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <span className="font-medium text-gray-800">{source.name}</span>
+                                <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
+                                  Skipped
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                <strong>Reason:</strong> {getFriendlyErrorMessage(source.reason)}
+                              </div>
+                              {getErrorSuggestion(source.reason) && (
+                                <div className="text-xs text-blue-600 mt-2 bg-blue-50 p-2 rounded">
+                                  💡 <strong>Suggestion:</strong> {getErrorSuggestion(source.reason)}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -509,8 +750,8 @@ const Sources = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="text-red-700">
-                    <p className="font-medium">处理失败:</p>
+                  <div className="text-red-700 bg-white rounded-lg p-4 border border-red-200">
+                    <p className="font-medium">Processing Failed:</p>
                     <p className="text-sm mt-1">{processResults.error}</p>
                   </div>
                 )}

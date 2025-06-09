@@ -9,6 +9,10 @@ const corsHeaders = {
   'Access-Control-Max-Age': '86400',
 }
 
+interface StartTaskRequest {
+  time_range?: 'today' | 'week';
+}
+
 interface StartTaskResponse {
   success: boolean;
   task_id?: number;
@@ -43,7 +47,22 @@ Deno.serve(async (req) => {
       throw new Error('Authentication required')
     }
 
-    console.log('🚀 Starting async processing task for user:', user.id)
+    // Parse request body to get time_range parameter
+    let requestBody: StartTaskRequest = {}
+    try {
+      if (req.method === 'POST') {
+        const text = await req.text()
+        if (text && text.trim()) {
+          requestBody = JSON.parse(text)
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Failed to parse request body, using defaults:', error)
+      requestBody = {}
+    }
+    const timeRange = requestBody.time_range || 'week' // default to week
+
+    console.log('🚀 Starting async processing task for user:', user.id, 'with time range:', timeRange)
 
     // Check if there's already a running task for this user
     const { data: existingTask } = await supabaseClient
@@ -131,13 +150,16 @@ Deno.serve(async (req) => {
 
     const sourcesCount = sources?.length || 0
 
-    // Create new processing task
+    // Create new processing task with time range
     const { data: task, error: taskError } = await supabaseClient
       .from('processing_tasks')
       .insert({
         user_id: user.id,
         task_type: 'process_all_sources',
         status: 'pending',
+        config: {
+          time_range: timeRange
+        },
         progress: {
           current: 0,
           total: sourcesCount,

@@ -268,10 +268,10 @@ export const sourcesApi = {
     }
   },
 
-  // 🚀 启动异步处理任务 (新的异步架构)
-  startProcessingTask: async (userId?: string): Promise<{ success: boolean; task_id?: string; message?: string; error?: string }> => {
+  // 🚀 启动异步处理任务 (新的异步架构) - 支持时间范围
+  startProcessingTask: async (userId?: string, timeRange: 'today' | 'week' = 'week'): Promise<{ success: boolean; task_id?: string; message?: string; error?: string }> => {
     try {
-      console.log('🚀 启动异步处理任务...');
+      console.log('🚀 启动异步处理任务...', { timeRange });
       
       let user;
       if (userId) {
@@ -286,7 +286,7 @@ export const sourcesApi = {
       console.log('📡 调用 start-processing Edge Function...');
 
       const { data, error } = await supabase.functions.invoke('start-processing', {
-        body: {}
+        body: { time_range: timeRange }
       });
 
       if (error) {
