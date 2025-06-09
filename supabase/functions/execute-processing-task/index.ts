@@ -846,12 +846,75 @@ async function extractArticlesFromWebPage(htmlContent: string, pageUrl: string):
   }
 }
 
+// Add queue integration at the top after imports
+async function queueContentFetchJobs(
+  supabaseClient: any,
+  articles: Article[],
+  sourceId: number,
+  taskId: number
+): Promise<{ success: boolean; queuedCount: number }> {
+  try {
+    console.log(`📥 Queueing ${articles.length} articles for content fetch`)
+
+    // Prepare content fetch jobs for articles that need full content
+    const fetchJobs = articles
+      .filter(article => !article.description || article.description.length < 100)
+      .slice(0, 5) // Intelligent limit for high-fetch sources
+      .map(article => ({
+        article_url: article.url,
+        source_id: sourceId,
+        article_title: article.title,
+        article_description: article.description || '',
+        published_date: article.published_date,
+        task_id: taskId,
+        fetch_status: 'pending'
+      }))
+
+    if (fetchJobs.length === 0) {
+      console.log('✅ No articles need content fetching')
+      return { success: true, queuedCount: 0 }
+    }
+
+    // Insert into content fetch queue
+    const { error: queueError } = await supabaseClient
+      .from('content_fetch_queue')
+      .insert(fetchJobs)
+
+    if (queueError) {
+      throw new Error(`Failed to queue content fetch jobs: ${queueError.message}`)
+    }
+
+    console.log(`✅ Queued ${fetchJobs.length} content fetch jobs`)
+
+    // Trigger content fetch queue processing
+    setTimeout(async () => {
+      try {
+        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/queue-content-fetch`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            'Content-Type': 'application/json'
+          }
+        })
+      } catch (error) {
+        console.error('Failed to trigger content fetch queue:', error)
+      }
+    }, 1000) // Delay to allow current function to complete
+
+    return { success: true, queuedCount: fetchJobs.length }
+
+  } catch (error) {
+    console.error('❌ Failed to queue content fetch jobs:', error)
+    return { success: false, queuedCount: 0 }
+  }
+}
+
 async function processArticles(
   supabaseClient: any,
   sourceId: number,
   articles: Article[],
   sourceType: 'RSS' | 'WebPage'
-): Promise<{ success: boolean; articlesCount: number; summariesCount: number; type: 'RSS' | 'WebPage' }> {
+): Promise<{ success: boolean; articlesCount: number; summariesCount: number; error?: string; type: 'RSS' | 'WebPage' }> {
   let summariesCount = 0
   
   // 智能限制：根据是否需要全文抓取来调整数量
@@ -863,9 +926,29 @@ async function processArticles(
   )
   
   if (needsFullFetch && sourceType === 'RSS') {
-    // 对于需要全文抓取的源（如TechCrunch），限制更严格
-    maxArticles = Math.min(5, maxArticles)
-    console.log(`🎯 High-fetch source detected, limiting to ${maxArticles} articles to prevent timeout`)
+    // 对于需要全文抓取的源（如TechCrunch），使用队列系统处理
+    console.log(`🎯 High-fetch source detected, using queue system for content processing`)
+    
+    // Queue the content fetch jobs instead of processing immediately
+    const queueResult = await queueContentFetchJobs(
+      supabaseClient,
+      articles.slice(0, maxArticles),
+      sourceId,
+      parseInt(Deno.env.get('CURRENT_TASK_ID') || '0')
+    )
+
+    if (queueResult.success) {
+      console.log(`✅ Queued ${queueResult.queuedCount} articles for background processing`)
+      return {
+        success: true,
+        articlesCount: queueResult.queuedCount,
+        summariesCount: 0, // Will be processed asynchronously
+        type: sourceType
+      }
+    } else {
+      console.log('⚠️ Queue system failed, falling back to immediate processing')
+      maxArticles = Math.min(3, maxArticles) // Further reduce for fallback
+    }
   }
 
   for (let i = 0; i < Math.min(articles.length, maxArticles); i++) {
