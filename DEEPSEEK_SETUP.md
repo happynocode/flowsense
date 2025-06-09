@@ -60,69 +60,45 @@ VITE_DEEPSEEK_API_KEY=sk-your-actual-api-key-here
 # 数据库配置（根据你的设置调整）
 DATABASE_URL=postgresql://postgres:password@localhost:5432/content_digest
 
-# 其他配置
-SECRET_KEY=your-secret-key-for-flask
+# 其他配置（Supabase已处理认证，无需额外密钥）
 ```
 
-### 3. 安装依赖
+### 3. 前端依赖
 
-确保安装了所有必需的Python依赖：
+确保安装了前端依赖：
 
 ```bash
-pip install -r requirements.txt
+npm install
 ```
 
 ### 4. 测试配置
 
-运行以下命令测试DeepSeek API连接：
+启动开发服务器测试配置：
 
-```python
-import os
-import requests
-
-# 测试DeepSeek API
-api_key = os.getenv('DEEPSEEK_API_KEY')
-if api_key:
-    headers = {
-        'Authorization': f'Bearer {api_key}',
-        'Content-Type': 'application/json'
-    }
-    
-    payload = {
-        "model": "deepseek-chat",
-        "messages": [
-            {"role": "user", "content": "Hello, this is a test."}
-        ],
-        "max_tokens": 100
-    }
-    
-    response = requests.post(
-        'https://api.deepseek.com/chat/completions',
-        headers=headers,
-        json=payload
-    )
-    
-    print(f"Status: {response.status_code}")
-    print(f"Response: {response.json()}")
-else:
-    print("DEEPSEEK_API_KEY not found in environment variables")
+```bash
+npm run dev
 ```
+
+访问应用程序检查Supabase连接和Edge Function是否正常工作。
 
 ## 功能说明
 
-### 网页抓取功能
+### Supabase Edge Functions
 
-项目现在支持两种网页抓取方式：
+项目使用Supabase Edge Functions提供后端功能：
 
-1. **Newspaper3k**: 智能文章提取，自动识别标题、内容、作者和发布日期
-2. **BeautifulSoup**: 增强的HTML解析，支持多种内容提取策略
+1. **fetch-content**: RSS源解析和内容抓取
+2. **process-content**: 网页内容提取和处理
+3. **generate-digest**: 使用DeepSeek API生成摘要
+4. **start-processing**: 启动异步处理任务
+5. **validate-source**: 验证RSS源有效性
 
-### DeepSeek总结功能
+### DeepSeek AI摘要
 
-- 使用DeepSeek API生成中文结构化摘要
-- 支持主题提取和引用
-- 自动降级到模拟摘要（如果API不可用）
-- 支持批量处理和速率限制
+- 通过Edge Functions调用DeepSeek API
+- 生成中文结构化摘要
+- 支持批量处理和错误处理
+- 集成在Supabase无服务器架构中
 
 ## 故障排除
 
@@ -138,18 +114,17 @@ else:
    - 确认防火墙设置
    - 尝试使用代理（如果需要）
 
-3. **依赖问题**
-   - 确保所有Python包都已安装
-   - 检查版本兼容性
-   - 重新安装requirements.txt
+3. **部署问题**
+   - 确保Supabase Edge Functions已正确部署
+   - 检查环境变量配置
+   - 查看Edge Function日志
 
 ### 调试模式
 
-启用详细日志记录：
+查看Supabase Edge Function日志：
 
-```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
+```bash
+supabase functions logs --project-ref your-project-ref
 ```
 
 ## 安全注意事项

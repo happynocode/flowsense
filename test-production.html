@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Auto Digest Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #3730a3;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        input, select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Production Auto Digest Test</h1>
+        
+        <div class="test-section">
+            <h3>📋 执行步骤：</h3>
+            <ol>
+                <li>在Supabase Dashboard执行SQL迁移</li>
+                <li>在主应用中测试Auto Digest功能</li>
+                <li>使用下面的工具测试调度器函数</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>🗄️ SQL 迁移脚本</h3>
+            <p>在 <a href="https://supabase.com/dashboard/project/ryncyvnezqwqqtfsweti/sql" target="_blank">Supabase SQL Editor</a> 中执行：</p>
+            <div class="result">
+-- Add scheduled digest configuration columns to users table
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS auto_digest_enabled BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS auto_digest_time TIME DEFAULT '09:00:00', 
+ADD COLUMN IF NOT EXISTS auto_digest_timezone TEXT DEFAULT 'UTC',
+ADD COLUMN IF NOT EXISTS last_auto_digest_run TIMESTAMPTZ;
+
+-- Create index for efficient querying of users who have auto digest enabled
+CREATE INDEX IF NOT EXISTS idx_users_auto_digest_enabled 
+ON users(auto_digest_enabled) WHERE auto_digest_enabled = true;
+
+-- Create index for auto digest time to help with scheduling queries
+CREATE INDEX IF NOT EXISTS idx_users_auto_digest_time 
+ON users(auto_digest_time) WHERE auto_digest_enabled = true;
+            </div>
+            <button onclick="copySQL()">📋 复制SQL</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 测试调度器函数</h3>
+            <p>测试已部署的auto-digest-scheduler函数：</p>
+            
+            <div>
+                <label>Service Role Key:</label><br>
+                <input type="password" id="serviceKey" placeholder="从Supabase Dashboard获取" style="width: 400px;">
+            </div>
+            
+            <button onclick="testScheduler()">测试调度器函数</button>
+            <div id="schedulerResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>✅ 验证步骤</h3>
+            <ol>
+                <li><strong>执行SQL:</strong> 在Supabase Dashboard执行上面的SQL</li>
+                <li><strong>访问应用:</strong> 打开你的主应用 /sources 页面</li>
+                <li><strong>测试UI:</strong> 应该看到完整的Auto Digest设置界面</li>
+                <li><strong>保存设置:</strong> 开启开关，设置时间，点击保存</li>
+                <li><strong>测试功能:</strong> 点击"Test Now"按钮</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>🔄 Cron Job设置 (生产环境)</h3>
+            <p>在你的服务器或cron服务中，设置每分钟调用一次：</p>
+            <div class="result">
+# 每分钟执行一次
+curl -X POST "https://ryncyvnezqwqqtfsweti.supabase.co/functions/v1/auto-digest-scheduler" \
+  -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY"
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copySQL() {
+            const sql = `-- Add scheduled digest configuration columns to users table
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS auto_digest_enabled BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS auto_digest_time TIME DEFAULT '09:00:00', 
+ADD COLUMN IF NOT EXISTS auto_digest_timezone TEXT DEFAULT 'UTC',
+ADD COLUMN IF NOT EXISTS last_auto_digest_run TIMESTAMPTZ;
+
+-- Create index for efficient querying of users who have auto digest enabled
+CREATE INDEX IF NOT EXISTS idx_users_auto_digest_enabled 
+ON users(auto_digest_enabled) WHERE auto_digest_enabled = true;
+
+-- Create index for auto digest time to help with scheduling queries
+CREATE INDEX IF NOT EXISTS idx_users_auto_digest_time 
+ON users(auto_digest_time) WHERE auto_digest_enabled = true;`;
+            
+            navigator.clipboard.writeText(sql).then(() => {
+                alert('SQL已复制到剪贴板！');
+            });
+        }
+
+        async function testScheduler() {
+            const serviceKey = document.getElementById('serviceKey').value;
+            
+            if (!serviceKey) {
+                showResult('schedulerResult', '请输入Service Role Key', 'error');
+                return;
+            }
+            
+            try {
+                showResult('schedulerResult', '正在测试调度器函数...', 'info');
+                
+                const response = await fetch('https://ryncyvnezqwqqtfsweti.supabase.co/functions/v1/auto-digest-scheduler', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${serviceKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                showResult('schedulerResult', JSON.stringify(result, null, 2), response.ok ? 'success' : 'error');
+            } catch (error) {
+                showResult('schedulerResult', '错误: ' + error.message, 'error');
+            }
+        }
+
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `result ${type}`;
+            element.style.display = 'block';
+        }
+    </script>
+</body>
+</html> 

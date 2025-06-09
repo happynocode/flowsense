@@ -714,3 +714,173 @@ export const subscriptionApi = {
     throw new Error('Subscription cancellation not implemented yet');
   }
 };
+
+// User Settings API
+export const userApi = {
+  getAutoDigestSettings: async (): Promise<{
+    autoDigestEnabled: boolean;
+    autoDigestTime: string;
+    autoDigestTimezone: string;
+    lastAutoDigestRun?: string;
+  }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    console.log('🔍 Fetching auto digest settings for user:', user.id);
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('auto_digest_enabled, auto_digest_time, auto_digest_timezone, last_auto_digest_run')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      console.error('❌ Database error in getAutoDigestSettings:', error);
+      // 如果是字段不存在的错误，返回默认值而不是抛出错误
+      if (error.message.includes('column') && error.message.includes('does not exist')) {
+        console.log('📋 Auto digest columns do not exist, returning defaults');
+        return {
+          autoDigestEnabled: false,
+          autoDigestTime: '09:00:00',
+          autoDigestTimezone: 'UTC',
+          lastAutoDigestRun: undefined
+        };
+      }
+      throw error;
+    }
+
+    console.log('✅ Auto digest settings fetched:', data);
+
+    return {
+      autoDigestEnabled: data?.auto_digest_enabled || false,
+      autoDigestTime: data?.auto_digest_time || '09:00:00',
+      autoDigestTimezone: data?.auto_digest_timezone || 'UTC',
+      lastAutoDigestRun: data?.last_auto_digest_run
+    };
+  },
+
+  updateAutoDigestSettings: async (settings: {
+    autoDigestEnabled: boolean;
+    autoDigestTime: string;
+    autoDigestTimezone?: string;
+  }): Promise<void> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('users')
+      .update({
+        auto_digest_enabled: settings.autoDigestEnabled,
+        auto_digest_time: settings.autoDigestTime,
+        auto_digest_timezone: settings.autoDigestTimezone || 'UTC',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', user.id);
+
+    if (error) throw error;
+  },
+
+  // 手动触发自动digest处理 (主要用于测试)
+  triggerAutoDigest: async (): Promise<{ success: boolean; task_id?: string; message?: string; error?: string; processorTriggered?: boolean; processorError?: string }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    try {
+      // 调用后端API启动处理任务
+      const result = await sourcesApi.startProcessingTask(user.id, 'today');
+      
+      if (result.success && result.task_id) {
+        console.log('🔄 Task created, now triggering task processor...');
+        
+        // 立即调用task-processor来处理刚创建的任务
+        try {
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/task-processor`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          const processorResult = await response.json();
+          console.log('📋 Task processor result:', processorResult);
+          
+          return {
+            ...result,
+            processorTriggered: processorResult.success
+          };
+        } catch (processorError) {
+          console.error('❌ Failed to trigger task processor:', processorError);
+          return {
+            ...result,
+            processorTriggered: false,
+            processorError: processorError instanceof Error ? processorError.message : 'Unknown error'
+          };
+        }
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('❌ 手动触发自动digest失败:', error);
+      throw error;
+    }
+  },
+
+  // 🚀 NEW: 直接处理函数 - 用于手动按钮，绕过任务系统
+  processDirectly: async (timeRange: 'today' | 'week'): Promise<{ 
+    success: boolean; 
+    data?: any; 
+    error?: string;
+    message?: string;
+  }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    try {
+      console.log(`🎯 直接处理模式: ${timeRange}`);
+      
+      // 直接调用execute-processing-task Edge Function，不通过任务系统
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/execute-processing-task`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          timeRange: timeRange,
+          directMode: true  // 标记为直接模式
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ 直接处理结果:', result);
+
+      if (result.success) {
+        return {
+          success: true,
+          data: result,
+          message: `Successfully processed ${timeRange} content directly`
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || 'Direct processing failed',
+          message: 'Processing failed'
+        };
+      }
+
+    } catch (error) {
+      console.error('❌ 直接处理失败:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Direct processing failed'
+      };
+    }
+  }
+};

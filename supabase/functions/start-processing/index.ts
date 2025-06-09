@@ -74,67 +74,25 @@ Deno.serve(async (req) => {
 
     if (existingTask) {
       console.log('⚠️ Found existing task:', existingTask.id, 'with status:', existingTask.status)
+      console.log('🧹 Force cleaning ALL pending/running tasks for this user...')
       
-      // Auto-cleanup stale tasks
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-      
-      // Clean up old pending tasks (older than 30 minutes)
-      const { error: cleanupPendingError } = await supabaseClient
+      // Force cleanup ALL pending and running tasks for this user (no time limit)
+      const { error: forceCleanupError } = await supabaseClient
         .from('processing_tasks')
         .update({ 
           status: 'failed',
           completed_at: new Date().toISOString(),
-          error_message: 'Pending task cleaned up due to timeout'
+          error_message: 'Task force-cleaned to allow new processing'
         })
-        .eq('user_id', user.id)
-        .eq('status', 'pending')
-        .lt('created_at', thirtyMinutesAgo)
-      
-      // Clean up stale running tasks (running for more than 5 minutes without updates)
-      const { error: cleanupRunningError } = await supabaseClient
-        .from('processing_tasks')
-        .update({ 
-          status: 'failed',
-          completed_at: new Date().toISOString(),
-          error_message: 'Running task cleaned up - likely crashed or stalled'
-        })
-        .eq('user_id', user.id)
-        .eq('status', 'running')
-        .or(`started_at.lt.${fiveMinutesAgo},started_at.is.null`)
-      
-      const cleanupError = cleanupPendingError || cleanupRunningError
-      
-      if (cleanupError) {
-        console.error('Failed to cleanup stale tasks:', cleanupError)
-      } else {
-        console.log('✅ Cleaned up stale tasks older than 1 hour')
-      }
-      
-      // Re-check for existing tasks after cleanup
-      const { data: stillExistingTask } = await supabaseClient
-        .from('processing_tasks')
-        .select('id, status, created_at')
         .eq('user_id', user.id)
         .in('status', ['pending', 'running'])
-        .maybeSingle()
       
-      if (stillExistingTask) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: `已有处理任务正在运行中 (ID: ${stillExistingTask.id}, 状态: ${stillExistingTask.status})`,
-            task_id: stillExistingTask.id
-          } as StartTaskResponse),
-          {
-            status: 409, // Conflict
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders,
-            },
-          }
-        )
+      if (forceCleanupError) {
+        console.error('❌ Failed to force cleanup tasks:', forceCleanupError)
+        throw new Error(`Failed to cleanup existing tasks: ${forceCleanupError.message}`)
       }
+      
+      console.log('✅ Force cleaned all conflicting tasks for user')
     }
 
     // Get sources count for progress tracking

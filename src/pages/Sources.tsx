@@ -3,13 +3,16 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCircle, Sparkles, Zap, Eraser } from 'lucide-react';
-import { sourcesApi } from '../services/api';
+import { sourcesApi, userApi } from '../services/api';
 import { ContentSource } from '../types';
 import { useToast } from '../hooks/use-toast';
 import { useAuth } from '../hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import LoadingIndicator from '../components/common/LoadingIndicator';
 import SourceForm from '../components/sources/SourceForm';
+import AutoDigestSettings from '../components/sources/AutoDigestSettings';
+import AutoDigestSettingsDemo from '../components/sources/AutoDigestSettingsDemo';
+import AutoDigestSettingsSimple from '../components/sources/AutoDigestSettingsSimple';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -227,7 +230,7 @@ const Sources = () => {
         // 记录轮询失败
         console.warn('⚠️ Polling failure, this may indicate the task has failed or timed out');
       }
-    }, 10000); // 每10秒轮询一次
+    }, 3000); // 每3秒轮询一次以获得更及时的进度更新
     
     // 设置最大轮询时间（10分钟）
     setTimeout(() => {
@@ -312,6 +315,70 @@ const Sources = () => {
         description: "Failed to start processing task. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  // 🎯 NEW: 直接处理函数 - 用于手动按钮
+  const handleProcessDirectly = async (timeRange: 'today' | 'week') => {
+    console.log('🎯 ===== handleProcessDirectly CALLED =====');
+    console.log('🎯 timeRange:', timeRange);
+    console.log('🎯 user:', user);
+    
+    setGlobalProcessing(true);
+    setProcessResults(null);
+    setCurrentTask(null);
+    setTaskProgress(null);
+
+    try {
+      const timeRangeText = timeRange === 'today' ? '今天' : '过去一周';
+      console.log(`🎯 启动直接处理 (${timeRangeText})...`);
+      
+      toast({
+        title: "🚀 Processing Started",
+        description: `Processing ${timeRangeText}'s content directly...`,
+      });
+      
+      // 直接调用处理函数，不通过任务系统
+      const result = await userApi.processDirectly(timeRange);
+      
+      console.log('🎯 Direct processing result:', result);
+      
+      if (result.success) {
+        setProcessResults({ success: true, data: result.data });
+        
+        toast({
+          title: "🎉 Processing Complete!",
+          description: `Successfully processed ${timeRangeText}'s content directly. Click to view your digest!`,
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = '/digests'}
+              className="ml-2"
+            >
+              View Digest
+            </Button>
+          ),
+        });
+      } else {
+        setProcessResults({ success: false, error: result.error });
+        toast({
+          title: "❌ Processing Failed",
+          description: result.error || "Failed to process content directly",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('🎯 ===== DIRECT PROCESSING ERROR =====');
+      console.error('🎯 直接处理失败:', error);
+      setProcessResults({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+      toast({
+        title: "❌ Processing Failed",
+        description: "Failed to process content directly. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGlobalProcessing(false);
     }
   };
 
@@ -498,10 +565,10 @@ const Sources = () => {
             </p>
           </div>
           <div className="flex space-x-3">
-            {/* 🚀 处理按钮 - 今天的内容 */}
+            {/* 🎯 手动处理按钮 - 今天的内容 (直接处理) */}
             {sourcesArray.length > 0 && (
               <Button 
-                onClick={() => handleProcessAllSourcesAsync('today')}
+                onClick={() => handleProcessDirectly('today')}
                 disabled={globalProcessing}
                 className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white"
               >
@@ -519,13 +586,13 @@ const Sources = () => {
               </Button>
             )}
             
-            {/* 🚀 处理按钮 - 过去一周的内容 */}
+            {/* 🎯 手动处理按钮 - 过去一周的内容 (直接处理) */}
             {sourcesArray.length > 0 && (
               <Button 
                 onClick={() => {
-                  console.log('🔴 Process Week button clicked!');
-                  console.log('🔴 Button state - disabled:', globalProcessing);
-                  handleProcessAllSourcesAsync('week');
+                  console.log('🎯 Process Week button clicked! (Direct mode)');
+                  console.log('🎯 Button state - disabled:', globalProcessing);
+                  handleProcessDirectly('week');
                 }}
                 disabled={globalProcessing}
                 className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
@@ -622,9 +689,39 @@ const Sources = () => {
               </div>
             )}
             
+            {/* 详细的已处理源列表 */}
+            {taskProgress?.processed_sources && taskProgress.processed_sources.length > 0 && (
+              <div className="text-sm mb-3 bg-green-50 rounded-md p-3 border border-green-100">
+                <div className="font-medium text-green-800 mb-2">✅ Completed Sources:</div>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {taskProgress.processed_sources.map((source: any, index: number) => (
+                    <div key={index} className="text-xs text-green-700 flex justify-between">
+                      <span>{source.name}</span>
+                      <span className="text-green-600 font-medium">{source.articles_count} articles</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* 跳过的源列表 */}
+            {taskProgress?.skipped_sources && taskProgress.skipped_sources.length > 0 && (
+              <div className="text-sm mb-3 bg-orange-50 rounded-md p-3 border border-orange-100">
+                <div className="font-medium text-orange-800 mb-2">⏭️ Skipped Sources:</div>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {taskProgress.skipped_sources.map((source: any, index: number) => (
+                    <div key={index} className="text-xs">
+                      <div className="text-orange-700">{source.name}</div>
+                      <div className="text-orange-600 italic">{source.reason}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             {/* 已处理和跳过的源统计 */}
             {taskProgress && (
-              <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-4 gap-3 text-sm">
                 <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
                   <div className="text-lg font-semibold text-green-600">
                     {taskProgress.processed_sources?.length || 0}
@@ -639,9 +736,15 @@ const Sources = () => {
                 </div>
                 <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="text-lg font-semibold text-blue-600">
+                    {taskProgress.processed_sources?.reduce((total: number, source: any) => total + (source.articles_count || 0), 0) || 0}
+                  </div>
+                  <div className="text-blue-700">Total Articles</div>
+                </div>
+                <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="text-lg font-semibold text-purple-600">
                     {currentTask?.status || 'running'}
                   </div>
-                  <div className="text-blue-700">Status</div>
+                  <div className="text-purple-700">Status</div>
                 </div>
               </div>
             )}
@@ -759,6 +862,11 @@ const Sources = () => {
             </Card>
           </div>
         )}
+
+        {/* Auto Digest Settings */}
+        <div className="mb-8">
+          <AutoDigestSettingsSimple />
+        </div>
 
         {/* Empty State */}
         {sourcesArray.length === 0 ? (

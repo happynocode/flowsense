@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture Separation Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .manual-section {
+            border-color: #10b981;
+            background-color: #f0fdf4;
+        }
+        .auto-section {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        button:disabled { 
+            opacity: 0.6; 
+            cursor: not-allowed;
+            transform: none;
+        }
+        .manual-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        .auto-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            min-height: 100px;
+        }
+        .success { background-color: #d1fae5; border: 1px solid #10b981; }
+        .error { background-color: #fee2e2; border: 1px solid #ef4444; }
+        .info { background-color: #dbeafe; border: 1px solid #3b82f6; }
+        pre {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.direct { background-color: #10b981; color: white; }
+        .status.task { background-color: #3b82f6; color: white; }
+        h2 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 架构分离测试</h1>
+        <p>测试新的双路径处理架构：</p>
+        <ul>
+            <li><strong>手动按钮</strong> → 直接处理 (绕过任务系统)</li>
+            <li><strong>自动调度</strong> → 任务系统 (通过 task-processor)</li>
+        </ul>
+    </div>
+
+    <div class="container manual-section">
+        <h2>🎯 手动处理路径 <span class="status direct">DIRECT</span></h2>
+        <p>手动按钮使用直接处理，立即调用 execute-processing-task 并绕过任务系统。</p>
+        
+        <button class="manual-btn" onclick="testDirectProcessing('today')">
+            🚀 Test Direct "Process Today"
+        </button>
+        
+        <button class="manual-btn" onclick="testDirectProcessing('week')">
+            ⚡ Test Direct "Process Week"
+        </button>
+    </div>
+
+    <div class="container auto-section">
+        <h2>🤖 自动调度路径 <span class="status task">TASK-BASED</span></h2>
+        <p>自动调度使用任务系统，创建任务然后通过 task-processor 处理。</p>
+        
+        <button class="auto-btn" onclick="testAutoDigest()">
+            🔄 Test Auto Digest (Task System)
+        </button>
+        
+        <button class="auto-btn" onclick="testTaskProcessor()">
+            🛠️ Test Task Processor Only
+        </button>
+    </div>
+
+    <div class="container">
+        <h2>📊 测试结果</h2>
+        <div id="result" class="info">
+            点击上面的按钮开始测试...
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://ryncyvnezqwqqtfsweti.supabase.co';
+        const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5bmN5dm5lenF3cXF0ZnN3ZXRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM2NDE0NjcsImV4cCI6MjA0OTIxNzQ2N30.iTzrbVL1gJHiCjSLQOD3DJzDIGOFv5KKhfYcfHsVrw8';
+        const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5bmN5dm5lenF3cXF0ZnN3ZXRpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMzY0MTQ2NywiZXhwIjoyMDQ5MjE3NDY3fQ.iQD_tJ5W29raxNaUE2MYeOD7YW1RBIfvfbKeLbhLI7o';
+        
+        // 测试用的用户ID (你的用户ID)
+        const TEST_USER_ID = '87a04bc8-6b00-4ad4-bb39-c6b8b46ea89c';
+
+        function updateResult(message, type = 'info') {
+            const result = document.getElementById('result');
+            result.className = type;
+            result.innerHTML = message;
+        }
+
+        function disableAllButtons() {
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => btn.disabled = true);
+        }
+
+        function enableAllButtons() {
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => btn.disabled = false);
+        }
+
+        // 🎯 测试直接处理路径
+        async function testDirectProcessing(timeRange) {
+            disableAllButtons();
+            updateResult(`🎯 开始测试直接处理模式 (${timeRange})...`, 'info');
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/execute-processing-task`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        directMode: true,
+                        user_id: TEST_USER_ID,
+                        timeRange: timeRange
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    updateResult(`
+                        <h3>✅ 直接处理启动成功!</h3>
+                        <p><strong>路径:</strong> 手动按钮 → 直接处理 (绕过任务系统)</p>
+                        <p><strong>时间范围:</strong> ${timeRange}</p>
+                        <p><strong>处理源数量:</strong> ${data.results.totalSources}</p>
+                        <p><strong>状态:</strong> ${data.results.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'success');
+                } else {
+                    updateResult(`
+                        <h3>❌ 直接处理失败</h3>
+                        <p><strong>错误:</strong> ${data.error || data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'error');
+                }
+            } catch (error) {
+                updateResult(`
+                    <h3>❌ 网络错误</h3>
+                    <p><strong>错误:</strong> ${error.message}</p>
+                `, 'error');
+            } finally {
+                enableAllButtons();
+            }
+        }
+
+        // 🤖 测试自动调度路径
+        async function testAutoDigest() {
+            disableAllButtons();
+            updateResult('🤖 开始测试自动调度模式...', 'info');
+
+            try {
+                // Step 1: 创建任务
+                const createResponse = await fetch(`${SUPABASE_URL}/functions/v1/start-processing`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: TEST_USER_ID,
+                        timeRange: 'today'
+                    })
+                });
+
+                const createData = await createResponse.json();
+                
+                if (!createResponse.ok || !createData.success) {
+                    throw new Error(`任务创建失败: ${createData.error}`);
+                }
+
+                updateResult(`
+                    <h3>🔄 第一步：任务创建成功</h3>
+                    <p><strong>任务ID:</strong> ${createData.task_id}</p>
+                    <p>现在调用 task-processor...</p>
+                `, 'info');
+
+                // Step 2: 调用 task-processor
+                const processorResponse = await fetch(`${SUPABASE_URL}/functions/v1/task-processor`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const processorData = await processorResponse.json();
+
+                if (processorResponse.ok && processorData.success) {
+                    updateResult(`
+                        <h3>✅ 自动调度路径成功!</h3>
+                        <p><strong>路径:</strong> 自动调度 → 任务系统 → task-processor</p>
+                        <p><strong>任务ID:</strong> ${createData.task_id}</p>
+                        <p><strong>处理任务数:</strong> ${processorData.processed_tasks}</p>
+                        <p><strong>创建结果:</strong></p>
+                        <pre>${JSON.stringify(createData, null, 2)}</pre>
+                        <p><strong>处理结果:</strong></p>
+                        <pre>${JSON.stringify(processorData, null, 2)}</pre>
+                    `, 'success');
+                } else {
+                    updateResult(`
+                        <h3>⚠️ 任务创建成功，但 task-processor 失败</h3>
+                        <p><strong>任务ID:</strong> ${createData.task_id}</p>
+                        <p><strong>Processor 错误:</strong> ${processorData.error}</p>
+                        <pre>${JSON.stringify(processorData, null, 2)}</pre>
+                    `, 'error');
+                }
+            } catch (error) {
+                updateResult(`
+                    <h3>❌ 自动调度测试失败</h3>
+                    <p><strong>错误:</strong> ${error.message}</p>
+                `, 'error');
+            } finally {
+                enableAllButtons();
+            }
+        }
+
+        // 🛠️ 测试仅 task-processor
+        async function testTaskProcessor() {
+            disableAllButtons();
+            updateResult('🛠️ 测试 task-processor...', 'info');
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/task-processor`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    updateResult(`
+                        <h3>✅ Task Processor 运行成功!</h3>
+                        <p><strong>处理任务数:</strong> ${data.processed_tasks}</p>
+                        <p><strong>找到的待处理任务:</strong> ${data.pending_tasks || 0}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'success');
+                } else {
+                    updateResult(`
+                        <h3>❌ Task Processor 失败</h3>
+                        <p><strong>错误:</strong> ${data.error || data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'error');
+                }
+            } catch (error) {
+                updateResult(`
+                    <h3>❌ 网络错误</h3>
+                    <p><strong>错误:</strong> ${error.message}</p>
+                `, 'error');
+            } finally {
+                enableAllButtons();
+            }
+        }
+    </script>
+</body>
+</html> 

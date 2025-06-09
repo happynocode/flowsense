@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 调试保存问题</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .debug-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #cce7ff; color: #004085; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .highlight {
+            background: #ffffcc;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 调试Save Settings问题</h1>
+    <p><strong>问题</strong>: 点击Save Settings显示"auto digest disabled"，数据库中auto_digest_enabled还是false</p>
+
+    <!-- 配置 -->
+    <div class="debug-panel">
+        <h3>📋 配置</h3>
+        <div class="form-group">
+            <label>Supabase URL:</label>
+            <input type="text" id="supabaseUrl" value="https://ryncyvnezqwqqtfsweti.supabase.co">
+        </div>
+        <div class="form-group">
+            <label>Anon Key (前端使用):</label>
+            <input type="password" id="anonKey" placeholder="前端API调用使用的anon key">
+        </div>
+        <div class="form-group">
+            <label>Service Role Key (管理员):</label>
+            <input type="password" id="serviceKey" placeholder="直接查询数据库用">
+        </div>
+        <div class="form-group">
+            <label>用户邮箱:</label>
+            <input type="email" id="userEmail" placeholder="用于登录的邮箱">
+        </div>
+        <div class="form-group">
+            <label>用户密码:</label>
+            <input type="password" id="userPassword" placeholder="用于登录的密码">
+        </div>
+    </div>
+
+    <!-- 步骤1: 用户认证 -->
+    <div class="debug-panel">
+        <h3>🔐 步骤1: 用户登录认证</h3>
+        <button onclick="loginUser()">登录用户</button>
+        <div id="loginStatus" class="status" style="display: none;"></div>
+        <div id="loginLog" class="log" style="display: none;"></div>
+    </div>
+
+    <!-- 步骤2: 查看当前数据 -->
+    <div class="debug-panel">
+        <h3>📊 步骤2: 查看当前数据库状态</h3>
+        <button onclick="checkCurrentData()">查看当前设置</button>
+        <div id="currentStatus" class="status" style="display: none;"></div>
+        <div id="currentLog" class="log" style="display: none;"></div>
+    </div>
+
+    <!-- 步骤3: 模拟前端保存 -->
+    <div class="debug-panel">
+        <h3>💾 步骤3: 模拟前端保存操作</h3>
+        <p>模拟前端完全相同的API调用</p>
+        <label>
+            <input type="checkbox" id="testEnabled" checked> 启用 Auto Digest
+        </label>
+        <br><br>
+        <label>
+            时间: <input type="time" id="testTime" value="10:00">
+        </label>
+        <br><br>
+        <button onclick="simulateSave()">模拟保存操作</button>
+        <div id="saveStatus" class="status" style="display: none;"></div>
+        <div id="saveLog" class="log" style="display: none;"></div>
+    </div>
+
+    <!-- 步骤4: 验证结果 -->
+    <div class="debug-panel">
+        <h3>✅ 步骤4: 验证保存结果</h3>
+        <button onclick="verifyResults()">验证数据库结果</button>
+        <div id="verifyStatus" class="status" style="display: none;"></div>
+        <div id="verifyLog" class="log" style="display: none;"></div>
+    </div>
+
+    <!-- 步骤5: RLS权限检查 -->
+    <div class="debug-panel">
+        <h3>🔒 步骤5: 检查RLS权限</h3>
+        <button onclick="checkRLSPermissions()">检查用户更新权限</button>
+        <div id="rlsStatus" class="status" style="display: none;"></div>
+        <div id="rlsLog" class="log" style="display: none;"></div>
+    </div>
+
+    <script type="module">
+        let supabaseClient = null;
+        let currentUser = null;
+
+        function showStatus(elementId, type, message) {
+            const element = document.getElementById(elementId);
+            element.className = `status ${type}`;
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+
+        function addLog(elementId, message) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.textContent += `[${timestamp}] ${message}\n`;
+            element.style.display = 'block';
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function clearLog(elementId) {
+            document.getElementById(elementId).textContent = '';
+        }
+
+        // 步骤1: 登录用户
+        window.loginUser = async function() {
+            clearLog('loginLog');
+            try {
+                const { createClient } = supabase;
+                const url = document.getElementById('supabaseUrl').value;
+                const anonKey = document.getElementById('anonKey').value;
+                const email = document.getElementById('userEmail').value;
+                const password = document.getElementById('userPassword').value;
+
+                if (!url || !anonKey || !email || !password) {
+                    throw new Error('请填写所有必需的配置信息');
+                }
+
+                addLog('loginLog', '初始化Supabase客户端...');
+                supabaseClient = createClient(url, anonKey);
+
+                addLog('loginLog', `尝试登录: ${email}`);
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) {
+                    addLog('loginLog', `登录错误: ${error.message}`);
+                    throw error;
+                }
+
+                currentUser = data.user;
+                showStatus('loginStatus', 'success', '✅ 登录成功!');
+                addLog('loginLog', `用户ID: ${currentUser.id}`);
+                addLog('loginLog', `邮箱: ${currentUser.email}`);
+                addLog('loginLog', `认证状态: 已认证`);
+
+            } catch (error) {
+                showStatus('loginStatus', 'error', `❌ 登录失败: ${error.message}`);
+                addLog('loginLog', `错误: ${error.message}`);
+            }
+        };
+
+        // 步骤2: 查看当前数据
+        window.checkCurrentData = async function() {
+            clearLog('currentLog');
+            try {
+                if (!currentUser) {
+                    throw new Error('请先登录');
+                }
+
+                addLog('currentLog', '查询当前用户的auto digest设置...');
+
+                // 使用用户权限查询
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('id, email, auto_digest_enabled, auto_digest_time, auto_digest_timezone, last_auto_digest_run, updated_at')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                if (error) {
+                    addLog('currentLog', `用户权限查询失败: ${error.message}`);
+                    addLog('currentLog', `错误代码: ${error.code}`);
+                    addLog('currentLog', `错误详情: ${JSON.stringify(error.details)}`);
+                    
+                    // 尝试使用管理员权限查询
+                    const serviceKey = document.getElementById('serviceKey').value;
+                    if (serviceKey) {
+                        addLog('currentLog', '\n尝试使用管理员权限查询...');
+                        const url = document.getElementById('supabaseUrl').value;
+                        const adminResponse = await fetch(`${url}/rest/v1/users?select=*&id=eq.${currentUser.id}`, {
+                            headers: {
+                                'apikey': serviceKey,
+                                'Authorization': `Bearer ${serviceKey}`
+                            }
+                        });
+                        
+                        if (adminResponse.ok) {
+                            const adminData = await adminResponse.json();
+                            addLog('currentLog', `管理员查询成功: ${JSON.stringify(adminData[0], null, 2)}`);
+                            showStatus('currentStatus', 'warning', '⚠️ 用户权限查询失败，但管理员查询成功');
+                        } else {
+                            addLog('currentLog', `管理员查询也失败: ${adminResponse.status}`);
+                        }
+                    }
+                    throw error;
+                }
+
+                showStatus('currentStatus', 'success', '✅ 成功获取当前数据');
+                addLog('currentLog', `当前数据:`);
+                addLog('currentLog', `  auto_digest_enabled: ${data.auto_digest_enabled}`);
+                addLog('currentLog', `  auto_digest_time: ${data.auto_digest_time}`);
+                addLog('currentLog', `  auto_digest_timezone: ${data.auto_digest_timezone}`);
+                addLog('currentLog', `  last_auto_digest_run: ${data.last_auto_digest_run}`);
+                addLog('currentLog', `  updated_at: ${data.updated_at}`);
+
+            } catch (error) {
+                showStatus('currentStatus', 'error', `❌ 查询失败: ${error.message}`);
+                addLog('currentLog', `错误: ${error.message}`);
+            }
+        };
+
+        // 步骤3: 模拟前端保存
+        window.simulateSave = async function() {
+            clearLog('saveLog');
+            try {
+                if (!currentUser) {
+                    throw new Error('请先登录');
+                }
+
+                const enabled = document.getElementById('testEnabled').checked;
+                const time = document.getElementById('testTime').value;
+
+                addLog('saveLog', '模拟前端的完全相同的保存操作...');
+                addLog('saveLog', `要保存的数据:`);
+                addLog('saveLog', `  autoDigestEnabled: ${enabled}`);
+                addLog('saveLog', `  autoDigestTime: ${time}`);
+                addLog('saveLog', `  autoDigestTimezone: UTC`);
+
+                // 完全模拟前端的API调用
+                const updateData = {
+                    auto_digest_enabled: enabled,
+                    auto_digest_time: time + ':00',
+                    auto_digest_timezone: 'UTC',
+                    updated_at: new Date().toISOString()
+                };
+
+                addLog('saveLog', `\n实际发送到数据库的数据:`);
+                addLog('saveLog', JSON.stringify(updateData, null, 2));
+
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .update(updateData)
+                    .eq('id', currentUser.id)
+                    .select(); // 重要：添加select以返回更新后的数据
+
+                addLog('saveLog', `\n更新操作完成`);
+                addLog('saveLog', `错误: ${error ? JSON.stringify(error, null, 2) : 'null'}`);
+                addLog('saveLog', `返回数据: ${data ? JSON.stringify(data, null, 2) : 'null'}`);
+
+                if (error) {
+                    addLog('saveLog', `\n更新失败详情:`);
+                    addLog('saveLog', `  消息: ${error.message}`);
+                    addLog('saveLog', `  代码: ${error.code}`);
+                    addLog('saveLog', `  详情: ${JSON.stringify(error.details)}`);
+                    
+                    if (error.code === 'PGRST116') {
+                        addLog('saveLog', `\n这个错误通常表示RLS策略阻止了更新操作!`);
+                    }
+                    
+                    throw error;
+                }
+
+                if (!data || data.length === 0) {
+                    showStatus('saveStatus', 'warning', '⚠️ 更新成功但没有返回数据 - 可能是RLS权限问题');
+                    addLog('saveLog', '\n警告: 更新操作没有返回数据');
+                    addLog('saveLog', '这通常意味着RLS策略允许更新但不允许返回数据');
+                } else {
+                    showStatus('saveStatus', 'success', '✅ 保存操作成功!');
+                    addLog('saveLog', '\n✅ 更新成功，返回的数据:');
+                    addLog('saveLog', JSON.stringify(data[0], null, 2));
+                }
+
+            } catch (error) {
+                showStatus('saveStatus', 'error', `❌ 保存失败: ${error.message}`);
+                addLog('saveLog', `错误: ${error.message}`);
+            }
+        };
+
+        // 步骤4: 验证结果
+        window.verifyResults = async function() {
+            clearLog('verifyLog');
+            try {
+                const serviceKey = document.getElementById('serviceKey').value;
+                if (!serviceKey) {
+                    throw new Error('需要Service Role Key来验证结果');
+                }
+
+                if (!currentUser) {
+                    throw new Error('请先登录');
+                }
+
+                addLog('verifyLog', '使用管理员权限验证数据库中的实际数据...');
+                
+                const url = document.getElementById('supabaseUrl').value;
+                const response = await fetch(`${url}/rest/v1/users?select=*&id=eq.${currentUser.id}`, {
+                    headers: {
+                        'apikey': serviceKey,
+                        'Authorization': `Bearer ${serviceKey}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const users = await response.json();
+                const user = users[0];
+
+                addLog('verifyLog', `数据库中的实际数据:`);
+                addLog('verifyLog', `  auto_digest_enabled: ${user.auto_digest_enabled}`);
+                addLog('verifyLog', `  auto_digest_time: ${user.auto_digest_time}`);
+                addLog('verifyLog', `  auto_digest_timezone: ${user.auto_digest_timezone}`);
+                addLog('verifyLog', `  updated_at: ${user.updated_at}`);
+
+                const expectedEnabled = document.getElementById('testEnabled').checked;
+                if (user.auto_digest_enabled === expectedEnabled) {
+                    showStatus('verifyStatus', 'success', '🎉 数据正确保存!');
+                    addLog('verifyLog', '\n✅ 设置已正确保存到数据库');
+                } else {
+                    showStatus('verifyStatus', 'error', '❌ 数据没有正确保存');
+                    addLog('verifyLog', '\n❌ 期望的值与实际值不匹配');
+                    addLog('verifyLog', `期望: auto_digest_enabled = ${expectedEnabled}`);
+                    addLog('verifyLog', `实际: auto_digest_enabled = ${user.auto_digest_enabled}`);
+                }
+
+            } catch (error) {
+                showStatus('verifyStatus', 'error', `❌ 验证失败: ${error.message}`);
+                addLog('verifyLog', `错误: ${error.message}`);
+            }
+        };
+
+        // 步骤5: 检查RLS权限
+        window.checkRLSPermissions = async function() {
+            clearLog('rlsLog');
+            try {
+                if (!currentUser) {
+                    throw new Error('请先登录');
+                }
+
+                addLog('rlsLog', '检查用户是否有更新users表的权限...');
+
+                // 尝试一个简单的更新操作来测试权限
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .update({
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', currentUser.id)
+                    .select();
+
+                if (error) {
+                    addLog('rlsLog', `权限测试失败: ${error.message}`);
+                    addLog('rlsLog', `错误代码: ${error.code}`);
+                    
+                    if (error.code === 'PGRST116') {
+                        showStatus('rlsStatus', 'error', '❌ RLS策略阻止了更新操作');
+                        addLog('rlsLog', '\n这是问题的根源!');
+                        addLog('rlsLog', 'RLS策略没有允许用户更新自己的记录');
+                        addLog('rlsLog', '\n解决方案:');
+                        addLog('rlsLog', '1. 检查users表的RLS策略');
+                        addLog('rlsLog', '2. 确保有UPDATE策略允许用户更新自己的记录');
+                        addLog('rlsLog', '3. 策略应该类似: (auth.uid() = id)');
+                    } else {
+                        showStatus('rlsStatus', 'error', `❌ 其他权限问题: ${error.code}`);
+                    }
+                } else {
+                    showStatus('rlsStatus', 'success', '✅ 用户有更新权限');
+                    addLog('rlsLog', '权限测试成功，用户可以更新自己的记录');
+                    if (!data || data.length === 0) {
+                        addLog('rlsLog', '但是没有返回数据，可能是SELECT权限问题');
+                    }
+                }
+
+            } catch (error) {
+                showStatus('rlsStatus', 'error', `❌ 权限检查失败: ${error.message}`);
+                addLog('rlsLog', `错误: ${error.message}`);
+            }
+        };
+
+    </script>
+
+    <!-- 加载Supabase -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</body>
+</html> 

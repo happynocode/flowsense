@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Digest Function Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #3730a3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        input, select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Auto Digest Function Test</h1>
+        
+        <div class="info">
+            <h3>📋 Testing Instructions:</h3>
+            <ol>
+                <li>Make sure you're logged in to the main application</li>
+                <li>Ensure you have some active content sources configured</li>
+                <li>Run the database migration to add auto digest fields</li>
+                <li>Test the scheduler function manually</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>🗄️ Database Migration Test</h3>
+            <p>Run this SQL in your Supabase database to add the auto digest fields:</p>
+            <div class="result">
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS auto_digest_enabled BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS auto_digest_time TIME DEFAULT '09:00:00', 
+ADD COLUMN IF NOT EXISTS auto_digest_timezone TEXT DEFAULT 'UTC',
+ADD COLUMN IF NOT EXISTS last_auto_digest_run TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_users_auto_digest_enabled 
+ON users(auto_digest_enabled) WHERE auto_digest_enabled = true;
+
+CREATE INDEX IF NOT EXISTS idx_users_auto_digest_time 
+ON users(auto_digest_time) WHERE auto_digest_enabled = true;
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>⚙️ Manual User Settings Test</h3>
+            <p>Test setting auto digest configuration for a user:</p>
+            
+            <div>
+                <label>User ID:</label>
+                <input type="text" id="userId" placeholder="Enter user UUID" style="width: 300px;">
+            </div>
+            
+            <div>
+                <label>Enable Auto Digest:</label>
+                <select id="enableDigest">
+                    <option value="false">False</option>
+                    <option value="true">True</option>
+                </select>
+            </div>
+            
+            <div>
+                <label>Digest Time:</label>
+                <input type="time" id="digestTime" value="09:00">
+            </div>
+            
+            <button onclick="updateUserSettings()">Update User Settings</button>
+            <div id="settingsResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🕐 Scheduler Function Test</h3>
+            <p>Test the auto-digest-scheduler function manually:</p>
+            
+            <div>
+                <label>Supabase URL:</label>
+                <input type="text" id="supabaseUrl" placeholder="https://your-project.supabase.co" style="width: 300px;">
+            </div>
+            
+            <div>
+                <label>Service Role Key:</label>
+                <input type="password" id="serviceKey" placeholder="Service role key" style="width: 300px;">
+            </div>
+            
+            <button onclick="testScheduler()">Test Scheduler Function</button>
+            <div id="schedulerResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 Database Query Test</h3>
+            <button onclick="queryEligibleUsers()">Find Users Eligible for Auto Digest</button>
+            <div id="queryResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Current Status</h3>
+            <button onclick="getCurrentTime()">Show Current UTC Time</button>
+            <div id="timeResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Get current UTC time
+        function getCurrentTime() {
+            const now = new Date();
+            const utcTime = now.toISOString();
+            const localTime = now.toLocaleString();
+            const hours = now.getUTCHours().toString().padStart(2, '0');
+            const minutes = now.getUTCMinutes().toString().padStart(2, '0');
+            const timeString = `${hours}:${minutes}:00`;
+            
+            const result = `Current UTC Time: ${utcTime}
+Local Time: ${localTime}
+Scheduler Time Format: ${timeString}
+
+For testing, set your auto digest time to: ${hours}:${(parseInt(minutes) + 2).toString().padStart(2, '0')} (2 minutes from now)`;
+            
+            showResult('timeResult', result, 'info');
+        }
+
+        // Test scheduler function
+        async function testScheduler() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('serviceKey').value;
+            
+            if (!url || !key) {
+                showResult('schedulerResult', 'Please enter Supabase URL and Service Role Key', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${url}/functions/v1/auto-digest-scheduler`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${key}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                showResult('schedulerResult', JSON.stringify(result, null, 2), response.ok ? 'success' : 'error');
+            } catch (error) {
+                showResult('schedulerResult', 'Error: ' + error.message, 'error');
+            }
+        }
+
+        // Update user settings (this would need to be done via direct database access)
+        function updateUserSettings() {
+            const userId = document.getElementById('userId').value;
+            const enabled = document.getElementById('enableDigest').value === 'true';
+            const time = document.getElementById('digestTime').value + ':00';
+            
+            if (!userId) {
+                showResult('settingsResult', 'Please enter a user ID', 'error');
+                return;
+            }
+            
+            const sql = `UPDATE users SET 
+    auto_digest_enabled = ${enabled},
+    auto_digest_time = '${time}',
+    auto_digest_timezone = 'UTC',
+    updated_at = NOW()
+WHERE id = '${userId}';`;
+            
+            showResult('settingsResult', `Execute this SQL in your database:\n\n${sql}`, 'info');
+        }
+
+        // Query eligible users (this shows the SQL to run)
+        function queryEligibleUsers() {
+            const now = new Date();
+            const hours = now.getUTCHours().toString().padStart(2, '0');
+            const minutes = now.getUTCMinutes().toString().padStart(2, '0');
+            const currentTime = `${hours}:${minutes}:00`;
+            
+            // 5 minute window
+            const startTime = new Date(now.getTime() - 5 * 60000);
+            const endTime = new Date(now.getTime() + 5 * 60000);
+            const startTimeStr = `${startTime.getUTCHours().toString().padStart(2, '0')}:${startTime.getUTCMinutes().toString().padStart(2, '0')}:00`;
+            const endTimeStr = `${endTime.getUTCHours().toString().padStart(2, '0')}:${endTime.getUTCMinutes().toString().padStart(2, '0')}:00`;
+            
+            const sql = `-- Current time window: ${startTimeStr} to ${endTimeStr}
+SELECT 
+    id, 
+    email, 
+    auto_digest_enabled, 
+    auto_digest_time, 
+    last_auto_digest_run
+FROM users 
+WHERE auto_digest_enabled = true 
+    AND auto_digest_time >= '${startTimeStr}' 
+    AND auto_digest_time <= '${endTimeStr}';`;
+            
+            showResult('queryResult', sql, 'info');
+        }
+
+        // Helper function to show results
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `result ${type}`;
+            element.style.display = 'block';
+        }
+
+        // Initialize with current time
+        getCurrentTime();
+    </script>
+</body>
+</html> 

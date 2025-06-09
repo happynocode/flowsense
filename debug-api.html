@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐛 API Debug - Auto Digest Save Issue</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+            color: #333;
+        }
+        .debug-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .info {
+            background: #cce7ff;
+            border: 1px solid #99d3ff;
+            color: #004085;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐛 Auto Digest API Debug Tool</h1>
+    <p>这个工具会帮你调试为什么保存失败。它会显示每个API调用的详细信息。</p>
+
+    <!-- 配置面板 -->
+    <div class="debug-panel">
+        <h3>📋 配置</h3>
+        <div class="form-group">
+            <label>Supabase URL:</label>
+            <input type="text" id="supabaseUrl" value="https://ryncyvnezqwqqtfsweti.supabase.co">
+        </div>
+        <div class="form-group">
+            <label>Anon Key:</label>
+            <input type="password" id="anonKey" placeholder="Anon key for user API calls">
+        </div>
+        <div class="form-group">
+            <label>Service Role Key (for admin queries):</label>
+            <input type="password" id="serviceKey" placeholder="Service role key for direct DB access">
+        </div>
+        <div class="form-group">
+            <label>User Email (for login):</label>
+            <input type="email" id="userEmail" placeholder="your-email@example.com">
+        </div>
+        <div class="form-group">
+            <label>User Password:</label>
+            <input type="password" id="userPassword" placeholder="your-password">
+        </div>
+    </div>
+
+    <!-- 步骤1: 认证测试 -->
+    <div class="debug-panel">
+        <h3>🔐 步骤1: 用户认证</h3>
+        <button onclick="testAuth()">测试登录</button>
+        <button onclick="checkCurrentUser()">检查当前用户</button>
+        <div id="authStatus" class="status" style="display: none;"></div>
+        <div id="authLog" class="log" style="display: none;"></div>
+    </div>
+
+    <!-- 步骤2: 数据库字段检查 -->
+    <div class="debug-panel">
+        <h3>📊 步骤2: 数据库字段检查</h3>
+        <button onclick="checkDBFields()">检查字段是否存在</button>
+        <div id="fieldsStatus" class="status" style="display: none;"></div>
+        <div id="fieldsLog" class="log" style="display: none;"></div>
+    </div>
+
+    <!-- 步骤3: 获取当前设置 -->
+    <div class="debug-panel">
+        <h3>📖 步骤3: 获取当前设置</h3>
+        <button onclick="loadCurrentSettings()">加载当前设置</button>
+        <div id="loadStatus" class="status" style="display: none;"></div>
+        <div id="loadLog" class="log" style="display: none;"></div>
+    </div>
+
+    <!-- 步骤4: 更新设置测试 -->
+    <div class="debug-panel">
+        <h3>💾 步骤4: 更新设置测试</h3>
+        <div class="checkbox-group">
+            <input type="checkbox" id="testEnabled">
+            <label for="testEnabled">启用Auto Digest</label>
+        </div>
+        <div class="form-group">
+            <label>时间:</label>
+            <input type="time" id="testTime" value="10:00">
+        </div>
+        <button onclick="testSaveSettings()">测试保存设置</button>
+        <div id="saveStatus" class="status" style="display: none;"></div>
+        <div id="saveLog" class="log" style="display: none;"></div>
+    </div>
+
+    <!-- 步骤5: 验证保存结果 -->
+    <div class="debug-panel">
+        <h3>✅ 步骤5: 验证保存结果</h3>
+        <button onclick="verifyResults()">验证数据库中的结果</button>
+        <div id="verifyStatus" class="status" style="display: none;"></div>
+        <div id="verifyLog" class="log" style="display: none;"></div>
+    </div>
+
+    <script type="module">
+        // Supabase 客户端
+        let supabase = null;
+
+        // 初始化 Supabase
+        function initSupabase() {
+            const { createClient } = supabase;
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('anonKey').value;
+            
+            if (!url || !key) {
+                throw new Error('需要提供 Supabase URL 和 Anon Key');
+            }
+            
+            return createClient(url, key);
+        }
+
+        // 工具函数
+        function showStatus(elementId, type, message) {
+            const element = document.getElementById(elementId);
+            element.className = `status ${type}`;
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+
+        function addLog(elementId, message) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.textContent += `[${timestamp}] ${message}\n`;
+            element.style.display = 'block';
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function clearLog(elementId) {
+            document.getElementById(elementId).textContent = '';
+        }
+
+        // 步骤1: 认证测试
+        window.testAuth = async function() {
+            clearLog('authLog');
+            try {
+                const supabaseClient = initSupabase();
+                const email = document.getElementById('userEmail').value;
+                const password = document.getElementById('userPassword').value;
+                
+                if (!email || !password) {
+                    throw new Error('请提供邮箱和密码');
+                }
+
+                addLog('authLog', '尝试登录...');
+                
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) throw error;
+
+                showStatus('authStatus', 'success', '✅ 登录成功!');
+                addLog('authLog', `用户ID: ${data.user.id}`);
+                addLog('authLog', `邮箱: ${data.user.email}`);
+                
+                // 保存客户端供后续使用
+                window.authenticatedSupabase = supabaseClient;
+
+            } catch (error) {
+                showStatus('authStatus', 'error', `❌ 登录失败: ${error.message}`);
+                addLog('authLog', `错误: ${error.message}`);
+            }
+        };
+
+        window.checkCurrentUser = async function() {
+            clearLog('authLog');
+            try {
+                if (!window.authenticatedSupabase) {
+                    throw new Error('请先登录');
+                }
+
+                const { data: { user }, error } = await window.authenticatedSupabase.auth.getUser();
+                
+                if (error) throw error;
+                
+                if (user) {
+                    showStatus('authStatus', 'success', '✅ 用户已认证');
+                    addLog('authLog', `当前用户: ${user.email} (${user.id})`);
+                } else {
+                    showStatus('authStatus', 'warning', '⚠️ 用户未登录');
+                }
+
+            } catch (error) {
+                showStatus('authStatus', 'error', `❌ 检查失败: ${error.message}`);
+                addLog('authLog', `错误: ${error.message}`);
+            }
+        };
+
+        // 步骤2: 数据库字段检查
+        window.checkDBFields = async function() {
+            clearLog('fieldsLog');
+            try {
+                const url = document.getElementById('supabaseUrl').value;
+                const serviceKey = document.getElementById('serviceKey').value;
+                
+                if (!serviceKey) {
+                    throw new Error('需要Service Role Key来检查数据库结构');
+                }
+
+                addLog('fieldsLog', '查询数据库字段...');
+                
+                const response = await fetch(`${url}/rest/v1/rpc/query_columns`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': serviceKey,
+                        'Authorization': `Bearer ${serviceKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        table_name: 'users',
+                        column_pattern: 'auto_digest%'
+                    })
+                });
+
+                if (!response.ok) {
+                    // 尝试直接查询
+                    const directResponse = await fetch(`${url}/rest/v1/users?select=auto_digest_enabled,auto_digest_time,auto_digest_timezone,last_auto_digest_run&limit=1`, {
+                        headers: {
+                            'apikey': serviceKey,
+                            'Authorization': `Bearer ${serviceKey}`
+                        }
+                    });
+
+                    if (directResponse.ok) {
+                        showStatus('fieldsStatus', 'success', '✅ Auto digest字段存在!');
+                        addLog('fieldsLog', '字段存在，可以直接查询到数据');
+                    } else {
+                        throw new Error(`HTTP ${directResponse.status}: ${directResponse.statusText}`);
+                    }
+                } else {
+                    const result = await response.json();
+                    addLog('fieldsLog', `查询结果: ${JSON.stringify(result, null, 2)}`);
+                    showStatus('fieldsStatus', 'success', '✅ 字段检查完成');
+                }
+
+            } catch (error) {
+                showStatus('fieldsStatus', 'error', `❌ 字段检查失败: ${error.message}`);
+                addLog('fieldsLog', `错误: ${error.message}`);
+                addLog('fieldsLog', '这可能意味着需要执行数据库迁移!');
+            }
+        };
+
+        // 步骤3: 获取当前设置
+        window.loadCurrentSettings = async function() {
+            clearLog('loadLog');
+            try {
+                if (!window.authenticatedSupabase) {
+                    throw new Error('请先登录');
+                }
+
+                addLog('loadLog', '获取当前用户的auto digest设置...');
+                
+                const { data: { user } } = await window.authenticatedSupabase.auth.getUser();
+                if (!user) throw new Error('用户未认证');
+
+                const { data, error } = await window.authenticatedSupabase
+                    .from('users')
+                    .select('auto_digest_enabled, auto_digest_time, auto_digest_timezone, last_auto_digest_run')
+                    .eq('id', user.id)
+                    .single();
+
+                if (error) {
+                    addLog('loadLog', `数据库错误: ${error.message}`);
+                    if (error.message.includes('column') && error.message.includes('does not exist')) {
+                        showStatus('loadStatus', 'warning', '⚠️ 字段不存在 - 需要数据库迁移!');
+                        addLog('loadLog', '数据库字段不存在，这解释了为什么保存失败');
+                    } else {
+                        throw error;
+                    }
+                } else {
+                    showStatus('loadStatus', 'success', '✅ 成功获取设置');
+                    addLog('loadLog', `当前设置: ${JSON.stringify(data, null, 2)}`);
+                    
+                    // 更新测试表单
+                    document.getElementById('testEnabled').checked = data?.auto_digest_enabled || false;
+                    document.getElementById('testTime').value = data?.auto_digest_time?.substring(0, 5) || '10:00';
+                }
+
+            } catch (error) {
+                showStatus('loadStatus', 'error', `❌ 获取设置失败: ${error.message}`);
+                addLog('loadLog', `错误: ${error.message}`);
+            }
+        };
+
+        // 步骤4: 测试保存设置
+        window.testSaveSettings = async function() {
+            clearLog('saveLog');
+            try {
+                if (!window.authenticatedSupabase) {
+                    throw new Error('请先登录');
+                }
+
+                const enabled = document.getElementById('testEnabled').checked;
+                const time = document.getElementById('testTime').value;
+                
+                addLog('saveLog', `尝试保存设置: enabled=${enabled}, time=${time}`);
+                
+                const { data: { user } } = await window.authenticatedSupabase.auth.getUser();
+                if (!user) throw new Error('用户未认证');
+
+                const { error } = await window.authenticatedSupabase
+                    .from('users')
+                    .update({
+                        auto_digest_enabled: enabled,
+                        auto_digest_time: time + ':00',
+                        auto_digest_timezone: 'UTC',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', user.id);
+
+                if (error) {
+                    addLog('saveLog', `保存错误: ${error.message}`);
+                    if (error.message.includes('column') && error.message.includes('does not exist')) {
+                        showStatus('saveStatus', 'error', '❌ 字段不存在 - 必须先执行数据库迁移!');
+                        addLog('saveLog', '这就是为什么前端保存失败的原因!');
+                    } else {
+                        throw error;
+                    }
+                } else {
+                    showStatus('saveStatus', 'success', '✅ 保存成功!');
+                    addLog('saveLog', '设置已成功保存到数据库');
+                }
+
+            } catch (error) {
+                showStatus('saveStatus', 'error', `❌ 保存失败: ${error.message}`);
+                addLog('saveLog', `错误: ${error.message}`);
+            }
+        };
+
+        // 步骤5: 验证结果
+        window.verifyResults = async function() {
+            clearLog('verifyLog');
+            try {
+                const url = document.getElementById('supabaseUrl').value;
+                const serviceKey = document.getElementById('serviceKey').value;
+                
+                if (!serviceKey) {
+                    throw new Error('需要Service Role Key来验证结果');
+                }
+
+                addLog('verifyLog', '查询数据库中的实际数据...');
+                
+                const response = await fetch(`${url}/rest/v1/users?select=id,email,auto_digest_enabled,auto_digest_time,auto_digest_timezone,last_auto_digest_run&auto_digest_enabled=is.true`, {
+                    headers: {
+                        'apikey': serviceKey,
+                        'Authorization': `Bearer ${serviceKey}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const users = await response.json();
+                
+                if (users.length === 0) {
+                    showStatus('verifyStatus', 'warning', '⚠️ 没有找到启用auto digest的用户');
+                    addLog('verifyLog', '这证实了保存操作没有成功');
+                } else {
+                    showStatus('verifyStatus', 'success', `✅ 找到 ${users.length} 个启用auto digest的用户`);
+                    users.forEach((user, index) => {
+                        addLog('verifyLog', `用户 ${index + 1}: ${user.email}`);
+                        addLog('verifyLog', `  启用: ${user.auto_digest_enabled}`);
+                        addLog('verifyLog', `  时间: ${user.auto_digest_time}`);
+                        addLog('verifyLog', `  时区: ${user.auto_digest_timezone}`);
+                        addLog('verifyLog', '');
+                    });
+                }
+
+            } catch (error) {
+                showStatus('verifyStatus', 'error', `❌ 验证失败: ${error.message}`);
+                addLog('verifyLog', `错误: ${error.message}`);
+            }
+        };
+
+    </script>
+
+    <!-- 加载 Supabase -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</body>
+</html> 

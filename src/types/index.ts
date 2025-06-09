@@ -6,6 +6,11 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   subscription?: Subscription;
+  // Auto digest configuration
+  autoDigestEnabled?: boolean;
+  autoDigestTime?: string; // Format: "HH:MM"
+  autoDigestTimezone?: string;
+  lastAutoDigestRun?: string;
 }
 
 export interface ContentSource {

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 测试Auto Digest调度器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .test-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #cce7ff; color: #004085; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Auto Digest调度器测试</h1>
+    <p>快速测试你的Edge Function是否能正常工作</p>
+
+    <!-- 配置 -->
+    <div class="test-panel">
+        <h3>⚙️ 配置</h3>
+        <div class="form-group">
+            <label>Service Role Key:</label>
+            <input type="password" id="serviceKey" placeholder="用于调用Edge Function">
+        </div>
+    </div>
+
+    <!-- 快速测试 -->
+    <div class="test-panel">
+        <h3>⚡ 立即测试</h3>
+        <button onclick="testSchedulerNow()">🚀 测试调度器</button>
+        <button onclick="forceRunDigest()">💪 强制运行 (忽略时间)</button>
+        <div id="testStatus" class="status" style="display: none;"></div>
+        <div id="testLog" class="log" style="display: none;"></div>
+    </div>
+
+    <!-- 设置说明 -->
+    <div class="test-panel">
+        <h3>🌐 设置自动调度</h3>
+        <p>测试成功后，你需要设置外部服务来定期调用调度器：</p>
+        <ol>
+            <li><strong>cron-job.org</strong> (推荐，免费): 注册后创建任务，每5分钟调用一次</li>
+            <li><strong>GitHub Actions</strong>: 在仓库中设置工作流</li>
+            <li><strong>其他Cron服务</strong>: 任何支持HTTP POST的定时任务服务</li>
+        </ol>
+        <button onclick="generateCronConfig()">📋 生成Cron配置</button>
+        <div id="cronLog" class="log" style="display: none;"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://ryncyvnezqwqqtfsweti.supabase.co';
+
+        function showStatus(elementId, type, message) {
+            const element = document.getElementById(elementId);
+            element.className = `status ${type}`;
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+
+        function addLog(elementId, message) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.textContent += `[${timestamp}] ${message}\n`;
+            element.style.display = 'block';
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function clearLog(elementId) {
+            document.getElementById(elementId).textContent = '';
+        }
+
+        // 测试调度器
+        window.testSchedulerNow = async function() {
+            clearLog('testLog');
+            try {
+                const serviceKey = document.getElementById('serviceKey').value;
+
+                if (!serviceKey) {
+                    throw new Error('请填写Service Role Key');
+                }
+
+                addLog('testLog', '正在调用auto-digest-scheduler Edge Function...');
+                addLog('testLog', `URL: ${SUPABASE_URL}/functions/v1/auto-digest-scheduler`);
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/auto-digest-scheduler`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${serviceKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        test: true,
+                        source: 'manual-test'
+                    })
+                });
+
+                addLog('testLog', `响应状态: ${response.status} ${response.statusText}`);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    addLog('testLog', `错误响应: ${errorText}`);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.json();
+                addLog('testLog', `响应结果:`);
+                addLog('testLog', JSON.stringify(result, null, 2));
+
+                if (result.success) {
+                    showStatus('testStatus', 'success', '🎉 调度器测试成功!');
+                    addLog('testLog', '\n✅ Edge Function正常工作');
+                    if (result.eligible_users !== undefined) {
+                        addLog('testLog', `符合条件的用户: ${result.eligible_users}`);
+                    }
+                    if (result.processed_users !== undefined) {
+                        addLog('testLog', `已处理的用户: ${result.processed_users}`);
+                    }
+                } else {
+                    showStatus('testStatus', 'warning', '⚠️ 调度器运行但有问题');
+                    addLog('testLog', '调度器返回了错误或警告');
+                }
+
+            } catch (error) {
+                showStatus('testStatus', 'error', `❌ 调度器测试失败: ${error.message}`);
+                addLog('testLog', `错误: ${error.message}`);
+                
+                if (error.message.includes('401') || error.message.includes('403')) {
+                    addLog('testLog', '\n可能的问题:');
+                    addLog('testLog', '- Service Role Key不正确');
+                    addLog('testLog', '- Key没有调用Edge Function的权限');
+                }
+            }
+        };
+
+        // 强制运行
+        window.forceRunDigest = async function() {
+            addLog('testLog', '\n--- 强制运行模式 ---');
+            try {
+                const serviceKey = document.getElementById('serviceKey').value;
+
+                addLog('testLog', '强制运行auto digest (忽略时间条件)...');
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/auto-digest-scheduler`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${serviceKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        force: true,
+                        ignoreTime: true,
+                        source: 'manual-force'
+                    })
+                });
+
+                const result = await response.json();
+                addLog('testLog', `强制运行结果:`);
+                addLog('testLog', JSON.stringify(result, null, 2));
+
+                if (response.ok && result.success) {
+                    showStatus('testStatus', 'success', '💪 强制运行成功!');
+                    addLog('testLog', '\n✅ 强制运行完成，检查是否生成了新的digest');
+                } else {
+                    showStatus('testStatus', 'warning', '⚠️ 强制运行有问题');
+                }
+
+            } catch (error) {
+                addLog('testLog', `强制运行错误: ${error.message}`);
+            }
+        };
+
+        // 生成Cron配置
+        window.generateCronConfig = async function() {
+            clearLog('cronLog');
+            const serviceKey = document.getElementById('serviceKey').value;
+
+            if (!serviceKey) {
+                addLog('cronLog', '⚠️ 请先填写Service Role Key以生成完整配置');
+                return;
+            }
+
+            addLog('cronLog', '📋 外部Cron服务配置信息:\n');
+            
+            addLog('cronLog', '=== 推荐: cron-job.org (免费) ===');
+            addLog('cronLog', '1. 访问: https://cron-job.org');
+            addLog('cronLog', '2. 注册账户');
+            addLog('cronLog', '3. 创建新任务，配置如下:');
+            addLog('cronLog', `   URL: ${SUPABASE_URL}/functions/v1/auto-digest-scheduler`);
+            addLog('cronLog', '   方法: POST');
+            addLog('cronLog', '   时间: */5 * * * * (每5分钟)');
+            addLog('cronLog', '   Headers:');
+            addLog('cronLog', `     Authorization: Bearer ${serviceKey}`);
+            addLog('cronLog', '     Content-Type: application/json');
+            addLog('cronLog', '   Body:');
+            addLog('cronLog', '     {"source": "cron-job"}\n');
+
+            addLog('cronLog', '=== 命令行测试 ===');
+            addLog('cronLog', '你可以用这个curl命令测试:');
+            addLog('cronLog', `curl -X POST \\`);
+            addLog('cronLog', `  -H "Authorization: Bearer ${serviceKey}" \\`);
+            addLog('cronLog', `  -H "Content-Type: application/json" \\`);
+            addLog('cronLog', `  -d '{"source": "manual"}' \\`);
+            addLog('cronLog', `  ${SUPABASE_URL}/functions/v1/auto-digest-scheduler\n`);
+
+            addLog('cronLog', '=== GitHub Actions ===');
+            addLog('cronLog', '如果你的项目在GitHub上，可以创建:');
+            addLog('cronLog', '.github/workflows/auto-digest.yml');
+            addLog('cronLog', '并在仓库Settings → Secrets中添加:');
+            addLog('cronLog', 'SUPABASE_SERVICE_ROLE_KEY\n');
+
+            addLog('cronLog', '✅ 设置完成后，你的auto digest就会每5分钟检查一次并自动运行!');
+        };
+    </script>
+</body>
+</html> 

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 修复Save Settings问题</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #cce7ff; color: #004085; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 修复Save Settings问题</h1>
+    <p><strong>症状</strong>: 点击Save显示"auto digest disabled"，数据库中auto_digest_enabled还是false</p>
+
+    <!-- 配置 -->
+    <div class="panel">
+        <h3>⚙️ 配置</h3>
+        <div class="form-group">
+            <label>Service Role Key:</label>
+            <input type="password" id="serviceKey" placeholder="管理员权限，用于修复问题">
+        </div>
+        <div class="form-group">
+            <label>用户ID:</label>
+            <input type="text" id="userId" placeholder="可以从应用的浏览器控制台获取">
+        </div>
+    </div>
+
+    <!-- 诊断问题 -->
+    <div class="panel">
+        <h3>🔍 快速诊断</h3>
+        <button onclick="diagnoseIssue()">🔎 诊断问题</button>
+        <div id="diagnoseStatus" class="status" style="display: none;"></div>
+        <div id="diagnoseLog" class="log" style="display: none;"></div>
+    </div>
+
+    <!-- 立即修复 -->
+    <div class="panel">
+        <h3>⚡ 立即修复</h3>
+        <p>强制设置auto_digest_enabled = true</p>
+        <button onclick="fixNow()">🔧 立即修复</button>
+        <div id="fixStatus" class="status" style="display: none;"></div>
+        <div id="fixLog" class="log" style="display: none;"></div>
+    </div>
+
+    <!-- RLS策略修复 -->
+    <div class="panel">
+        <h3>🔒 修复RLS策略</h3>
+        <p>如果是权限问题，运行这个SQL来修复</p>
+        <button onclick="generateRLSFix()">📋 生成修复SQL</button>
+        <div id="rlsStatus" class="status" style="display: none;"></div>
+        <div id="rlsLog" class="log" style="display: none;"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://ryncyvnezqwqqtfsweti.supabase.co';
+
+        function showStatus(elementId, type, message) {
+            const element = document.getElementById(elementId);
+            element.className = `status ${type}`;
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+
+        function addLog(elementId, message) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.textContent += `[${timestamp}] ${message}\n`;
+            element.style.display = 'block';
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function clearLog(elementId) {
+            document.getElementById(elementId).textContent = '';
+        }
+
+        // 诊断问题
+        window.diagnoseIssue = async function() {
+            clearLog('diagnoseLog');
+            try {
+                const serviceKey = document.getElementById('serviceKey').value;
+                const userId = document.getElementById('userId').value;
+
+                if (!serviceKey) {
+                    throw new Error('请填写Service Role Key');
+                }
+
+                if (!userId) {
+                    addLog('diagnoseLog', '没有提供用户ID，尝试查询所有用户...');
+                    
+                    // 查询所有用户
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/users?select=id,email,auto_digest_enabled,auto_digest_time`, {
+                        headers: {
+                            'apikey': serviceKey,
+                            'Authorization': `Bearer ${serviceKey}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        const users = await response.json();
+                        addLog('diagnoseLog', `找到 ${users.length} 个用户:`);
+                        users.forEach((user, index) => {
+                            addLog('diagnoseLog', `${index + 1}. ID: ${user.id}`);
+                            addLog('diagnoseLog', `   Email: ${user.email || 'N/A'}`);
+                            addLog('diagnoseLog', `   Auto Digest: ${user.auto_digest_enabled ? '启用' : '禁用'}`);
+                            addLog('diagnoseLog', '');
+                        });
+                        
+                        if (users.length > 0) {
+                            document.getElementById('userId').value = users[0].id;
+                            addLog('diagnoseLog', `已自动选择第一个用户: ${users[0].id}`);
+                        }
+                    }
+                    return;
+                }
+
+                addLog('diagnoseLog', `诊断用户: ${userId}`);
+
+                // 查询特定用户
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/users?select=*&id=eq.${userId}`, {
+                    headers: {
+                        'apikey': serviceKey,
+                        'Authorization': `Bearer ${serviceKey}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const users = await response.json();
+                if (users.length === 0) {
+                    throw new Error('未找到用户');
+                }
+
+                const user = users[0];
+                
+                addLog('diagnoseLog', '用户当前状态:');
+                addLog('diagnoseLog', `  ID: ${user.id}`);
+                addLog('diagnoseLog', `  Email: ${user.email || 'N/A'}`);
+                addLog('diagnoseLog', `  auto_digest_enabled: ${user.auto_digest_enabled}`);
+                addLog('diagnoseLog', `  auto_digest_time: ${user.auto_digest_time || 'NULL'}`);
+                addLog('diagnoseLog', `  auto_digest_timezone: ${user.auto_digest_timezone || 'NULL'}`);
+                addLog('diagnoseLog', `  last_auto_digest_run: ${user.last_auto_digest_run || 'NULL'}`);
+                addLog('diagnoseLog', `  updated_at: ${user.updated_at || 'NULL'}`);
+
+                // 诊断问题
+                addLog('diagnoseLog', '\n问题诊断:');
+                
+                if (user.auto_digest_enabled === null || user.auto_digest_enabled === undefined) {
+                    addLog('diagnoseLog', '❌ auto_digest_enabled字段为NULL - 数据库迁移可能没有正确执行');
+                    showStatus('diagnoseStatus', 'error', '❌ 数据库字段问题');
+                } else if (user.auto_digest_enabled === false) {
+                    addLog('diagnoseLog', '⚠️ auto_digest_enabled为false - 这是问题所在');
+                    addLog('diagnoseLog', '可能原因:');
+                    addLog('diagnoseLog', '1. RLS策略阻止用户更新');
+                    addLog('diagnoseLog', '2. 前端API调用失败');
+                    addLog('diagnoseLog', '3. 数据格式问题');
+                    showStatus('diagnoseStatus', 'warning', '⚠️ 需要修复设置');
+                } else {
+                    addLog('diagnoseLog', '✅ auto_digest_enabled为true - 设置正确');
+                    showStatus('diagnoseStatus', 'success', '✅ 设置正确');
+                }
+
+            } catch (error) {
+                showStatus('diagnoseStatus', 'error', `❌ 诊断失败: ${error.message}`);
+                addLog('diagnoseLog', `错误: ${error.message}`);
+            }
+        };
+
+        // 立即修复
+        window.fixNow = async function() {
+            clearLog('fixLog');
+            try {
+                const serviceKey = document.getElementById('serviceKey').value;
+                const userId = document.getElementById('userId').value;
+
+                if (!serviceKey || !userId) {
+                    throw new Error('请填写Service Role Key和用户ID');
+                }
+
+                addLog('fixLog', '开始修复auto digest设置...');
+                addLog('fixLog', `目标用户: ${userId}`);
+
+                // 强制更新设置
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': serviceKey,
+                        'Authorization': `Bearer ${serviceKey}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify({
+                        auto_digest_enabled: true,
+                        auto_digest_time: '10:00:00',
+                        auto_digest_timezone: 'UTC',
+                        updated_at: new Date().toISOString()
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.json();
+                
+                if (result && result.length > 0) {
+                    const updatedUser = result[0];
+                    showStatus('fixStatus', 'success', '🎉 修复成功!');
+                    addLog('fixLog', '✅ 设置已成功修复:');
+                    addLog('fixLog', `  auto_digest_enabled: ${updatedUser.auto_digest_enabled}`);
+                    addLog('fixLog', `  auto_digest_time: ${updatedUser.auto_digest_time}`);
+                    addLog('fixLog', `  updated_at: ${updatedUser.updated_at}`);
+                    addLog('fixLog', '\n现在回到你的应用，应该能看到正确的设置了!');
+                } else {
+                    throw new Error('更新成功但没有返回数据');
+                }
+
+            } catch (error) {
+                showStatus('fixStatus', 'error', `❌ 修复失败: ${error.message}`);
+                addLog('fixLog', `错误: ${error.message}`);
+            }
+        };
+
+        // 生成RLS修复SQL
+        window.generateRLSFix = async function() {
+            clearLog('rlsLog');
+            
+            addLog('rlsLog', '如果问题是RLS权限，在Supabase Dashboard的SQL编辑器中运行以下SQL:\n');
+            
+            addLog('rlsLog', '-- 检查现有的RLS策略');
+            addLog('rlsLog', "SELECT * FROM pg_policies WHERE tablename = 'users';\n");
+            
+            addLog('rlsLog', '-- 如果没有UPDATE策略，创建一个');
+            addLog('rlsLog', 'CREATE POLICY "Users can update own record"');
+            addLog('rlsLog', 'ON users FOR UPDATE');
+            addLog('rlsLog', 'USING (auth.uid() = id);\n');
+            
+            addLog('rlsLog', '-- 如果没有SELECT策略，也创建一个');
+            addLog('rlsLog', 'CREATE POLICY "Users can view own record"');
+            addLog('rlsLog', 'ON users FOR SELECT');
+            addLog('rlsLog', 'USING (auth.uid() = id);\n');
+            
+            addLog('rlsLog', '-- 确保RLS已启用');
+            addLog('rlsLog', 'ALTER TABLE users ENABLE ROW LEVEL SECURITY;\n');
+            
+            addLog('rlsLog', '-- 测试策略是否工作');
+            addLog('rlsLog', "SELECT current_setting('request.jwt.claims')::json ->> 'sub' as user_id;");
+            
+            showStatus('rlsStatus', 'info', '📋 RLS修复SQL已生成');
+        };
+
+        // 页面加载时的提示
+        window.onload = function() {
+            console.log('💡 提示: 如果不知道用户ID，可以在你的应用中按F12，在Console中输入: console.log(supabase.auth.getUser())');
+        };
+    </script>
+</body>
+</html> 
