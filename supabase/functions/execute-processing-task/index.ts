@@ -607,15 +607,15 @@ async function parseRSSContent(xmlContent: string, feedUrl: string, timeRange: s
     const items = doc!.querySelectorAll('item')
     console.log('🔍 Found', items.length, 'RSS items via DOM')
     
-    // Set cutoff date based on time range - 更宽松的时间范围
+    // Set cutoff date based on time range
     const cutoffDate = timeRange === 'today' 
-      ? new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)  // 2 days ago (给today模式更多缓冲)
-      : new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)  // 10 days ago (给week模式更多缓冲)
+      ? new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)  // 1 day ago
+      : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)  // 7 days ago (week)
     
     console.log(`📅 Using cutoff date: ${cutoffDate.toISOString()} (${timeRange} range)`)
     
     if (items.length > 0) {
-      // 遍历所有文章，不要early exit - RSS可能不是严格按时间排序
+      // 使用传统for循环支持早退
       for (let index = 0; index < items.length; index++) {
         const item = items[index]
         const title = item.querySelector('title')?.textContent?.trim()
@@ -658,14 +658,14 @@ async function parseRSSContent(xmlContent: string, feedUrl: string, timeRange: s
             })
             console.log(`✅ Article ${index + 1} added to processing queue`)
           } else {
-            console.log(`❌ Article ${index + 1} too old, skipping but continuing to check other articles`)
-            // 继续处理，不要break！RSS可能不是按时间排序的
+            console.log(`❌ Article ${index + 1} too old, skipping. Stopping processing as RSS is time-ordered.`)
+            break // 正确的早退：跳出for循环
           }
         } else {
           console.log(`❌ Item ${index + 1} SKIPPED: Missing title (${!!title}) or link (${!!link})`)
         }
         
-        // 只有达到最大数量时才停止
+        // 限制处理数量，避免处理过多数据
         if (articles.length >= PROCESSING_CONFIG.ARTICLES_PER_SOURCE) {
           console.log(`📊 Reached maximum of ${PROCESSING_CONFIG.ARTICLES_PER_SOURCE} articles, stopping processing`)
           break
@@ -676,7 +676,7 @@ async function parseRSSContent(xmlContent: string, feedUrl: string, timeRange: s
       const entries = doc!.querySelectorAll('entry')
       console.log('🔍 Found', entries.length, 'Atom entries via DOM')
       
-      // 遍历所有Atom条目，不要early exit
+      // 使用传统for循环支持早退
       for (let index = 0; index < entries.length; index++) {
         const entry = entries[index]
         const title = entry.querySelector('title')?.textContent?.trim()
@@ -701,12 +701,12 @@ async function parseRSSContent(xmlContent: string, feedUrl: string, timeRange: s
             })
             console.log(`✅ Atom Entry ${index + 1} added to processing queue`)
           } else {
-            console.log(`❌ Atom Entry ${index + 1} too old, skipping but continuing to check other entries`)
-            // 继续处理，不要break！
+            console.log(`❌ Atom Entry ${index + 1} too old, skipping. Stopping processing as feed is time-ordered.`)
+            break // 正确的早退：跳出for循环
           }
         }
         
-        // 只有达到最大数量时才停止
+        // 限制处理数量，避免处理过多数据  
         if (articles.length >= PROCESSING_CONFIG.ARTICLES_PER_SOURCE) {
           console.log(`📊 Reached maximum of ${PROCESSING_CONFIG.ARTICLES_PER_SOURCE} articles, stopping processing`)
           break
