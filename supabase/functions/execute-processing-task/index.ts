@@ -170,10 +170,10 @@ Deno.serve(async (req) => {
         let result
         if (detection.isRSS) {
           console.log('📡 Processing as RSS feed')
-          result = await processAsRSS(supabaseClient, source.id, source.url, source.name, detection.content, timeRange)
+          result = await processAsRSS(supabaseClient, source.id, source.url, source.name, detection.content, timeRange, task_id)
         } else {
           console.log('🌐 Processing as webpage')
-          result = await processAsWebPage(supabaseClient, source.id, source.url, source.name, detection.content, timeRange)
+          result = await processAsWebPage(supabaseClient, source.id, source.url, source.name, detection.content, timeRange, task_id)
         }
 
         if (result.success) {
@@ -500,7 +500,8 @@ async function processAsRSS(
   feedUrl: string,
   sourceName: string,
   xmlContent: string,
-  timeRange: string = 'week'
+  timeRange: string = 'week',
+  taskId?: number
 ): Promise<{ success: boolean; articlesCount: number; summariesCount: number; error?: string; type: 'RSS' }> {
   try {
     console.log('📡 Processing as RSS feed:', sourceName)
@@ -519,7 +520,7 @@ async function processAsRSS(
 
     console.log('📰 Parsed', articles.length, 'articles from RSS')
     
-    return await processArticles(supabaseClient, sourceId, articles, 'RSS')
+    return await processArticles(supabaseClient, sourceId, articles, 'RSS', taskId)
 
   } catch (error) {
     console.error('❌ RSS processing failed:', error)
@@ -539,7 +540,8 @@ async function processAsWebPage(
   pageUrl: string,
   sourceName: string,
   htmlContent: string,
-  timeRange: string = 'week'
+  timeRange: string = 'week',
+  taskId?: number
 ): Promise<{ success: boolean; articlesCount: number; summariesCount: number; error?: string; type: 'WebPage' }> {
   try {
     console.log('🌐 Processing as web page:', sourceName)
@@ -558,7 +560,7 @@ async function processAsWebPage(
 
     console.log('📰 Extracted', articles.length, 'articles from webpage')
     
-    return await processArticles(supabaseClient, sourceId, articles, 'WebPage')
+    return await processArticles(supabaseClient, sourceId, articles, 'WebPage', taskId)
 
   } catch (error) {
     console.error('❌ Web page processing failed:', error)
@@ -913,7 +915,8 @@ async function processArticles(
   supabaseClient: any,
   sourceId: number,
   articles: Article[],
-  sourceType: 'RSS' | 'WebPage'
+  sourceType: 'RSS' | 'WebPage',
+  taskId?: number
 ): Promise<{ success: boolean; articlesCount: number; summariesCount: number; error?: string; type: 'RSS' | 'WebPage' }> {
   let summariesCount = 0
   
@@ -930,11 +933,13 @@ async function processArticles(
     console.log(`🎯 High-fetch source detected, using queue system for content processing`)
     
     // Queue the content fetch jobs instead of processing immediately
+    // Pass the current task_id from function context
+    const currentTaskId = taskId || parseInt(Deno.env.get('CURRENT_TASK_ID') || '0')
     const queueResult = await queueContentFetchJobs(
       supabaseClient,
       articles.slice(0, maxArticles),
       sourceId,
-      parseInt(Deno.env.get('CURRENT_TASK_ID') || '0')
+      currentTaskId
     )
 
     if (queueResult.success) {
