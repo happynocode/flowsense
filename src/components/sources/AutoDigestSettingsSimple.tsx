@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
-import { Clock, Globe } from 'lucide-react';
+import { Clock, Globe, Crown, Lock } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
+import { useSubscription } from '../../hooks/useSubscription';
 import { userApi } from '../../services/api';
 
 // 常用时区列表
@@ -20,6 +21,7 @@ const TIMEZONES = [
 ];
 
 const AutoDigestSettingsSimple: React.FC = () => {
+  const { canUseFeature, isPremium } = useSubscription();
   const [settings, setSettings] = useState({
     autoDigestEnabled: false,
     autoDigestTime: '09:00',
@@ -173,19 +175,57 @@ const AutoDigestSettingsSimple: React.FC = () => {
 
           {/* Enable/Disable Checkbox */}
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-            <Label htmlFor="auto-digest-enabled-simple" className="text-sm font-medium text-gray-900">
-              启用自动摘要
-            </Label>
-            <input
-              type="checkbox"
-              id="auto-digest-enabled-simple"
-              checked={settings.autoDigestEnabled}
-              onChange={(e) => {
-                console.log('Checkbox changed:', e.target.checked);
-                setSettings(prev => ({ ...prev, autoDigestEnabled: e.target.checked }));
-              }}
-              className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-            />
+            <div className="flex items-center">
+              <Label htmlFor="auto-digest-enabled-simple" className="text-sm font-medium text-gray-900">
+                启用自动摘要
+              </Label>
+              {!canUseFeature('auto') && (
+                <div className="ml-2 flex items-center">
+                  <Crown className="h-4 w-4 text-yellow-500" />
+                  <span className="text-xs text-gray-500 ml-1">高级版</span>
+                </div>
+              )}
+            </div>
+            {canUseFeature('auto') ? (
+              <input
+                type="checkbox"
+                id="auto-digest-enabled-simple"
+                checked={settings.autoDigestEnabled}
+                onChange={(e) => {
+                  console.log('Checkbox changed:', e.target.checked);
+                  setSettings(prev => ({ ...prev, autoDigestEnabled: e.target.checked }));
+                }}
+                className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              />
+            ) : (
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  id="auto-digest-enabled-simple"
+                  checked={false}
+                  disabled
+                  className="h-4 w-4 opacity-50 cursor-not-allowed border-gray-300 rounded"
+                  onClick={() => {
+                    toast({
+                      title: "升级到高级版",
+                      description: "自动摘要功能仅限高级版用户使用。",
+                      action: (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => window.location.href = '/subscription'}
+                          className="ml-2"
+                        >
+                          <Crown className="w-4 h-4 mr-1" />
+                          升级
+                        </Button>
+                      ),
+                    });
+                  }}
+                />
+                <Lock className="absolute -top-1 -right-1 h-3 w-3 text-gray-400" />
+              </div>
+            )}
           </div>
 
           {/* Time and Timezone Selection */}

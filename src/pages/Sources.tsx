@@ -2,17 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCircle, Sparkles, Zap, Eraser } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCircle, Sparkles, Zap, Eraser, Crown, Lock } from 'lucide-react';
 import { sourcesApi, userApi } from '../services/api';
 import { ContentSource } from '../types';
 import { useToast } from '../hooks/use-toast';
 import { useAuth } from '../hooks/useAuth';
+import { useSubscription } from '../hooks/useSubscription';
 import { Navigate } from 'react-router-dom';
 import LoadingIndicator from '../components/common/LoadingIndicator';
 import SourceForm from '../components/sources/SourceForm';
 import AutoDigestSettings from '../components/sources/AutoDigestSettings';
 import AutoDigestSettingsDemo from '../components/sources/AutoDigestSettingsDemo';
 import AutoDigestSettingsSimple from '../components/sources/AutoDigestSettingsSimple';
+import SubscriptionStatus from '../components/subscription/SubscriptionStatus';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +28,7 @@ import {
 
 const Sources = () => {
   const { user, loading: authLoading } = useAuth();
+  const { isPremium, limits, canAddSource, canUseFeature, upgradeRequired } = useSubscription();
   const [sources, setSources] = useState<ContentSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -556,6 +559,9 @@ const Sources = () => {
   return (
     <div className="min-h-screen bg-gradient-hero">
       <div className="container mx-auto px-4 py-8">
+        {/* Subscription Status */}
+        <SubscriptionStatus className="mb-8" />
+        
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -565,10 +571,42 @@ const Sources = () => {
             </p>
           </div>
           <div className="flex gap-3">
-            <button onClick={() => setShowForm(true)} className="btn-primary">
-              <Plus className="h-4 w-4" />
-              添加信息源
-            </button>
+            {canAddSource(sources.length) ? (
+              <button onClick={() => setShowForm(true)} className="btn-primary">
+                <Plus className="h-4 w-4" />
+                添加信息源
+              </button>
+            ) : (
+              <div className="relative group">
+                <button 
+                  onClick={() => {
+                    toast({
+                      title: "升级到高级版",
+                      description: `免费用户最多可添加 ${limits.maxSources} 个信息源。升级到高级版可添加 20 个信息源。`,
+                      action: (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => window.location.href = '/subscription'}
+                          className="ml-2"
+                        >
+                          <Crown className="w-4 h-4 mr-1" />
+                          升级
+                        </Button>
+                      ),
+                    });
+                  }}
+                  className="btn-primary opacity-50 cursor-not-allowed"
+                  disabled
+                >
+                  <Lock className="h-4 w-4" />
+                  添加信息源 ({sources.length}/{limits.maxSources})
+                </button>
+                <div className="absolute -top-2 -right-2">
+                  <Crown className="w-5 h-5 text-yellow-500" />
+                </div>
+              </div>
+            )}
             
             {/* 🔧 调试重置按钮 */}
             {globalProcessing && (
@@ -619,27 +657,57 @@ const Sources = () => {
                         )}
                       </button>
                       
-                      <button 
-                        onClick={() => {
-                          console.log('🎯 Process Week button clicked! (Direct mode)');
-                          console.log('🎯 Button state - disabled:', globalProcessing);
-                          handleProcessDirectly('week');
-                        }}
-                        disabled={globalProcessing}
-                        className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {globalProcessing ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            处理中...
-                          </>
-                        ) : (
-                          <>
-                            <Zap className="h-4 w-4" />
+                      {canUseFeature('weekly') ? (
+                        <button 
+                          onClick={() => {
+                            console.log('🎯 Process Week button clicked! (Direct mode)');
+                            console.log('🎯 Button state - disabled:', globalProcessing);
+                            handleProcessDirectly('week');
+                          }}
+                          disabled={globalProcessing}
+                          className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {globalProcessing ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              处理中...
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="h-4 w-4" />
+                              处理本周
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <div className="relative">
+                          <button 
+                            onClick={() => {
+                              toast({
+                                title: "升级到高级版",
+                                description: "免费用户只能处理今日内容。升级到高级版可处理整周内容。",
+                                action: (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => window.location.href = '/subscription'}
+                                    className="ml-2"
+                                  >
+                                    <Crown className="w-4 h-4 mr-1" />
+                                    升级
+                                  </Button>
+                                ),
+                              });
+                            }}
+                            disabled
+                            className="btn-primary opacity-50 cursor-not-allowed relative"
+                          >
+                            <Lock className="h-4 w-4" />
                             处理本周
-                          </>
-                        )}
-                      </button>
+                            <Crown className="w-4 h-4 ml-1 text-yellow-500" />
+                          </button>
+                        </div>
+                      )}
                       
                       <button
                         onClick={() => setShowClearDialog(true)}
