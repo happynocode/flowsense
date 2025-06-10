@@ -185,6 +185,9 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
         canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
         amount: subscription.items.data[0]?.price.unit_amount || 0,
         currency: subscription.items.data[0]?.price.currency || 'usd',
+        stripe_webhook_endpoint_secret: null,
+        trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+        next_billing_date: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
       }, {
         onConflict: 'stripe_subscription_id',
         ignoreDuplicates: false
