@@ -717,6 +717,45 @@ export const subscriptionApi = {
 
 // User Settings API
 export const userApi = {
+  // Get user subscription information including limits
+  getUserSubscriptionInfo: async (): Promise<{
+    maxSources: number;
+    canScheduleDigest: boolean;
+    canProcessWeekly: boolean;
+    subscriptionTier: 'free' | 'premium';
+  }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    console.log('🔍 Fetching user subscription info for user:', user.id);
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('max_sources, can_schedule_digest, can_process_weekly, subscription_tier')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      console.error('❌ Database error in getUserSubscriptionInfo:', error);
+      // Return default free limits if columns don't exist or other errors
+      return {
+        maxSources: 3,
+        canScheduleDigest: false,
+        canProcessWeekly: false,
+        subscriptionTier: 'free'
+      };
+    }
+
+    console.log('✅ User subscription info fetched:', data);
+
+    return {
+      maxSources: data?.max_sources ?? 3,
+      canScheduleDigest: data?.can_schedule_digest ?? false,
+      canProcessWeekly: data?.can_process_weekly ?? false,
+      subscriptionTier: (data?.subscription_tier as 'free' | 'premium') ?? 'free'
+    };
+  },
+
   getAutoDigestSettings: async (): Promise<{
     autoDigestEnabled: boolean;
     autoDigestTime: string;

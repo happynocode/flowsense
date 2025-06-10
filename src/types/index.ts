@@ -11,6 +11,11 @@ export interface User {
   autoDigestTime?: string; // Format: "HH:MM"
   autoDigestTimezone?: string;
   lastAutoDigestRun?: string;
+  // Subscription limits and permissions
+  maxSources?: number; // Default 3 for free, 20 for premium
+  canScheduleDigest?: boolean; // Default false for free, true for premium
+  canProcessWeekly?: boolean; // Default false for free, true for premium
+  subscriptionTier?: 'free' | 'premium'; // Default 'free'
 }
 
 export interface ContentSource {

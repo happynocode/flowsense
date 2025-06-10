@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '../types';
 import { useToast } from './use-toast';
 import { supabase } from '../lib/supabase';
+import { userApi } from '../services/api';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -105,7 +106,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('✅ 找到有效 session，构建用户数据...');
       const supabaseUser = session.user;
       
-      const authUserData = {
+      // 先设置基础用户数据
+      const baseUserData = {
         id: supabaseUser.id,
         name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
         email: supabaseUser.email || '',
@@ -114,9 +116,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatedAt: new Date().toISOString()
       };
       
-      console.log('🎯 设置用户数据（来自 session）:', authUserData);
-      setUser(authUserData);
+      console.log('🎯 设置基础用户数据（来自 session）:', baseUserData);
+      setUser(baseUserData);
       console.log('✅ setUser 调用完成');
+      
+      // 后台获取订阅信息
+      try {
+        const subscriptionInfo = await userApi.getUserSubscriptionInfo();
+        const userWithSubscription = {
+          ...baseUserData,
+          maxSources: subscriptionInfo.maxSources,
+          canScheduleDigest: subscriptionInfo.canScheduleDigest,
+          canProcessWeekly: subscriptionInfo.canProcessWeekly,
+          subscriptionTier: subscriptionInfo.subscriptionTier
+        };
+        console.log('🔄 更新用户数据（包含订阅信息）:', userWithSubscription);
+        setUser(userWithSubscription);
+      } catch (subscriptionError) {
+        console.warn('⚠️ 获取订阅信息失败，使用默认值:', subscriptionError);
+        // 使用默认的免费用户限制
+        const userWithDefaults = {
+          ...baseUserData,
+          maxSources: 3,
+          canScheduleDigest: false,
+          canProcessWeekly: false,
+          subscriptionTier: 'free' as const
+        };
+        setUser(userWithDefaults);
+      }
       
       // 🔧 立即同步到数据库（这对RLS策略很重要）
       try {
