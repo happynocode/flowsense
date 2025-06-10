@@ -554,84 +554,25 @@ const Sources = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gradient-hero">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Content Sources</h1>
+            <h1 className="text-3xl font-bold text-gray-800">内容信息源</h1>
             <p className="text-gray-600 mt-2">
-              Manage your blogs, podcasts, and news sources
+              管理您的博客、播客和新闻源
             </p>
           </div>
-          <div className="flex space-x-3">
-            {/* 🎯 手动处理按钮 - 今天的内容 (直接处理) */}
-            {sourcesArray.length > 0 && (
-              <Button 
-                onClick={() => handleProcessDirectly('today')}
-                disabled={globalProcessing}
-                className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white"
-              >
-                {globalProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Process Today
-                  </>
-                )}
-              </Button>
-            )}
-            
-            {/* 🎯 手动处理按钮 - 过去一周的内容 (直接处理) */}
-            {sourcesArray.length > 0 && (
-              <Button 
-                onClick={() => {
-                  console.log('🎯 Process Week button clicked! (Direct mode)');
-                  console.log('🎯 Button state - disabled:', globalProcessing);
-                  handleProcessDirectly('week');
-                }}
-                disabled={globalProcessing}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-              >
-                {globalProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="h-4 w-4 mr-2" />
-                    Process Week
-                  </>
-                )}
-              </Button>
-            )}
-            
-            {/* 🗑️ 清除内容按钮 */}
-            {sourcesArray.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => setShowClearDialog(true)}
-                className="text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300"
-              >
-                <Eraser className="h-4 w-4 mr-2" />
-                Clear Content
-              </Button>
-            )}
-            
-            <Button onClick={() => setShowForm(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Source
-            </Button>
+          <div className="flex gap-3">
+            <button onClick={() => setShowForm(true)} className="btn-primary">
+              <Plus className="h-4 w-4" />
+              添加信息源
+            </button>
             
             {/* 🔧 调试重置按钮 */}
             {globalProcessing && (
-              <Button
-                variant="outline"
+              <button
                 onClick={() => {
                   console.log('🔧 Resetting global processing state');
                   setGlobalProcessing(false);
@@ -639,11 +580,95 @@ const Sources = () => {
                   setTaskProgress(null);
                   setIsPollingTask(false);
                 }}
-                className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                className="btn-outline text-red-600 border-red-300 hover:bg-red-50 hover:border-red-500"
               >
-                🔧 Reset State
-              </Button>
+                🔧 重置状态
+              </button>
             )}
+          </div>
+        </div>
+
+        {/* Control Panel - Processing & Auto Digest */}
+        <div className="mb-8">
+          <div className="modern-card p-6 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
+            <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-8">
+              {/* Processing Buttons Section */}
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-indigo-800 mb-4 flex items-center">
+                  <Zap className="h-5 w-5 mr-2" />
+                  手动处理
+                </h3>
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {sourcesArray.length > 0 && (
+                    <>
+                      <button 
+                        onClick={() => handleProcessDirectly('today')}
+                        disabled={globalProcessing}
+                        className="btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {globalProcessing ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            处理中...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4" />
+                            处理今日
+                          </>
+                        )}
+                      </button>
+                      
+                      <button 
+                        onClick={() => {
+                          console.log('🎯 Process Week button clicked! (Direct mode)');
+                          console.log('🎯 Button state - disabled:', globalProcessing);
+                          handleProcessDirectly('week');
+                        }}
+                        disabled={globalProcessing}
+                        className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {globalProcessing ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            处理中...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="h-4 w-4" />
+                            处理本周
+                          </>
+                        )}
+                      </button>
+                      
+                      <button
+                        onClick={() => setShowClearDialog(true)}
+                        disabled={globalProcessing}
+                        className="btn-outline text-orange-600 border-orange-300 hover:bg-orange-50 hover:border-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Eraser className="h-4 w-4" />
+                        清除内容
+                      </button>
+                    </>
+                  )}
+                  {sourcesArray.length === 0 && (
+                    <div className="text-sm text-gray-600 bg-white rounded-lg p-4 border border-gray-200">
+                      添加信息源后即可开始处理内容
+                    </div>
+                  )}
+                </div>
+                <div className="text-xs text-gray-600 bg-white rounded-lg p-3 border border-indigo-100">
+                  <p className="mb-1"><strong>处理今日:</strong> 抓取并摘要今天发布的新内容</p>
+                  <p className="mb-1"><strong>处理本周:</strong> 抓取并摘要过去7天的内容</p>
+                  <p><strong>清除内容:</strong> 删除所有已抓取的内容和摘要（保留信息源配置）</p>
+                </div>
+              </div>
+
+              {/* Auto Digest Settings Section */}
+              <div className="xl:w-80">
+                <AutoDigestSettingsSimple />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -806,31 +831,31 @@ const Sources = () => {
                     <div className="grid md:grid-cols-3 gap-4">
                       <div className="text-center p-4 bg-white rounded-lg border border-green-100">
                         <div className="text-2xl font-bold text-green-600">
-                          {processResults.data.processedSources.length}
+                          {processResults?.data?.processedSources?.length || 0}
                         </div>
                         <div className="text-sm text-green-700">Sources Processed</div>
                       </div>
                       <div className="text-center p-4 bg-white rounded-lg border border-green-100">
                         <div className="text-2xl font-bold text-blue-600">
-                          {processResults.data.totalSummaries}
+                          {processResults?.data?.totalSummaries || 0}
                         </div>
                         <div className="text-sm text-blue-700">Summaries Generated</div>
                       </div>
                       <div className="text-center p-4 bg-white rounded-lg border border-green-100">
                         <div className="text-2xl font-bold text-orange-600">
-                          {processResults.data.skippedSources.length}
+                          {processResults?.data?.skippedSources?.length || 0}
                         </div>
                         <div className="text-sm text-orange-700">Sources Skipped</div>
                       </div>
                     </div>
                     
-                    {processResults.data.skippedSources.length > 0 && (
+                    {(processResults?.data?.skippedSources?.length || 0) > 0 && (
                       <div className="mt-4 bg-orange-50 rounded-lg p-4 border border-orange-200">
                         <h4 className="font-medium text-orange-800 mb-3 flex items-center">
                           ⚠️ Skipped Sources
                         </h4>
                         <div className="space-y-3">
-                          {processResults.data.skippedSources.map((source: any, index: number) => (
+                          {(processResults?.data?.skippedSources || []).map((source: any, index: number) => (
                             <div key={index} className="bg-white rounded-lg border border-orange-100 p-4">
                               <div className="flex items-start justify-between mb-2">
                                 <span className="font-medium text-gray-800">{source.name}</span>
@@ -855,7 +880,7 @@ const Sources = () => {
                 ) : (
                   <div className="text-red-700 bg-white rounded-lg p-4 border border-red-200">
                     <p className="font-medium">Processing Failed:</p>
-                    <p className="text-sm mt-1">{processResults.error}</p>
+                    <p className="text-sm mt-1">{processResults?.error || 'Unknown error occurred'}</p>
                   </div>
                 )}
               </CardContent>
@@ -863,51 +888,46 @@ const Sources = () => {
           </div>
         )}
 
-        {/* Auto Digest Settings */}
-        <div className="mb-8">
-          <AutoDigestSettingsSimple />
-        </div>
+
 
         {/* Empty State */}
         {sourcesArray.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-                <Plus className="h-8 w-8 text-gray-400" />
-              </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">No sources yet</h3>
-              <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                Add your favorite blogs, podcasts, and news sites to start generating personalized content digests.
-              </p>
-              <Button onClick={() => setShowForm(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Source
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="modern-card p-12 text-center">
+            <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+              <Plus className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">还没有信息源</h3>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              添加您喜爱的博客、播客和新闻网站，开始生成个性化内容摘要。
+            </p>
+            <button onClick={() => setShowForm(true)} className="btn-primary">
+              <Plus className="w-4 h-4" />
+              添加第一个信息源
+            </button>
+          </div>
         ) : (
           /* Sources Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sourcesArray.map((source) => (
-              <Card key={source.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
+              <div key={source.id} className="modern-card hover-lift">
+                <div className="p-6 pb-3">
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       {getTypeIcon(source.type)}
-                      <CardTitle className="text-lg truncate">{source.name}</CardTitle>
+                      <h3 className="text-lg font-semibold text-gray-800 truncate">{source.name}</h3>
                     </div>
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={() => toggleSourceStatus(source)}
-                        className={`h-2 w-2 rounded-full ${
+                        className={`w-2 h-2 rounded-full ${
                           source.isActive ? 'bg-green-500' : 'bg-gray-300'
                         }`}
-                        title={source.isActive ? 'Active' : 'Inactive'}
+                        title={source.isActive ? '活跃' : '不活跃'}
                       />
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                </div>
+                <div className="px-6 pb-6 space-y-4">
                   <div>
                     <p className="text-sm text-gray-600 truncate">{source.url}</p>
                     {source.description && (
@@ -918,39 +938,36 @@ const Sources = () => {
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={source.type === 'podcast' ? 'default' : 'secondary'}>
-                        {source.type}
-                      </Badge>
-                      <Badge variant={source.isActive ? 'default' : 'secondary'}>
-                        {source.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
+                    <div className="flex items-center gap-2">
+                      <span className="badge-secondary">
+                        {source.type === 'podcast' ? '播客' : source.type === 'blog' ? '博客' : '网站'}
+                      </span>
+                      <span className={source.isActive ? 'badge-success' : 'badge-secondary'}>
+                        {source.isActive ? '活跃' : '未激活'}
+                      </span>
                     </div>
                   </div>
 
                   <div className="text-xs text-gray-500">
-                    Last scraped: {formatDate(source.lastScraped)}
+                    最后抓取: {formatDate(source.lastScraped)}
                   </div>
 
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
+                  <div className="flex justify-end gap-2">
+                    <button
                       onClick={() => handleEdit(source)}
+                      className="btn-ghost btn-sm"
                     >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
                       onClick={() => setDeleteDialog(source)}
-                      className="text-red-600 hover:text-red-700"
+                      className="btn-ghost btn-sm text-red-600 hover:text-red-700 hover:bg-red-50"
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -959,18 +976,18 @@ const Sources = () => {
         <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Source</AlertDialogTitle>
+              <AlertDialogTitle>删除信息源</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete "{deleteDialog?.name}"? This action cannot be undone.
+                您确定要删除 "{deleteDialog?.name}" 吗？此操作无法撤销。
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>取消</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => deleteDialog && handleDelete(deleteDialog)}
                 className="bg-red-600 hover:bg-red-700"
               >
-                Delete
+                删除
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -988,7 +1005,7 @@ const Sources = () => {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>取消</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleClearScrapedContent}
                 disabled={clearing}
@@ -997,10 +1014,10 @@ const Sources = () => {
                 {clearing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Clearing...
+                    正在清除...
                   </>
                 ) : (
-                  'Clear Content'
+                  '清除内容'
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>

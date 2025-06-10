@@ -1,288 +1,98 @@
-
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { subscriptionApi } from '../services/api';
-import type { Subscription as SubscriptionType, SubscriptionPlan } from '../types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { CheckCircle, Zap, Shield, Brain, Sparkles, Globe, Settings } from 'lucide-react';
-import LoadingIndicator from '../components/common/LoadingIndicator';
+import { Link } from 'react-router-dom';
+import { CheckCircle, Brain, ArrowRight } from 'lucide-react';
 
-const SubscriptionPage = () => {
-  const { data: subscription, isLoading: subscriptionLoading } = useQuery({
-    queryKey: ['subscription'],
-    queryFn: subscriptionApi.getSubscription,
-  });
-
-  const { data: plans, isLoading: plansLoading } = useQuery({
-    queryKey: ['subscription-plans'],
-    queryFn: subscriptionApi.getPlans,
-  });
-
-  const mockPlans: SubscriptionPlan[] = [
-    {
-      id: 'starter',
-      name: 'Neural Starter',
-      price: 29.99,
-      features: [
-        'Up to 100 neural sources',
-        'Daily AI digest synthesis',
-        'Basic quantum analytics',
-        'Neural email delivery',
-        'Mobile interface access',
-        'Standard processing speed'
-      ],
-      isPopular: false
-    },
-    {
-      id: 'professional',
-      name: 'Quantum Professional',
-      price: 79.99,
-      features: [
-        'Unlimited neural sources',
-        'Real-time AI processing',
-        'Advanced quantum insights',
-        'Custom delivery schedules',
-        'API neural interface',
-        'Priority quantum support',
-        'Multi-dimensional analytics',
-        'Voice synthesis included'
-      ],
-      isPopular: true
-    },
-    {
-      id: 'enterprise',
-      name: 'Cosmic Enterprise',
-      price: 199.99,
-      features: [
-        'Everything in Professional',
-        'Custom AI neural models',
-        'White-label quantum solution',
-        'Dedicated neural support',
-        'On-premise deployment',
-        'Advanced security protocols',
-        'Team collaboration hub',
-        'Predictive trend analysis'
-      ],
-      isPopular: false
-    }
-  ];
-
-  const currentPlans = plans || mockPlans;
-
-  if (subscriptionLoading || plansLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="glass-card p-8">
-          <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-full flex items-center justify-center glow-purple">
-            <Brain className="w-8 h-8 text-starlight" />
-          </div>
-          <LoadingIndicator size="lg" text="Loading neural interface..." />
-        </div>
-      </div>
-    );
-  }
+const Subscription = () => {
+  const starterPlan = {
+    name: "入门版",
+    price: 9,
+    features: [
+      "关注多达10个信息源",
+      "每日摘要发送到您的邮箱",
+      "关键见解和要点",
+      "移动友好格式",
+      "邮件支持",
+      "音频摘要收听功能",
+      "自定义发送时间"
+    ]
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8 relative">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-4">
-            <span className="text-cosmic-gradient">Power Level</span>{" "}
-            <span className="text-starlight">Management</span>
-          </h1>
-          <p className="text-xl text-lunar-grey max-w-2xl mx-auto">
-            Upgrade your neural processing capabilities and unlock the full potential of AI intelligence
-          </p>
-        </div>
-        
-        {subscription ? (
-          <div className="mb-12">
-            <Card className="glass-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between text-starlight">
-                  Current Neural Configuration
-                  <Badge 
-                    variant={subscription.status === 'active' ? 'default' : 'destructive'}
-                    className={`${
-                      subscription.status === 'active' 
-                        ? 'bg-astral-teal text-midnight' 
-                        : 'bg-nebula-pink text-starlight'
-                    }`}
-                  >
-                    {subscription.status === 'active' ? 'ACTIVE' : 'INACTIVE'}
-                  </Badge>
-                </CardTitle>
-                <CardDescription className="text-lunar-grey">
-                  Monitor and optimize your neural interface settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="glass-card p-4">
-                      <h3 className="font-space-grotesk font-semibold text-starlight mb-2">{subscription.planName}</h3>
-                      <p className="text-cosmic-gradient text-2xl font-bold">${subscription.pricePerMonth}/month</p>
-                    </div>
-                    <div className="glass-card p-4">
-                      <h4 className="font-medium text-starlight mb-2">Next Quantum Cycle</h4>
-                      <p className="text-lunar-grey">
-                        {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <Button className="btn-outline-electric">
-                      <Settings className="w-4 h-4 mr-2" />
-                      Configure Billing
-                    </Button>
-                    <Button variant="destructive" className="bg-nebula-pink hover:bg-nebula-pink/80 text-starlight">
-                      <Zap className="w-4 h-4 mr-2" />
-                      Terminate Connection
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <div className="mb-12">
-            <Card className="glass-card border-0 text-center p-8">
-              <div className="w-20 h-20 mx-auto mb-6 bg-sunset-gradient rounded-full flex items-center justify-center glow-pink">
-                <Brain className="w-10 h-10 text-starlight" />
-              </div>
-              <CardTitle className="text-2xl text-starlight mb-4">Initialize Neural Interface</CardTitle>
-              <CardDescription className="text-lunar-grey text-lg">
-                Select your preferred power level to begin your journey into AI-enhanced intelligence
-              </CardDescription>
-            </Card>
-          </div>
-        )}
-
-        {/* Pricing Section */}
-        <div className="mb-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-space-grotesk font-bold mb-4">
-              <span className="text-aurora-gradient">Neural</span>{" "}
-              <span className="text-starlight">Power Levels</span>
+    <div className="min-h-screen bg-gradient-hero">
+      {/* Pricing Section */}
+      <section className="py-24">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6 text-balance">
+              <span className="text-gray-800">简单</span>{" "}
+              <span className="text-gradient-primary">定价</span>
             </h2>
-            <p className="text-lunar-grey text-lg">Choose the configuration that matches your intelligence requirements</p>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto text-balance">
+              一个计划，为您提供保持信息灵通所需的一切
+            </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8">
-            {currentPlans.map((plan: SubscriptionPlan) => (
-              <Card 
-                key={plan.id} 
-                className={`relative glass-card border-0 ${
-                  plan.isPopular ? 'gradient-border glow-blue scale-105' : ''
-                }`}
-              >
-                {plan.isPopular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-sunset-gradient text-starlight px-4 py-2 glow-pink">
-                      <Sparkles className="w-4 h-4 mr-1" />
-                      Most Advanced
-                    </Badge>
-                  </div>
-                )}
-                
-                <CardHeader className="text-center pb-6">
-                  <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${
-                    plan.isPopular 
-                      ? 'bg-sunset-gradient glow-pink' 
-                      : 'bg-cosmic-gradient glow-purple'
-                  }`}>
-                    {plan.id === 'starter' && <Zap className="w-8 h-8 text-starlight" />}
-                    {plan.id === 'professional' && <Brain className="w-8 h-8 text-starlight" />}
-                    {plan.id === 'enterprise' && <Globe className="w-8 h-8 text-starlight" />}
-                  </div>
-                  <CardTitle className="text-2xl text-starlight mb-4">{plan.name}</CardTitle>
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold text-cosmic-gradient">${plan.price}</span>
-                    <span className="text-lunar-grey">/month</span>
-                  </div>
-                </CardHeader>
-                
-                <CardContent>
-                  <ul className="space-y-4 mb-8">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-start">
-                        <CheckCircle className="w-5 h-5 text-astral-teal mr-3 mt-0.5 flex-shrink-0" />
-                        <span className="text-starlight text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  
-                  <Button 
-                    className={`w-full h-12 ${
-                      plan.isPopular 
-                        ? 'btn-cosmic' 
-                        : 'btn-outline-electric'
-                    }`}
-                    disabled={subscription?.planId === plan.id}
-                  >
-                    {subscription?.planId === plan.id ? (
-                      <>
-                        <Shield className="w-4 h-4 mr-2" />
-                        Current Level
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-4 h-4 mr-2" />
-                        Activate {plan.name}
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+          <div className="max-w-md mx-auto">
+            <div className="modern-card-elevated p-8 text-center relative">
+              {/* Popular Badge */}
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <span className="badge-accent px-4 py-2">最受欢迎</span>
+              </div>
 
-        {/* FAQ Section */}
-        <div className="mt-16">
-          <h3 className="text-2xl font-space-grotesk font-bold text-center text-starlight mb-8">
-            <span className="text-cosmic-gradient">Neural</span> Interface FAQ
-          </h3>
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card className="glass-card border-0">
-              <CardContent className="p-6">
-                <h4 className="font-semibold text-starlight mb-3">Can I upgrade my neural capacity?</h4>
-                <p className="text-lunar-grey text-sm">
-                  Yes, you can enhance your power level at any time. Quantum changes are applied instantly.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="glass-card border-0">
-              <CardContent className="p-6">
-                <h4 className="font-semibold text-starlight mb-3">Is there a neural trial period?</h4>
-                <p className="text-lunar-grey text-sm">
-                  All power levels include a 14-day quantum trial. No neural commitment required.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="glass-card border-0">
-              <CardContent className="p-6">
-                <h4 className="font-semibold text-starlight mb-3">Can I disconnect anytime?</h4>
-                <p className="text-lunar-grey text-sm">
-                  Absolutely. Terminate your neural connection at any time with zero quantum penalties.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="glass-card border-0">
-              <CardContent className="p-6">
-                <h4 className="font-semibold text-starlight mb-3">What payment methods are accepted?</h4>
-                <p className="text-lunar-grey text-sm">
-                  We accept quantum credits, neural transfers, and traditional payment methods.
-                </p>
-              </CardContent>
-            </Card>
+              {/* Plan Name */}
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">{starterPlan.name}</h3>
+              
+              {/* Price */}
+              <div className="mb-6">
+                <span className="text-5xl font-bold text-gray-800">${starterPlan.price}</span>
+                <span className="text-gray-600">/月</span>
+              </div>
+
+              {/* Features */}
+              <ul className="space-y-4 mb-8 text-left">
+                {starterPlan.features.map((feature, index) => (
+                  <li key={index} className="flex items-start">
+                    <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                    <span className="text-gray-700">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* CTA Button */}
+              <Link to="/login">
+                <button className="btn-primary w-full mb-4">
+                  <span>开始免费试用</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+              
+              <p className="text-sm text-gray-500">
+                7天免费试用，随后 ${starterPlan.price}/月
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Final CTA Section */}
+      <section className="py-24 bg-gradient-primary text-white">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6 text-balance">
+            准备好重新掌控您的时间了吗？
+          </h2>
+          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto text-balance">
+            加入数千名专业人士，他们已经在使用每日摘要来简化信息消费
+          </p>
+          <Link to="/login">
+            <button className="bg-white text-primary-600 hover:bg-gray-50 font-semibold px-8 py-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 inline-flex items-center gap-2">
+              <Brain className="w-5 h-5" />
+              立即开始免费试用
+            </button>
+          </Link>
+        </div>
+      </section>
     </div>
   );
 };
 
-export default SubscriptionPage;
+export default Subscription;

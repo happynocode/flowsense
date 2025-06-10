@@ -1,7 +1,6 @@
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Navigate } from 'react-router-dom';
-import Home from './Home';
 import Landing from './Landing';
 import LoadingIndicator from '../components/common/LoadingIndicator';
 import EnvCheck from '../components/debug/EnvCheck';
@@ -48,13 +47,13 @@ const Index = () => {
     );
   }
 
-  console.log('✅ 已登录用户，显示 Home 页面，用户信息:', {
+  console.log('✅ 已登录用户，重定向到信息源页面，用户信息:', {
     id: user.id,
     email: user.email,
     name: user.name
   });
   
-  return <Home />;
+  return <Navigate to="/sources" replace />;
 };
 
 export default Index;

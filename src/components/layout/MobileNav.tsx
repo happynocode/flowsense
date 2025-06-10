@@ -3,7 +3,7 @@ import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '../ui/sheet';
-import { Menu, Home, FileText, Settings, User, LogOut, Brain } from 'lucide-react';
+import { Menu, FileText, Settings, User, LogOut, Brain } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const MobileNav = () => {
@@ -35,19 +35,6 @@ const MobileNav = () => {
             </div>
             
             <nav className="flex-1 space-y-3">
-              <Link
-                to="/"
-                onClick={closeNav}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium ${
-                  isActive('/') 
-                    ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
-                    : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
-                }`}
-              >
-                <Home className="h-5 w-5" />
-                <span>Command Center</span>
-              </Link>
-              
               <Link
                 to="/sources"
                 onClick={closeNav}

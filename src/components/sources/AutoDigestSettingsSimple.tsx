@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
-import { Clock, Settings, TestTube, Globe } from 'lucide-react';
+import { Clock, Globe } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 import { userApi } from '../../services/api';
 
@@ -139,157 +138,112 @@ const AutoDigestSettingsSimple: React.FC = () => {
 
   if (loading) {
     return (
-      <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 shadow-sm">
-        <CardContent className="p-6 text-center">
+      <div className="bg-white rounded-lg border border-indigo-200 shadow-sm">
+        <div className="p-4 text-center">
           <div className="animate-spin h-6 w-6 border-2 border-indigo-600 border-t-transparent rounded-full mx-auto mb-2"></div>
-          <p className="text-sm text-gray-600">Loading auto digest settings...</p>
-        </CardContent>
-      </Card>
+          <p className="text-sm text-gray-600">加载自动摘要设置...</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center text-indigo-800">
+    <div className="bg-white rounded-lg border border-indigo-200 shadow-sm">
+      <div className="p-4">
+        <h4 className="text-lg font-semibold text-indigo-800 mb-4 flex items-center">
           <Clock className="h-5 w-5 mr-2" />
-          Auto Daily Digest
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Error Display */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-sm text-red-800">❌ {error}</p>
+          自动摘要
+        </h4>
+        
+        <div className="space-y-4">
+          {/* Error Display */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-sm text-red-800">❌ {error}</p>
+              <Button 
+                onClick={loadSettings} 
+                size="sm" 
+                variant="outline" 
+                className="mt-2"
+              >
+                重试
+              </Button>
+            </div>
+          )}
+
+          {/* Enable/Disable Checkbox */}
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <Label htmlFor="auto-digest-enabled-simple" className="text-sm font-medium text-gray-900">
+              启用自动摘要
+            </Label>
+            <input
+              type="checkbox"
+              id="auto-digest-enabled-simple"
+              checked={settings.autoDigestEnabled}
+              onChange={(e) => {
+                console.log('Checkbox changed:', e.target.checked);
+                setSettings(prev => ({ ...prev, autoDigestEnabled: e.target.checked }));
+              }}
+              className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+            />
+          </div>
+
+          {/* Time and Timezone Selection */}
+          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+            {/* Timezone Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="digest-timezone" className="text-sm font-medium text-gray-900 flex items-center">
+                <Globe className="h-4 w-4 mr-2" />
+                时区
+              </Label>
+              <select
+                id="digest-timezone"
+                value={settings.autoDigestTimezone}
+                onChange={(e) => {
+                  console.log('Timezone changed:', e.target.value);
+                  setSettings(prev => ({ ...prev, autoDigestTimezone: e.target.value }));
+                }}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              >
+                {TIMEZONES.map((tz) => (
+                  <option key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Time Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="digest-time-simple" className="text-sm font-medium text-gray-900">
+                执行时间
+              </Label>
+              <Input
+                id="digest-time-simple"
+                type="time"
+                value={settings.autoDigestTime}
+                onChange={(e) => {
+                  console.log('Time changed:', e.target.value);
+                  setSettings(prev => ({ ...prev, autoDigestTime: e.target.value }));
+                }}
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-2">
             <Button 
-              onClick={loadSettings} 
-              size="sm" 
-              variant="outline" 
-              className="mt-2"
+              onClick={saveSettings}
+              disabled={saving}
+              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
             >
-              Retry
+              {saving ? '保存中...' : '💾 保存设置'}
             </Button>
           </div>
-        )}
-
-        {/* Enable/Disable Checkbox */}
-        <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-indigo-100">
-          <Label htmlFor="auto-digest-enabled-simple" className="text-sm font-medium text-gray-900">
-            Enable Auto Digest
-          </Label>
-          <input
-            type="checkbox"
-            id="auto-digest-enabled-simple"
-            checked={settings.autoDigestEnabled}
-            onChange={(e) => {
-              console.log('Checkbox changed:', e.target.checked);
-              setSettings(prev => ({ ...prev, autoDigestEnabled: e.target.checked }));
-            }}
-            className="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-          />
         </div>
-
-        {/* Time and Timezone Selection */}
-        <div className="p-4 bg-white rounded-lg border border-green-200 space-y-4">
-          {/* Timezone Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="digest-timezone" className="text-sm font-medium text-gray-900 flex items-center">
-              <Globe className="h-4 w-4 mr-2" />
-              Time Zone
-            </Label>
-            <select
-              id="digest-timezone"
-              value={settings.autoDigestTimezone}
-              onChange={(e) => {
-                console.log('Timezone changed:', e.target.value);
-                setSettings(prev => ({ ...prev, autoDigestTimezone: e.target.value }));
-              }}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              {TIMEZONES.map((tz) => (
-                <option key={tz.value} value={tz.value}>
-                  {tz.label} ({tz.offset})
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500">
-              Current time in {settings.autoDigestTimezone}: {getCurrentTimeInTimezone(settings.autoDigestTimezone)}
-            </p>
-          </div>
-
-          {/* Time Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="digest-time-simple" className="text-sm font-medium text-gray-900">
-              Daily Run Time
-            </Label>
-            <Input
-              id="digest-time-simple"
-              type="time"
-              value={settings.autoDigestTime}
-              onChange={(e) => {
-                console.log('Time changed:', e.target.value);
-                setSettings(prev => ({ ...prev, autoDigestTime: e.target.value }));
-              }}
-              className="w-full"
-            />
-            <p className="text-xs text-gray-500">
-              This time will be used in the {TIMEZONES.find(tz => tz.value === settings.autoDigestTimezone)?.label || settings.autoDigestTimezone} timezone
-            </p>
-          </div>
-        </div>
-
-        {/* Debug Info */}
-        <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
-          Debug: autoDigestEnabled = {settings.autoDigestEnabled ? 'true' : 'false'} | time = {settings.autoDigestTime} | timezone = {settings.autoDigestTimezone}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="space-y-2">
-          <Button 
-            onClick={saveSettings}
-            disabled={saving}
-            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-          >
-            {saving ? 'Saving...' : '💾 Save Settings'}
-          </Button>
-          
-          <Button 
-            onClick={testTrigger}
-            variant="outline"
-            size="sm"
-            className="w-full"
-          >
-            <TestTube className="h-4 w-4 mr-2" />
-            🧪 Test Auto Digest Now
-          </Button>
-        </div>
-
-        {/* Manual Test Buttons */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-yellow-800 mb-2">🔧 Manual Controls:</h4>
-          <div className="flex space-x-2 flex-wrap">
-            <button 
-              onClick={() => setSettings(prev => ({ ...prev, autoDigestEnabled: true }))}
-              className="px-3 py-1 bg-green-100 text-green-800 rounded text-xs hover:bg-green-200"
-            >
-              Force Enable
-            </button>
-            <button 
-              onClick={() => setSettings(prev => ({ ...prev, autoDigestEnabled: false }))}
-              className="px-3 py-1 bg-red-100 text-red-800 rounded text-xs hover:bg-red-200"
-            >
-              Force Disable
-            </button>
-            <button 
-              onClick={loadSettings}
-              className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-xs hover:bg-blue-200"
-            >
-              Reload from DB
-            </button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 

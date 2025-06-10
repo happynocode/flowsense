@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @tailwind base;
 @tailwind components;
@@ -6,35 +5,49 @@
 
 @layer base {
   :root {
-    /* Futuristic Color Palette */
-    --deep-space-blue: #0B132B;
-    --cosmic-purple: #5643CC;
-    --electric-blue: #00A6FB;
-    --nebula-pink: #FF3864;
-    --midnight: #121420;
-    --starlight: #F5F5FA;
-    --lunar-grey: #E0E0E8;
-    --astral-teal: #00E8FC;
+    /* Modern Light Theme Color Palette */
+    --blue-50: #f0f9ff;
+    --blue-100: #e0f2fe;
+    --blue-500: #0ea5e9;
+    --blue-600: #0284c7;
+    --blue-700: #0369a1;
+    
+    --purple-50: #faf5ff;
+    --purple-100: #f3e8ff;
+    --purple-500: #a855f7;
+    --purple-600: #9333ea;
+    --purple-700: #7c3aed;
+    
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
 
-    --background: var(--deep-space-blue);
-    --foreground: var(--starlight);
-    --card: var(--midnight);
-    --card-foreground: var(--starlight);
-    --popover: var(--midnight);
-    --popover-foreground: var(--starlight);
-    --primary: var(--cosmic-purple);
-    --primary-foreground: var(--starlight);
-    --secondary: var(--electric-blue);
-    --secondary-foreground: var(--starlight);
-    --muted: rgba(18, 20, 32, 0.8);
-    --muted-foreground: var(--lunar-grey);
-    --accent: var(--astral-teal);
-    --accent-foreground: var(--midnight);
-    --destructive: var(--nebula-pink);
-    --destructive-foreground: var(--starlight);
-    --border: rgba(224, 224, 232, 0.1);
-    --input: rgba(18, 20, 32, 0.8);
-    --ring: var(--electric-blue);
+    --background: #ffffff;
+    --foreground: var(--gray-900);
+    --card: #ffffff;
+    --card-foreground: var(--gray-900);
+    --popover: #ffffff;
+    --popover-foreground: var(--gray-900);
+    --primary: var(--blue-600);
+    --primary-foreground: #ffffff;
+    --secondary: var(--gray-100);
+    --secondary-foreground: var(--gray-900);
+    --muted: var(--gray-50);
+    --muted-foreground: var(--gray-500);
+    --accent: var(--purple-500);
+    --accent-foreground: #ffffff;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: var(--gray-200);
+    --input: var(--gray-100);
+    --ring: var(--blue-500);
     --radius: 0.75rem;
   }
 
@@ -44,119 +57,192 @@
 
   body {
     @apply bg-background text-foreground font-inter;
-    background: radial-gradient(circle at 20% 80%, rgba(86, 67, 204, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(0, 166, 251, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(0, 232, 252, 0.05) 0%, transparent 50%),
-                var(--deep-space-blue);
+    background: linear-gradient(135deg, #f0f9ff 0%, #faf5ff 100%);
     background-attachment: fixed;
     min-height: 100vh;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-space-grotesk;
+    @apply font-space-grotesk font-semibold;
   }
 }
 
 @layer components {
-  /* Glassmorphism Card */
-  .glass-card {
-    @apply bg-card/80 backdrop-blur-xl border border-white/10 rounded-xl;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  /* Modern Card Design */
+  .modern-card {
+    @apply bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200;
   }
 
-  /* Glow Effects */
-  .glow-purple {
-    box-shadow: 0 0 20px rgba(86, 67, 204, 0.4);
+  .modern-card-elevated {
+    @apply bg-white rounded-xl border border-gray-200 shadow-lg hover:shadow-xl transition-shadow duration-200;
   }
 
-  .glow-blue {
-    box-shadow: 0 0 20px rgba(0, 166, 251, 0.4);
+  /* Unified Button System */
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2;
   }
 
-  .glow-pink {
-    box-shadow: 0 0 20px rgba(255, 56, 100, 0.4);
+  .btn-secondary {
+    @apply bg-white hover:bg-gray-50 text-gray-700 font-medium px-6 py-3 rounded-lg border border-gray-300 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2;
   }
 
-  .glow-teal {
-    box-shadow: 0 0 20px rgba(0, 232, 252, 0.4);
+  .btn-accent {
+    @apply bg-purple-600 hover:bg-purple-700 text-white font-medium px-6 py-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2;
+  }
+
+  .btn-outline {
+    @apply bg-transparent hover:bg-blue-50 text-blue-600 font-medium px-6 py-3 rounded-lg border border-blue-300 hover:border-blue-500 transition-all duration-200 flex items-center gap-2;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent hover:bg-gray-100 text-gray-700 font-medium px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2;
+  }
+
+  .btn-sm {
+    @apply px-4 py-2 text-sm;
+  }
+
+  .btn-lg {
+    @apply px-8 py-4 text-lg;
+  }
+
+  /* Unified Input System */
+  .input-modern {
+    @apply bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200;
+  }
+
+  .input-modern:focus {
+    @apply shadow-sm;
+  }
+
+  /* Status Indicators */
+  .status-success {
+    @apply bg-green-50 text-green-700 border border-green-200;
+  }
+
+  .status-warning {
+    @apply bg-yellow-50 text-yellow-700 border border-yellow-200;
+  }
+
+  .status-error {
+    @apply bg-red-50 text-red-700 border border-red-200;
+  }
+
+  .status-info {
+    @apply bg-blue-50 text-blue-700 border border-blue-200;
+  }
+
+  /* Modern Badges */
+  .badge-primary {
+    @apply bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-secondary {
+    @apply bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-accent {
+    @apply bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-success {
+    @apply bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium;
   }
 
   /* Gradient Backgrounds */
-  .bg-cosmic-gradient {
-    background: linear-gradient(135deg, #5643CC 0%, #00A6FB 100%);
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, #0ea5e9 0%, #a855f7 100%);
   }
 
-  .bg-aurora-gradient {
-    background: linear-gradient(135deg, #00A6FB 0%, #00E8FC 100%);
+  .bg-gradient-secondary {
+    background: linear-gradient(135deg, #f0f9ff 0%, #faf5ff 100%);
   }
 
-  .bg-sunset-gradient {
-    background: linear-gradient(135deg, #FF3864 0%, #5643CC 100%);
+  .bg-gradient-hero {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #faf5ff 100%);
   }
 
-  /* Animated Gradient Border */
-  .gradient-border {
-    position: relative;
-    background: var(--midnight);
-    border-radius: 12px;
-  }
-
-  .gradient-border::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border-radius: 12px;
-    padding: 2px;
-    background: linear-gradient(135deg, #5643CC, #00A6FB, #00E8FC);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    -webkit-mask-composite: xor;
-  }
-
-  /* Button Styles */
-  .btn-cosmic {
-    @apply bg-cosmic-gradient text-starlight font-medium px-6 py-3 rounded-lg;
-    box-shadow: 0 4px 15px rgba(86, 67, 204, 0.3);
-  }
-
-  .btn-cosmic:hover {
-    @apply glow-purple;
-  }
-
-  .btn-outline-electric {
-    @apply border-2 border-electric-blue bg-transparent text-electric-blue font-medium px-6 py-3 rounded-lg;
-  }
-
-  .btn-outline-electric:hover {
-    @apply bg-electric-blue text-midnight glow-blue;
-  }
-
-  /* Input Styles */
-  .input-futuristic {
-    @apply bg-midnight/60 backdrop-blur-sm border border-white/10 rounded-lg px-4 py-3 text-starlight placeholder-lunar-grey/60;
-  }
-
-  .input-futuristic:focus {
-    @apply outline-none border-electric-blue glow-blue;
-  }
-
-  /* Text Gradient */
-  .text-cosmic-gradient {
-    background: linear-gradient(135deg, #5643CC 0%, #00A6FB 100%);
+  /* Text Gradients */
+  .text-gradient-primary {
+    background: linear-gradient(135deg, #0ea5e9 0%, #a855f7 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  .text-aurora-gradient {
-    background: linear-gradient(135deg, #00A6FB 0%, #00E8FC 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  /* Modern Loading Spinner */
+  .loading-spinner {
+    @apply animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-600;
+  }
+
+  /* Hover Effects */
+  .hover-lift {
+    @apply hover:transform hover:-translate-y-1 transition-transform duration-200;
+  }
+
+  .hover-scale {
+    @apply hover:scale-105 transition-transform duration-200;
+  }
+
+  /* Modern Dividers */
+  .divider {
+    @apply border-t border-gray-200 my-6;
+  }
+
+  .divider-dashed {
+    @apply border-t border-dashed border-gray-300 my-6;
+  }
+
+  /* Feature Cards */
+  .feature-card {
+    @apply modern-card p-6 text-center hover-lift;
+  }
+
+  .feature-card-icon {
+    @apply w-12 h-12 mx-auto mb-4 bg-gradient-primary rounded-xl flex items-center justify-center text-white;
+  }
+
+  /* Stats Cards */
+  .stats-card {
+    @apply modern-card p-6;
+  }
+
+  .stats-card-value {
+    @apply text-3xl font-bold text-gray-900;
+  }
+
+  .stats-card-label {
+    @apply text-sm font-medium text-gray-500 mt-1;
+  }
+
+  .stats-card-icon {
+    @apply w-8 h-8 text-blue-600;
+  }
+
+  /* Navigation */
+  .nav-item {
+    @apply px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200 flex items-center gap-2;
+  }
+
+  .nav-item-active {
+    @apply bg-blue-100 text-blue-700 hover:bg-blue-200;
+  }
+
+  /* Form Elements */
+  .form-group {
+    @apply mb-6;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 mb-2;
+  }
+
+  .form-help {
+    @apply text-sm text-gray-500 mt-1;
+  }
+
+  .form-error {
+    @apply text-sm text-red-600 mt-1;
   }
 }
 
@@ -171,5 +257,9 @@
 
   .font-jetbrains {
     font-family: 'JetBrains Mono', monospace;
+  }
+
+  .text-balance {
+    text-wrap: balance;
   }
 }

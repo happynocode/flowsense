@@ -38,10 +38,10 @@ const NotFound = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/">
+              <Link to="/sources">
                 <Button className="btn-cosmic">
                   <Home className="w-4 h-4 mr-2" />
-                  Go Home
+                  返回首页
                 </Button>
               </Link>
               
