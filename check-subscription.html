@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Subscription Status</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .status-box {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .output {
+            background: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .warning { color: #ffc107; }
+    </style>
+</head>
+<body>
+    <h1>🔍 订阅状态检查</h1>
+    
+    <div class="status-box">
+        <h2>用户信息</h2>
+        <div id="user-info">正在加载...</div>
+        <button onclick="loadUserInfo()">刷新用户信息</button>
+    </div>
+
+    <div class="status-box">
+        <h2>订阅记录</h2>
+        <div id="subscription-status">正在加载...</div>
+        <button onclick="checkSubscriptions()">检查订阅</button>
+    </div>
+
+    <div class="status-box">
+        <h2>测试支付</h2>
+        <button onclick="testPayment()">重新测试支付</button>
+        <div id="payment-result" class="output"></div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://ryncyvnezqwqqtfsweti.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5bmN5dm5lenF3cXF0ZnN3ZXRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4Mzc5MzQsImV4cCI6MjA2MjQxMzkzNH0.KKlJaDdWY5KWHGxdaREa0-Ck19CNukGmv-kFt9qjiKA';
+
+        async function loadUserInfo() {
+            const userInfoDiv = document.getElementById('user-info');
+            try {
+                userInfoDiv.innerHTML = '🔄 正在加载用户信息...';
+                
+                // 获取当前用户
+                const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token') || 'no-token'}`,
+                        'apikey': supabaseAnonKey
+                    }
+                });
+
+                if (response.ok) {
+                    const user = await response.json();
+                    userInfoDiv.innerHTML = `
+                        <div class="success">✅ 已登录</div>
+                        <strong>用户ID:</strong> ${user.id}<br>
+                        <strong>邮箱:</strong> ${user.email}<br>
+                        <strong>创建时间:</strong> ${new Date(user.created_at).toLocaleString()}
+                    `;
+                } else {
+                    userInfoDiv.innerHTML = '<div class="error">❌ 用户未登录或token无效</div>';
+                }
+            } catch (error) {
+                userInfoDiv.innerHTML = `<div class="error">❌ 错误: ${error.message}</div>`;
+            }
+        }
+
+        async function checkSubscriptions() {
+            const statusDiv = document.getElementById('subscription-status');
+            try {
+                statusDiv.innerHTML = '🔄 正在检查订阅状态...';
+                
+                const response = await fetch(`${supabaseUrl}/rest/v1/subscriptions?select=*`, {
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${supabaseAnonKey}`
+                    }
+                });
+
+                if (response.ok) {
+                    const subscriptions = await response.json();
+                    if (subscriptions.length === 0) {
+                        statusDiv.innerHTML = '<div class="warning">⚠️ 暂无订阅记录</div>';
+                    } else {
+                        let html = `<div class="success">✅ 找到 ${subscriptions.length} 条订阅记录:</div>`;
+                        subscriptions.forEach((sub, index) => {
+                            html += `
+                                <hr>
+                                <strong>订阅 ${index + 1}:</strong><br>
+                                <strong>用户ID:</strong> ${sub.user_id}<br>
+                                <strong>状态:</strong> ${sub.status}<br>
+                                <strong>计划:</strong> ${sub.plan_type}<br>
+                                <strong>价格ID:</strong> ${sub.stripe_price_id}<br>
+                                <strong>创建时间:</strong> ${new Date(sub.created_at).toLocaleString()}<br>
+                                <strong>结束时间:</strong> ${sub.current_period_end ? new Date(sub.current_period_end).toLocaleString() : 'N/A'}
+                            `;
+                        });
+                        statusDiv.innerHTML = html;
+                    }
+                } else {
+                    const errorText = await response.text();
+                    statusDiv.innerHTML = `<div class="error">❌ 查询失败: ${response.status}<br>${errorText}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">❌ 错误: ${error.message}</div>`;
+            }
+        }
+
+        async function testPayment() {
+            const resultDiv = document.getElementById('payment-result');
+            resultDiv.textContent = '🔄 正在测试支付功能...\n';
+
+            try {
+                const testData = {
+                    userId: '6238d3f0-978c-4a57-8dfb-a73132c2763f', // 您的用户ID
+                    userEmail: 'ruofei.wang29@gmail.com',
+                    priceId: 'price_1RYI6RJ190Ki7I11RybFy23j',
+                    successUrl: 'http://localhost:5173/subscription/success',
+                    cancelUrl: 'http://localhost:5173/subscription'
+                };
+
+                resultDiv.textContent += `📤 发送数据:\n${JSON.stringify(testData, null, 2)}\n\n`;
+
+                const response = await fetch(`${supabaseUrl}/functions/v1/create-checkout-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${supabaseAnonKey}`,
+                        'apikey': supabaseAnonKey
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                resultDiv.textContent += `📊 响应状态: ${response.status}\n`;
+                const responseText = await response.text();
+                resultDiv.textContent += `📄 响应内容:\n${responseText}\n\n`;
+
+                if (response.ok) {
+                    const data = JSON.parse(responseText);
+                    resultDiv.textContent += `✅ 成功！会话ID: ${data.sessionId}\n`;
+                    resultDiv.textContent += `🔗 支付链接: ${data.url}\n`;
+                    
+                    // 提供跳转选项
+                    const button = document.createElement('button');
+                    button.textContent = '🚀 跳转到支付页面';
+                    button.onclick = () => window.open(data.url, '_blank');
+                    resultDiv.appendChild(button);
+                } else {
+                    resultDiv.textContent += `❌ 失败: ${response.status}\n`;
+                }
+            } catch (error) {
+                resultDiv.textContent += `💥 异常: ${error.message}\n`;
+            }
+        }
+
+        // 页面加载时自动检查
+        window.onload = function() {
+            loadUserInfo();
+            checkSubscriptions();
+        };
+    </script>
+</body>
+</html> 

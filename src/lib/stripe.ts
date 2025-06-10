@@ -11,15 +11,14 @@ if (!stripePublishableKey || stripePublishableKey === 'pk_test_demo') {
 // 初始化Stripe实例
 export const stripePromise = loadStripe(stripePublishableKey);
 
-// Stripe价格配置 - 这些应该与你在Stripe Dashboard中创建的价格ID匹配
-// 注意：这些是示例价格ID，你需要在Stripe Dashboard中创建实际的产品和价格
+// Stripe价格配置 - 从环境变量读取
 export const STRIPE_PRICES = {
   starter: {
-    monthly: import.meta.env.VITE_STRIPE_STARTER_PRICE_ID || 'price_starter_demo',
+    monthly: import.meta.env.VITE_STRIPE_STARTER_PRICE_ID || 'price_1RYI6RJ190Ki7I11RybFy23j',
     yearly: import.meta.env.VITE_STRIPE_STARTER_YEARLY_PRICE_ID || 'price_starter_yearly_demo',
   },
   professional: {
-    monthly: import.meta.env.VITE_STRIPE_PROFESSIONAL_PRICE_ID || 'price_professional_demo',
+    monthly: import.meta.env.VITE_STRIPE_PROFESSIONAL_PRICE_ID || 'price_1RYI6kJ190Ki7I11K8bmWjJn',
     yearly: import.meta.env.VITE_STRIPE_PROFESSIONAL_YEARLY_PRICE_ID || 'price_professional_yearly_demo',
   },
 } as const;

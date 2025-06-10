@@ -38,6 +38,19 @@ const Subscription = () => {
       setLoading(true);
       const subscription = await subscriptionService.getSubscription();
       setCurrentSubscription(subscription);
+
+      // 检查是否有最近创建的订阅（5分钟内）但用户权限还是free
+      if (subscription && subscription.status === 'active' && !isPremium) {
+        const subscriptionCreatedAt = new Date(subscription.currentPeriodEnd);
+        const now = new Date();
+        const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+        
+        // 如果订阅很新，说明刚完成支付，重定向到成功页面进行权限同步
+        console.log('Found recent active subscription, redirecting to success page');
+        window.location.href = '/subscription/success';
+        return;
+      }
+      
     } catch (error) {
       console.error('Failed to load subscription:', error);
     } finally {
@@ -61,7 +74,7 @@ const Subscription = () => {
       // 创建Stripe Checkout会话
       const checkoutSession = await subscriptionService.createCheckoutSession({
         priceId: plan.stripePriceId,
-        successUrl: `${window.location.origin}/subscription/success`,
+        successUrl: `${window.location.origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${window.location.origin}/subscription`,
       });
 

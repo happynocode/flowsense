@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edge Function Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007acc;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .output {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 3px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Edge Function Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Data</h2>
+        <div id="test-data"></div>
+        <button onclick="testCheckoutSession()">Test Checkout Session</button>
+        <button onclick="testDirectCall()">Test Direct API Call</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Response</h2>
+        <div id="response" class="output"></div>
+    </div>
+
+    <script>
+        const testPriceId = 'price_1RYI6RJ190Ki7I11RybFy23j';
+        const supabaseUrl = 'https://ryncyvnezqwqqtfsweti.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5bmN5dm5lenF3cXF0ZnN3ZXRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4Mzc5MzQsImV4cCI6MjA2MjQxMzkzNH0.KKlJaDdWY5KWHGxdaREa0-Ck19CNukGmv-kFt9qjiKA';
+
+        document.getElementById('test-data').innerHTML = `
+            <strong>Price ID:</strong> ${testPriceId}<br>
+            <strong>User ID:</strong> test-user-123<br>
+            <strong>User Email:</strong> test@example.com
+        `;
+
+        async function testCheckoutSession() {
+            const responseDiv = document.getElementById('response');
+            responseDiv.textContent = '🔄 Testing checkout session creation...\n';
+
+            try {
+                const response = await fetch(`${supabaseUrl}/functions/v1/create-checkout-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${supabaseAnonKey}`,
+                        'apikey': supabaseAnonKey
+                    },
+                    body: JSON.stringify({
+                        userId: 'test-user-123',
+                        userEmail: 'test@example.com',
+                        priceId: testPriceId,
+                        successUrl: 'http://localhost:5173/subscription/success',
+                        cancelUrl: 'http://localhost:5173/subscription'
+                    })
+                });
+
+                responseDiv.textContent += `📊 Response Status: ${response.status}\n`;
+                responseDiv.textContent += `📊 Response Headers: ${JSON.stringify(Object.fromEntries(response.headers), null, 2)}\n\n`;
+
+                const responseText = await response.text();
+                responseDiv.textContent += `📄 Response Body:\n${responseText}\n\n`;
+
+                if (response.ok) {
+                    const data = JSON.parse(responseText);
+                    responseDiv.textContent += `✅ Success! Session ID: ${data.sessionId}\n`;
+                } else {
+                    responseDiv.textContent += `❌ Error: ${response.status}\n`;
+                }
+            } catch (error) {
+                responseDiv.textContent += `💥 Exception: ${error.message}\n`;
+                console.error('Test error:', error);
+            }
+        }
+
+        async function testDirectCall() {
+            const responseDiv = document.getElementById('response');
+            responseDiv.textContent = '🔄 Testing direct API call...\n';
+
+            const testData = {
+                userId: 'test-user-123',
+                userEmail: 'test@example.com',
+                priceId: testPriceId,
+                successUrl: 'http://localhost:5173/subscription/success',
+                cancelUrl: 'http://localhost:5173/subscription'
+            };
+
+            responseDiv.textContent += `📤 Sending data:\n${JSON.stringify(testData, null, 2)}\n\n`;
+
+            try {
+                const response = await fetch(`${supabaseUrl}/functions/v1/create-checkout-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${supabaseAnonKey}`
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const responseText = await response.text();
+                responseDiv.textContent += `📥 Raw response:\n${responseText}`;
+
+            } catch (error) {
+                responseDiv.textContent += `💥 Network error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html> 

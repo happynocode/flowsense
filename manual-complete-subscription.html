@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手动完成订阅</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .action-box {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #218838;
+        }
+        .output {
+            background: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🔧 手动完成订阅</h1>
+    
+    <div class="action-box">
+        <h2>步骤1：手动添加订阅记录</h2>
+        <p>由于Stripe支付成功但Webhook未及时处理，我们手动在数据库中创建订阅记录。</p>
+        <button onclick="createSubscription()">✅ 创建订阅记录</button>
+        <div id="subscription-result" class="output"></div>
+    </div>
+
+    <div class="action-box">
+        <h2>步骤2：更新用户权限</h2>
+        <p>将用户的订阅层级从免费升级到付费。</p>
+        <button onclick="updateUserTier()">🚀 升级用户权限</button>
+        <div id="tier-result" class="output"></div>
+    </div>
+
+    <div class="action-box">
+        <h2>步骤3：验证订阅状态</h2>
+        <button onclick="verifySubscription()">🔍 验证订阅状态</button>
+        <div id="verify-result" class="output"></div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://ryncyvnezqwqqtfsweti.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5bmN5dm5lenF3cXF0ZnN3ZXRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4Mzc5MzQsImV4cCI6MjA2MjQxMzkzNH0.KKlJaDdWY5KWHGxdaREa0-Ck19CNukGmv-kFt9qjiKA';
+        
+        const userId = '6238d3f0-978c-4a57-8dfb-a73132c2763f';
+        const priceId = 'price_1RYI6RJ190Ki7I11RybFy23j';
+
+        async function createSubscription() {
+            const resultDiv = document.getElementById('subscription-result');
+            resultDiv.textContent = '🔄 正在创建订阅记录...\n';
+
+            try {
+                // 计算试用期结束时间（7天后）
+                const trialEnd = new Date();
+                trialEnd.setDate(trialEnd.getDate() + 7);
+                
+                // 计算下个计费周期（1个月后）
+                const periodEnd = new Date();
+                periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+                const subscriptionData = {
+                    user_id: userId,
+                    stripe_subscription_id: 'sub_manual_' + Date.now(),
+                    stripe_customer_id: 'cus_manual_' + Date.now(),
+                    stripe_price_id: priceId,
+                    plan_type: 'starter',
+                    status: 'trialing',
+                    current_period_start: new Date().toISOString(),
+                    current_period_end: periodEnd.toISOString(),
+                    trial_end: trialEnd.toISOString(),
+                    cancel_at_period_end: false,
+                    amount: 900, // $9.00 in cents
+                    currency: 'usd',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+
+                resultDiv.textContent += `📤 发送订阅数据:\n${JSON.stringify(subscriptionData, null, 2)}\n\n`;
+
+                const response = await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${supabaseAnonKey}`,
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(subscriptionData)
+                });
+
+                const responseText = await response.text();
+                resultDiv.textContent += `📊 响应状态: ${response.status}\n`;
+                resultDiv.textContent += `📄 响应内容:\n${responseText}\n\n`;
+
+                if (response.ok) {
+                    resultDiv.innerHTML += '<div class="success">✅ 订阅记录创建成功！</div>';
+                } else {
+                    resultDiv.innerHTML += '<div class="error">❌ 创建失败，请检查响应</div>';
+                }
+            } catch (error) {
+                resultDiv.textContent += `💥 异常: ${error.message}\n`;
+                resultDiv.innerHTML += '<div class="error">❌ 创建订阅记录时发生异常</div>';
+            }
+        }
+
+        async function updateUserTier() {
+            const resultDiv = document.getElementById('tier-result');
+            resultDiv.textContent = '🔄 正在更新用户权限...\n';
+
+            try {
+                const userUpdate = {
+                    max_sources: 20,
+                    can_schedule_digest: true,
+                    can_process_weekly: true,
+                    subscription_tier: 'premium',
+                    updated_at: new Date().toISOString()
+                };
+
+                resultDiv.textContent += `📤 更新用户数据:\n${JSON.stringify(userUpdate, null, 2)}\n\n`;
+
+                const response = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${userId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${supabaseAnonKey}`,
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(userUpdate)
+                });
+
+                const responseText = await response.text();
+                resultDiv.textContent += `📊 响应状态: ${response.status}\n`;
+                resultDiv.textContent += `📄 响应内容:\n${responseText}\n\n`;
+
+                if (response.ok) {
+                    resultDiv.innerHTML += '<div class="success">✅ 用户权限更新成功！</div>';
+                } else {
+                    resultDiv.innerHTML += '<div class="error">❌ 更新失败，请检查响应</div>';
+                }
+            } catch (error) {
+                resultDiv.textContent += `💥 异常: ${error.message}\n`;
+                resultDiv.innerHTML += '<div class="error">❌ 更新用户权限时发生异常</div>';
+            }
+        }
+
+        async function verifySubscription() {
+            const resultDiv = document.getElementById('verify-result');
+            resultDiv.textContent = '🔄 正在验证订阅状态...\n';
+
+            try {
+                // 检查订阅
+                const subResponse = await fetch(`${supabaseUrl}/rest/v1/subscriptions?user_id=eq.${userId}`, {
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${supabaseAnonKey}`
+                    }
+                });
+
+                const subscriptions = await subResponse.json();
+                resultDiv.textContent += `📊 订阅记录: ${subscriptions.length} 条\n`;
+                if (subscriptions.length > 0) {
+                    resultDiv.textContent += `状态: ${subscriptions[0].status}\n`;
+                    resultDiv.textContent += `计划: ${subscriptions[0].plan_type}\n\n`;
+                }
+
+                // 检查用户权限
+                const userResponse = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${userId}`, {
+                    headers: {
+                        'apikey': supabaseAnonKey,
+                        'Authorization': `Bearer ${supabaseAnonKey}`
+                    }
+                });
+
+                const users = await userResponse.json();
+                if (users.length > 0) {
+                    const user = users[0];
+                    resultDiv.textContent += `👤 用户权限:\n`;
+                    resultDiv.textContent += `最大信息源: ${user.max_sources}\n`;
+                    resultDiv.textContent += `可调度摘要: ${user.can_schedule_digest}\n`;
+                    resultDiv.textContent += `可处理周报: ${user.can_process_weekly}\n`;
+                    resultDiv.textContent += `订阅层级: ${user.subscription_tier}\n\n`;
+
+                    if (user.subscription_tier === 'premium') {
+                        resultDiv.innerHTML += '<div class="success">🎉 验证成功！用户已升级为高级用户！</div>';
+                        resultDiv.innerHTML += '<div class="success">现在可以访问 <a href="http://localhost:5173/sources" target="_blank">Sources页面</a> 验证功能！</div>';
+                    } else {
+                        resultDiv.innerHTML += '<div class="error">❌ 用户仍为免费用户，请先执行步骤2</div>';
+                    }
+                }
+            } catch (error) {
+                resultDiv.textContent += `💥 异常: ${error.message}\n`;
+                resultDiv.innerHTML += '<div class="error">❌ 验证时发生异常</div>';
+            }
+        }
+    </script>
+</body>
+</html> 

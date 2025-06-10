@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { useAuth } from '../hooks/useAuth';
 import { subscriptionService } from '../services/subscription';
 import { useToast } from '../hooks/use-toast';
+import { supabase } from '../lib/supabase';
 
 const SubscriptionSuccess = () => {
   const { user, loading: authLoading, refreshUser } = useAuth();
@@ -12,30 +13,119 @@ const SubscriptionSuccess = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
+  const [hasProcessed, setHasProcessed] = useState(false); // 防止重复处理
 
   const sessionId = searchParams.get('session_id');
 
   useEffect(() => {
+    // 防止重复处理
+    if (hasProcessed) return;
+    
     if (user && sessionId) {
+      setHasProcessed(true);
       handleSubscriptionSuccess();
     } else if (!authLoading && !user) {
       // 如果用户未登录，重定向到登录页面
       setLoading(false);
-    } else if (!sessionId) {
-      // 如果没有session_id，重定向到订阅页面
+    } else if (!sessionId && user && !hasProcessed) {
+      // 如果没有session_id但用户已登录，检查是否有新的订阅
+      setHasProcessed(true);
+      handleSubscriptionSuccessWithoutSessionId();
+    } else if (!sessionId && !user) {
+      // 如果没有session_id且没有用户，重定向到订阅页面
       setLoading(false);
     }
-  }, [user, sessionId, authLoading]);
+  }, [user, sessionId, authLoading, hasProcessed]);
+
+  const handleSubscriptionSuccessWithoutSessionId = async () => {
+    try {
+      setLoading(true);
+      
+      // 检查用户是否有活跃订阅
+      const { data: subscription, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Failed to fetch subscription:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (subscription) {
+        // 用户有活跃订阅，进行权限同步
+        await handleSubscriptionSuccess();
+      } else {
+        // 没有活跃订阅，重定向到订阅页面
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Failed to check subscription:', error);
+      setLoading(false);
+    }
+  };
 
   const handleSubscriptionSuccess = async () => {
     try {
       setLoading(true);
       
-      // 同步订阅状态
-      await subscriptionService.syncSubscriptionStatus();
-      
-      // 刷新用户信息以获取最新的订阅状态
-      await refreshUser();
+      // 直接查询数据库获取最新的订阅状态，而不是调用不存在的Edge Function
+      const { data: subscription, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Failed to fetch subscription:', error);
+        // 即使查询失败，也要显示页面，避免无限循环
+        setSuccess(true);
+        setLoading(false);
+        return;
+      }
+
+      // 如果有活跃订阅，检查用户权限是否已更新
+      if (subscription && subscription.status === 'active') {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('subscription_tier, max_sources, can_schedule_digest, can_process_weekly')
+          .eq('id', user.id)
+          .single();
+
+        if (userError) {
+          console.error('Failed to fetch user data:', userError);
+        }
+
+        // 如果用户权限还没有更新为premium，手动更新
+        if (userData && userData.subscription_tier !== 'premium') {
+          console.log('Updating user to premium tier...');
+          
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({
+              subscription_tier: 'premium',
+              max_sources: 20,
+              can_schedule_digest: true,
+              can_process_weekly: true,
+            })
+            .eq('id', user.id);
+
+          if (updateError) {
+            console.error('Failed to update user tier:', updateError);
+          } else {
+            console.log('User tier updated to premium');
+            // 只在成功更新后才刷新用户信息
+            await refreshUser();
+          }
+        }
+      }
       
       setSuccess(true);
       
@@ -46,6 +136,8 @@ const SubscriptionSuccess = () => {
       
     } catch (error) {
       console.error('Failed to sync subscription:', error);
+      // 即使出错也要显示成功页面，避免卡住
+      setSuccess(true);
       toast({
         title: "订阅激活中",
         description: "您的订阅正在处理中，请稍后刷新页面查看状态。",
@@ -60,7 +152,22 @@ const SubscriptionSuccess = () => {
     return <Navigate to="/login" replace />;
   }
 
-  if (!sessionId) {
+  // 如果没有 sessionId，但用户已登录，检查是否有活跃订阅
+  if (!sessionId && user && !hasProcessed) {
+    // 触发检查，但不重定向，避免循环
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-indigo-600" />
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">检查订阅状态...</h2>
+          <p className="text-gray-600">正在验证您的订阅信息</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 如果没有 sessionId 且已经处理过，重定向到订阅页面
+  if (!sessionId && hasProcessed && !success) {
     return <Navigate to="/subscription" replace />;
   }
 

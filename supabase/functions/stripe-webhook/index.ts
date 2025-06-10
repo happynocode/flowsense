@@ -169,7 +169,7 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
   console.log('Updating user subscription:', { userId, subscriptionId: subscription.id })
 
   try {
-    // 首先更新或插入订阅记录
+    // 使用正确的 upsert 语法来处理重复的订阅ID
     const { error: subscriptionError } = await supabaseClient
       .from('subscriptions')
       .upsert({
@@ -185,6 +185,9 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
         canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
         amount: subscription.items.data[0]?.price.unit_amount || 0,
         currency: subscription.items.data[0]?.price.currency || 'usd',
+      }, {
+        onConflict: 'stripe_subscription_id',
+        ignoreDuplicates: false
       })
 
     if (subscriptionError) {
@@ -192,8 +195,10 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
       throw subscriptionError
     }
 
+    console.log('Subscription record updated successfully')
+
     // 根据订阅状态更新用户权限
-    if (subscription.status === 'active') {
+    if (subscription.status === 'active' || subscription.status === 'trialing') {
       await updateUserToPremiumTier(userId)
     } else if (['canceled', 'unpaid', 'past_due'].includes(subscription.status)) {
       await updateUserToFreeTier(userId)
