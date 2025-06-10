@@ -229,21 +229,41 @@ const AutoDigestSettingsSimple: React.FC = () => {
           </div>
 
           {/* Time and Timezone Selection */}
-          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+          <div className={`p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3 ${!canUseFeature('auto') ? 'opacity-50' : ''}`}>
             {/* Timezone Selection */}
             <div className="space-y-2">
               <Label htmlFor="digest-timezone" className="text-sm font-medium text-gray-900 flex items-center">
                 <Globe className="h-4 w-4 mr-2" />
                 时区
+                {!canUseFeature('auto') && <Crown className="h-4 w-4 ml-2 text-yellow-500" />}
               </Label>
               <select
                 id="digest-timezone"
                 value={settings.autoDigestTimezone}
                 onChange={(e) => {
+                  if (!canUseFeature('auto')) {
+                    toast({
+                      title: "升级到高级版",
+                      description: "自动摘要功能仅限高级版用户使用。",
+                      action: (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => window.location.href = '/subscription'}
+                          className="ml-2"
+                        >
+                          <Crown className="w-4 h-4 mr-1" />
+                          升级
+                        </Button>
+                      ),
+                    });
+                    return;
+                  }
                   console.log('Timezone changed:', e.target.value);
                   setSettings(prev => ({ ...prev, autoDigestTimezone: e.target.value }));
                 }}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                disabled={!canUseFeature('auto')}
+                className={`w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${!canUseFeature('auto') ? 'cursor-not-allowed bg-gray-100' : ''}`}
               >
                 {TIMEZONES.map((tz) => (
                   <option key={tz.value} value={tz.value}>
@@ -255,31 +275,79 @@ const AutoDigestSettingsSimple: React.FC = () => {
 
             {/* Time Selection */}
             <div className="space-y-2">
-              <Label htmlFor="digest-time-simple" className="text-sm font-medium text-gray-900">
+              <Label htmlFor="digest-time-simple" className="text-sm font-medium text-gray-900 flex items-center">
                 执行时间
+                {!canUseFeature('auto') && <Crown className="h-4 w-4 ml-2 text-yellow-500" />}
               </Label>
               <Input
                 id="digest-time-simple"
                 type="time"
                 value={settings.autoDigestTime}
                 onChange={(e) => {
+                  if (!canUseFeature('auto')) {
+                    toast({
+                      title: "升级到高级版",
+                      description: "自动摘要功能仅限高级版用户使用。",
+                      action: (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => window.location.href = '/subscription'}
+                          className="ml-2"
+                        >
+                          <Crown className="w-4 h-4 mr-1" />
+                          升级
+                        </Button>
+                      ),
+                    });
+                    return;
+                  }
                   console.log('Time changed:', e.target.value);
                   setSettings(prev => ({ ...prev, autoDigestTime: e.target.value }));
                 }}
-                className="w-full"
+                disabled={!canUseFeature('auto')}
+                className={`w-full ${!canUseFeature('auto') ? 'cursor-not-allowed bg-gray-100' : ''}`}
               />
             </div>
           </div>
 
           {/* Action Buttons */}
           <div className="space-y-2">
-            <Button 
-              onClick={saveSettings}
-              disabled={saving}
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-            >
-              {saving ? '保存中...' : '💾 保存设置'}
-            </Button>
+            {canUseFeature('auto') ? (
+              <Button 
+                onClick={saveSettings}
+                disabled={saving}
+                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+              >
+                {saving ? '保存中...' : '💾 保存设置'}
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => {
+                  toast({
+                    title: "升级到高级版",
+                    description: "自动摘要功能仅限高级版用户使用。",
+                    action: (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => window.location.href = '/subscription'}
+                        className="ml-2"
+                      >
+                        <Crown className="w-4 h-4 mr-1" />
+                        升级
+                      </Button>
+                    ),
+                  });
+                }}
+                disabled
+                className="w-full opacity-50 cursor-not-allowed bg-gray-400 hover:bg-gray-400 flex items-center justify-center"
+              >
+                <Lock className="w-4 h-4 mr-2" />
+                💾 保存设置
+                <Crown className="w-4 h-4 ml-2 text-yellow-500" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
