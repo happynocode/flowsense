@@ -14,6 +14,7 @@ import Sources from "./pages/Sources";
 import Digests from "./pages/Digests";
 import DigestDetail from "./pages/DigestDetail";
 import Subscription from "./pages/Subscription";
+import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/digests" element={<Digests />} />
               <Route path="/digests/:id" element={<DigestDetail />} />
               <Route path="/subscription" element={<Subscription />} />
+              <Route path="/subscription/success" element={<SubscriptionSuccess />} />
               <Route path="/profile" element={<NotFound />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
