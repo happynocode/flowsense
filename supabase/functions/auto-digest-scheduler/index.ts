@@ -133,21 +133,25 @@ serve(async (req) => {
         console.log(`🚀 Processing auto digest for user: ${user.email} (${user.id})`)
         
         // Check if we've already run today (to prevent multiple runs)
-        const today = now.toISOString().split('T')[0] // YYYY-MM-DD
-        const lastRun = user.last_auto_digest_run
-        
+        const timezone = user.auto_digest_timezone || 'UTC';
+        // 当前时间的用户时区日期
+        const nowInUserTimezone = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
+        const todayInUserTz = nowInUserTimezone.toISOString().split('T')[0];
+        const lastRun = user.last_auto_digest_run;
+        let lastRunDateInUserTz = null;
         if (lastRun) {
-          const lastRunDate = new Date(lastRun).toISOString().split('T')[0]
-          if (lastRunDate === today) {
-            console.log(`⏭️ Skipping user ${user.email} - already processed today`)
-            results.push({
-              userId: user.id,
-              email: user.email,
-              status: 'skipped',
-              reason: 'Already processed today'
-            })
-            continue
-          }
+          const lastRunInUserTz = new Date(new Date(lastRun).toLocaleString("en-US", { timeZone: timezone }));
+          lastRunDateInUserTz = lastRunInUserTz.toISOString().split('T')[0];
+        }
+        if (lastRunDateInUserTz === todayInUserTz) {
+          console.log(`⏭️ Skipping user ${user.email} - already processed today (user timezone)`);
+          results.push({
+            userId: user.id,
+            email: user.email,
+            status: 'skipped',
+            reason: 'Already processed today (user timezone)'
+          });
+          continue;
         }
 
         // 直接创建处理任务，不调用需要用户认证的start-processing函数
