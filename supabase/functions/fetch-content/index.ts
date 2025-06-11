@@ -18,7 +18,7 @@ interface ContentDetectionResult {
 
 const PROCESSING_CONFIG = {
   ARTICLES_PER_SOURCE: 50,
-  TIMEOUT_MS: 50000, // 50 seconds - should be much faster now with async processing
+  TIMEOUT_MS: 300000, // 5 minutes, increased for safety
 }
 
 function createTimeoutPromise<T>(ms: number, errorMessage: string): Promise<T> {
@@ -167,25 +167,54 @@ async function checkAndCompleteTask(supabaseClient: any, taskId: number): Promis
   }
 }
 
+async function updateFetchJobStatus(
+  supabaseClient: any,
+  jobId: number,
+  status: 'completed' | 'failed',
+  errorMessage?: string
+) {
+  const { error } = await supabaseClient
+    .from('source_fetch_jobs')
+    .update({ 
+      status, 
+      error_message: errorMessage,
+      updated_at: new Date().toISOString() 
+    })
+    .eq('id', jobId);
+
+  if (error) {
+    console.error(`❌ Failed to update fetch job ${jobId} status to ${status}:`, error);
+  } else {
+    console.log(`✅ Fetch job ${jobId} status updated to ${status}.`);
+  }
+}
+
 Deno.serve(async (req) => {
+  const supabaseClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
+
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 })
+  }
+
+  const { 
+    sourceId, 
+    sourceUrl, 
+    sourceName, 
+    timeRange = 'week', 
+    taskId,
+    fetchJobId // <-- New parameter from our queue processor
+  } = await req.json()
+
+  if (!fetchJobId || !sourceId || !sourceUrl) {
+    return new Response('Missing fetchJobId, sourceId, or sourceUrl', { status: 400 })
+  }
+
+  console.log(`🚀 Starting content fetch for source: ${sourceName} (${sourceUrl}) [Task: ${taskId}, Job: ${fetchJobId}]`)
+  
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    if (req.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 })
-    }
-
-    const { sourceId, sourceUrl, sourceName, timeRange = 'week', taskId } = await req.json()
-
-    if (!sourceId || !sourceUrl) {
-      return new Response('Missing sourceId or sourceUrl', { status: 400 })
-    }
-
-    console.log(`🚀 Starting content fetch for source: ${sourceName} (${sourceUrl}) [Task: ${taskId}]`)
-
     // Update task progress - mark as current source
     if (taskId) {
       await updateTaskProgress(supabaseClient, taskId, sourceName, 'processing')
@@ -196,13 +225,20 @@ Deno.serve(async (req) => {
       processSource(supabaseClient, sourceId, sourceUrl, sourceName, timeRange, taskId),
       createTimeoutPromise(PROCESSING_CONFIG.TIMEOUT_MS, 'Content fetch timeout')
     ])
+    
+    // On success, update the fetch job status
+    await updateFetchJobStatus(supabaseClient, fetchJobId, 'completed');
 
     return new Response(JSON.stringify(result), {
       headers: { 'Content-Type': 'application/json' }
     })
 
   } catch (error) {
-    console.error('❌ Content fetch error:', error)
+    console.error(`❌ Content fetch error for job ${fetchJobId}:`, error.message)
+    
+    // On failure, update the fetch job status with the error
+    await updateFetchJobStatus(supabaseClient, fetchJobId, 'failed', error.message);
+    
     return new Response(JSON.stringify({ 
       success: false, 
       error: error.message 
@@ -222,77 +258,52 @@ async function processSource(
   taskId?: number
 ): Promise<{ success: boolean; articlesCount: number; message: string }> {
   
+  let articlesCount = 0;
   try {
-    console.log(`🔍 Detecting content type for: ${sourceUrl}`)
-    
-    const detection = await detectContentType(sourceUrl)
+    console.log(`🔍 Detecting content type for: ${sourceUrl}`);
+    const detection = await detectContentType(sourceUrl);
     if (!detection) {
-      const result = { success: false, articlesCount: 0, message: 'Failed to fetch content' }
-      
-      // Update task progress - mark as skipped
-      if (taskId) {
-        await updateTaskProgress(supabaseClient, taskId, sourceName, 'skipped', { error: result.message })
-        await checkAndCompleteTask(supabaseClient, taskId)
-      }
-      
-      return result
+      throw new Error('Content detection failed');
     }
 
+    let articles: Article[] = [];
     if (detection.isRSS) {
-      console.log(`📡 Processing RSS feed: ${sourceUrl}`)
-      const articles = await parseRSSContent(detection.content, sourceUrl, timeRange)
-      
-      if (articles.length === 0) {
-        const result = { success: true, articlesCount: 0, message: 'No recent articles found' }
-        
-        // Update task progress - mark as completed (even if no articles)
-        if (taskId) {
-          await updateTaskProgress(supabaseClient, taskId, sourceName, 'completed', result)
-          await checkAndCompleteTask(supabaseClient, taskId)
-        }
-        
-        return result
-      }
-
-      // Queue content processing jobs
-      const queueResult = await queueContentProcessingJobs(supabaseClient, articles, sourceId)
-      
-      const result = { 
-        success: true, 
-        articlesCount: articles.length, 
-        message: `Queued ${queueResult.queuedCount} articles for processing` 
-      }
-      
-      // Update task progress - mark as completed
-      if (taskId) {
-        await updateTaskProgress(supabaseClient, taskId, sourceName, 'completed', result)
-        await checkAndCompleteTask(supabaseClient, taskId)
-      }
-      
-      return result
+      console.log(`📡 Processing RSS feed: ${sourceUrl}`);
+      articles = await parseRSSContent(detection.content, sourceUrl, timeRange);
     } else {
-      const result = { success: false, articlesCount: 0, message: 'Source is not an RSS feed' }
-      
-      // Update task progress - mark as skipped
-      if (taskId) {
-        await updateTaskProgress(supabaseClient, taskId, sourceName, 'skipped', { error: result.message })
-        await checkAndCompleteTask(supabaseClient, taskId)
-      }
-      
-      return result
+      // Future logic for non-RSS content can go here
+      console.log(`🤷‍♀️ Non-RSS content type (${detection.contentType}) not yet supported. Skipping.`);
     }
+
+    const { success, queuedCount } = await queueContentProcessingJobs(supabaseClient, articles, sourceId);
+    articlesCount = queuedCount;
+
+    if (!success) {
+      // Log the error but don't throw, as the job should be considered "completed" from a fetch perspective
+      console.error(`⚠️ Failed to queue articles for source ${sourceName}, but marking fetch as complete.`);
+    }
+
+    const result = { success: true, articlesCount, message: `Found and queued ${articlesCount} new articles.` };
+    
+    if (taskId) {
+      await updateTaskProgress(supabaseClient, taskId, sourceName, 'completed', result);
+      await checkAndCompleteTask(supabaseClient, taskId);
+    }
+    
+    return result;
 
   } catch (error) {
-    console.error('❌ Source processing error:', error)
-    const result = { success: false, articlesCount: 0, message: error.message }
+    console.error(`❌ Processing source ${sourceName} failed:`, error.message);
+    const result = { success: false, articlesCount: 0, message: error.message };
     
-    // Update task progress - mark as skipped due to error
     if (taskId) {
-      await updateTaskProgress(supabaseClient, taskId, sourceName, 'skipped', { error: error.message })
-      await checkAndCompleteTask(supabaseClient, taskId)
+      await updateTaskProgress(supabaseClient, taskId, sourceName, 'skipped', { error: error.message });
+      await checkAndCompleteTask(supabaseClient, taskId);
     }
     
-    return result
+    // We re-throw the error so the main Deno.serve handler catches it
+    // and correctly updates the fetch job status to 'failed'.
+    throw error;
   }
 }
 
@@ -520,124 +531,32 @@ async function queueContentProcessingJobs(
   articles: Article[],
   sourceId: number
 ): Promise<{ success: boolean; queuedCount: number }> {
-  
-  console.log(`📋 Queueing ${articles.length} articles for content processing`)
-  
-  try {
-    // Check for existing content items to avoid duplicates
-    const contentItems = articles.map(article => ({
-      source_id: sourceId,
-      title: article.title,
-      content_url: article.link,
-      published_date: article.publishedDate,
-      content_text: article.description || article.content || ''
-    }))
-
-    // Try to insert content items, handling duplicates gracefully
-    let finalData: any[] = []
-    
-    try {
-      const { data, error } = await supabaseClient
-        .from('content_items')
-        .insert(contentItems)
-        .select('id')
-
-      if (data) {
-        finalData = data
-      } else if (error) {
-        throw error
-      }
-    } catch (insertError) {
-      // If bulk insert fails (likely due to duplicates), try individual inserts
-      console.log('⚠️ Bulk insert failed, trying individual inserts to handle duplicates:', insertError.message)
-      
-      for (const item of contentItems) {
-        try {
-          const { data: singleData, error: singleError } = await supabaseClient
-            .from('content_items')
-            .insert(item)
-            .select('id')
-            .single()
-          
-          if (singleData) {
-            finalData.push(singleData)
-          } else if (singleError && singleError.code === '23505') {
-            // Duplicate key error - this is expected and OK
-            console.log(`⏭️ Content item already exists, skipping: "${item.title}"`)
-          } else {
-            console.error(`❌ Failed to insert content item "${item.title}":`, singleError)
-          }
-        } catch (itemError) {
-          console.log(`⏭️ Skipping duplicate content item: "${item.title}"`)
-        }
-      }
-    }
-    
-    if (finalData.length === 0) {
-      console.log('📝 All content items were duplicates, but still triggering processing to ensure workflow completion')
-      
-      // Even if no new items, we still need to get existing items to trigger processing
-      const { data: existingItems } = await supabaseClient
-        .from('content_items')
-        .select('id')
-        .eq('source_id', sourceId)
-        .order('created_at', { ascending: false })
-        .limit(Math.min(articles.length, 5)) // Take up to 5 recent items
-      
-      finalData = existingItems || []
-    }
-
-    console.log(`✅ Successfully queued ${finalData.length} content items for processing`)
-    
-    // Trigger content processing jobs with batch control
-    const BATCH_SIZE = 5  // 控制批次大小，避免过多并发
-    const BATCH_DELAY = 2000  // 批次间延迟（毫秒）
-    
-    let triggeredCount = 0
-    for (let i = 0; i < finalData.length; i += BATCH_SIZE) {
-      const batch = finalData.slice(i, i + BATCH_SIZE)
-      
-      // 并行触发当前批次
-      const batchPromises = batch.map(async (item) => {
-        try {
-          console.log(`🚀 Triggering process-content for item ${item.id}`)
-          
-          const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-content`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ contentItemId: item.id })
-          })
-          
-          if (response.ok) {
-            console.log(`✅ Successfully triggered processing for item ${item.id}`)
-            triggeredCount++
-          } else {
-            console.error(`❌ Failed to trigger processing for item ${item.id}: ${response.status}`)
-          }
-        } catch (error) {
-          console.error(`❌ Failed to trigger processing for item ${item.id}:`, error)
-        }
-      })
-      
-      // 等待当前批次完成（但不会阻塞整个fetch-content响应）
-      await Promise.allSettled(batchPromises)
-      
-      // 如果还有下一批次，稍微延迟
-      if (i + BATCH_SIZE < finalData.length) {
-        console.log(`⏳ Waiting ${BATCH_DELAY}ms before next batch...`)
-        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY))
-      }
-    }
-    
-    console.log(`🚀 Successfully triggered ${triggeredCount}/${finalData.length} processing jobs`)
-
-    return { success: true, queuedCount: finalData.length }
-
-  } catch (error) {
-    console.error('❌ Failed to queue content processing jobs:', error)
-    return { success: false, queuedCount: 0 }
+  if (articles.length === 0) {
+    return { success: true, queuedCount: 0 };
   }
+
+  console.log(`📋 Adding ${articles.length} articles to the processing queue for source ${sourceId}`);
+
+  const itemsToInsert = articles.map(article => ({
+    source_id: sourceId,
+    title: article.title,
+    content_url: article.link,
+    content_text: article.content,
+    published_date: article.publishedDate,
+    is_processed: false, // Use the correct boolean field
+    processing_error: null,
+  }));
+
+  // Insert items and ignore conflicts on the unique 'content_url'
+  const { error, count } = await supabaseClient
+    .from('content_items')
+    .insert(itemsToInsert, { onConflict: 'content_url', ignoreDuplicates: true });
+
+  if (error) {
+    console.error(`❌ Failed to insert content items for source ${sourceId}:`, error);
+    return { success: false, queuedCount: 0 };
+  }
+
+  console.log(`✅ Saved ${count || 0} new articles for source: ${sourceId}`);
+  return { success: true, queuedCount: count || 0 };
 } 

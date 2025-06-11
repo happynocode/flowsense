@@ -53,50 +53,27 @@ Deno.serve(async (req) => {
 
     // 处理每个pending任务
     for (const task of pendingTasks) {
-      try {
-        console.log(`🚀 Processing task ${task.id}: ${task.task_type}`)
+      console.log(`🚀 Triggering processing for task ${task.id}: ${task.task_type}`)
 
-        // 调用execute-processing-task来处理这个任务
-        const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/execute-processing-task`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            taskId: task.id
-          })
+      // Fire-and-forget the processing task
+      fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/execute-processing-task`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          taskId: task.id
         })
+      }).catch(error => {
+        // Log errors but don't let them block the processor
+        console.error(`❌ Background trigger for task ${task.id} failed:`, error.message)
+      })
 
-        if (response.ok) {
-          const result = await response.json()
-          console.log(`✅ Successfully triggered processing for task ${task.id}`)
-          processedTasks.push({
-            taskId: task.id,
-            status: 'triggered',
-            result: result
-          })
-        } else {
-          const error = await response.text()
-          console.error(`❌ Failed to trigger processing for task ${task.id}:`, error)
-          processedTasks.push({
-            taskId: task.id,
-            status: 'failed',
-            error: error
-          })
-        }
-
-      } catch (error) {
-        console.error(`❌ Error processing task ${task.id}:`, error)
-        processedTasks.push({
-          taskId: task.id,
-          status: 'error',
-          error: error.message
-        })
-      }
-
-      // 添加小延迟避免过载
-      await new Promise(resolve => setTimeout(resolve, 500))
+      processedTasks.push({
+        taskId: task.id,
+        status: 'triggered'
+      })
     }
 
     return new Response(JSON.stringify({

@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.45/deno-dom-wasm.ts'
 
 const PROCESSING_CONFIG = {
-  TIMEOUT_MS: 50000, // 50 seconds for individual content processing
+  TIMEOUT_MS: 300000, // 5 minutes for individual content processing
   MAX_CONTENT_LENGTH: 50000,
   MIN_CONTENT_LENGTH: 200,
 }
@@ -85,22 +85,12 @@ async function processContentItem(
 
     if (existingSummary) {
       console.log('⏭️ Summary already exists for this content item, skipping duplicate processing')
-      await supabaseClient
-        .from('content_items')
-        .update({ status: 'completed' })
-        .eq('id', contentItemId)
-      
-      // Still trigger digest generation check even for duplicates
       await checkAndTriggerDigestGeneration(supabaseClient, contentItem.source_id)
       
       return { success: true, message: 'Content already processed (duplicate skip)', hasSummary: true }
     }
 
-    // Update status to processing
-    await supabaseClient
-      .from('content_items')
-      .update({ status: 'processing' })
-      .eq('id', contentItemId)
+    // Item is now considered processing. The lock in get_and_lock_pending_items prevents others from picking it.
 
     // Check if we need to fetch full content
     let fullContent = contentItem.content_text || ''
@@ -120,7 +110,7 @@ async function processContentItem(
       await supabaseClient
         .from('content_items')
         .update({ 
-          is_processed: false,
+          is_processed: true, // It's "processed" but with a failure state
           processing_error: 'Insufficient content' 
         })
         .eq('id', contentItemId)
@@ -143,12 +133,14 @@ async function processContentItem(
     if (summaryResult.success) {
       await supabaseClient
         .from('content_items')
-        .update({ is_processed: true })
+        .update({ 
+          is_processed: true,
+          processing_error: null 
+        })
         .eq('id', contentItemId)
       
       console.log(`✅ Successfully processed content item: ${contentItemId}`)
       
-      // Check if this was the last item to be processed and trigger digest generation
       await checkAndTriggerDigestGeneration(supabaseClient, contentItem.source_id)
       
       return { success: true, message: 'Content processed and summarized', hasSummary: true }
@@ -156,7 +148,7 @@ async function processContentItem(
       await supabaseClient
         .from('content_items')
         .update({ 
-          is_processed: false,
+          is_processed: true, // Mark as processed even on failure
           processing_error: summaryResult.error || 'Summary generation failed' 
         })
         .eq('id', contentItemId)
@@ -172,7 +164,7 @@ async function processContentItem(
       await supabaseClient
         .from('content_items')
         .update({ 
-          is_processed: false,
+          is_processed: true, // Mark as processed even on failure
           processing_error: error.message 
         })
         .eq('id', contentItemId)

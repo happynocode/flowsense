@@ -872,53 +872,54 @@ export const userApi = {
     error?: string;
     message?: string;
   }> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not authenticated');
+    const user = session.user;
 
     try {
-      console.log(`🎯 直接处理模式: ${timeRange}`);
+      console.log(`🎯 Triggering direct processing for user ${user.id}, time range: ${timeRange}`);
       
-      // 直接调用execute-processing-task Edge Function，不通过任务系统
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/execute-processing-task`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          user_id: user.id,
+          userId: user.id,
           timeRange: timeRange,
-          directMode: true  // 标记为直接模式
         })
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error(`❌ Process directly failed with status ${response.status}:`, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('✅ 直接处理结果:', result);
+      console.log('✅ Directly processing triggered successfully:', result);
 
       if (result.success) {
         return {
           success: true,
           data: result,
-          message: `Successfully processed ${timeRange} content directly`
+          message: result.message || `Successfully started processing for ${timeRange}.`
         };
       } else {
         return {
           success: false,
-          error: result.error || 'Direct processing failed',
-          message: 'Processing failed'
+          error: result.error || 'Direct processing failed to start.',
+          message: result.message || 'Starting process failed.'
         };
       }
 
     } catch (error) {
-      console.error('❌ 直接处理失败:', error);
+      console.error('❌ Directly process initiation failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        message: 'Direct processing failed'
+        message: 'Direct processing initiation failed'
       };
     }
   }
