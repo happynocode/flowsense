@@ -143,13 +143,10 @@ async function processContentItem(
     if (summaryResult.success) {
       await supabaseClient
         .from('content_items')
-        .update({ is_processed: true })
+        .update({ is_processed: true, status: 'completed' })
         .eq('id', contentItemId)
       
       console.log(`✅ Successfully processed content item: ${contentItemId}`)
-      
-      // Check if this was the last item to be processed and trigger digest generation
-      await checkAndTriggerDigestGeneration(supabaseClient, contentItem.source_id)
       
       return { success: true, message: 'Content processed and summarized', hasSummary: true }
     } else {
@@ -238,54 +235,73 @@ function extractTextContent(html: string): string {
     const parser = new DOMParser()
     const doc = parser.parseFromString(html, 'text/html')
 
-    // Remove script and style elements
-    const scriptsAndStyles = doc.querySelectorAll('script, style, nav, header, footer, aside, .sidebar, .menu, .navigation')
-    scriptsAndStyles.forEach(el => el.remove())
-
-    // Try to find main content area
-    const contentSelectors = [
-      'article',
-      '.post-content',
-      '.entry-content', 
-      '.article-content',
-      '.content',
-      'main',
-      '.main-content',
-      '.post',
-      '.entry',
-      '[role="main"]'
-    ]
-
-    let content = ''
+    if (!doc) {
+      throw new Error("Failed to parse HTML document.")
+    }
     
+    // 1. 移除所有已知的不相关元素 (增强版)
+    const elementsToRemove = doc.querySelectorAll(`
+      script, style, nav, header, footer, aside, .sidebar, .menu, 
+      .navigation, link, meta, .comments, #comments, .related-posts,
+      .author-bio, .social-share, .ad, .advertisement, noscript,
+      form, button, input, textarea, .actions, .pagination, .promo
+    `)
+    elementsToRemove.forEach(el => el.remove())
+
+    // 2. 分层内容选择器策略
+    const contentSelectors = [
+      // 平台特定选择器 (优先级最高)
+      '.post-content .post-body', // 适用于 Ghost 等平台
+      'div.single-post-body',    // 适用于某些 Substack 变体
+      'div.available-content',   // 适用于 Every.to
+      
+      // 通用高质量选择器
+      'article', 
+      '.post-content', 
+      '.entry-content', 
+      '.article-body', 
+      '.article-content',
+      
+      // 通用布局选择器
+      '.main-content', 
+      '[role="main"]',
+      '#main',
+      '.main'
+    ]
+    
+    let mainContent = null
     for (const selector of contentSelectors) {
-      const element = doc.querySelector(selector)
-      if (element) {
-        content = element.textContent || element.innerText || ''
-        if (content.length > PROCESSING_CONFIG.MIN_CONTENT_LENGTH) {
-          console.log(`✅ Found content using selector: ${selector}`)
-          break
-        }
+      mainContent = doc.querySelector(selector)
+      if (mainContent) {
+        console.log(`✅ Found content with selector: ${selector}`)
+        break
       }
     }
 
-    // Fallback to body if no good content found
-    if (content.length < PROCESSING_CONFIG.MIN_CONTENT_LENGTH) {
-      const body = doc.querySelector('body')
-      content = body?.textContent || body?.innerText || ''
-      console.log('📄 Using body content as fallback')
+    // 3. 降级策略: 如果都找不到，则使用 body
+    const contentElement = mainContent || doc.body
+    if (!contentElement) {
+      return ''
     }
-
-    // Clean up the content
-    content = content
-      .replace(/\s+/g, ' ')  // Replace multiple whitespace with single space
-      .replace(/\n\s*\n/g, '\n')  // Remove extra blank lines
-      .trim()
-
-    return content
+    
+    // 4. 文本清理 (增强版)
+    let text = contentElement.textContent.replace(/\s\s+/g, ' ').trim()
+    
+    // 按行分割，移除无意义的短行 (如导航链接残留)
+    // 并将多个换行符压缩为一个
+    text = text.split('\n').map(line => line.trim()).filter(line => {
+        const trimmedLine = line.trim()
+        if (trimmedLine.length === 0) return false
+        // 移除少于5个单词且不包含标点的行，这有助于过滤掉菜单项
+        const wordCount = trimmedLine.split(/\s+/).length
+        const hasPunctuation = /[.?!,;:]/.test(trimmedLine)
+        return wordCount > 5 || hasPunctuation
+    }).join('\n\n').replace(/\n{3,}/g, '\n\n')
+    
+    return text
 
   } catch (error) {
-    console.error('❌ Failed to extract text content:', error)
+    console.error("Error extracting text content:", error.message)
     return ''
   }
 }
@@ -350,6 +366,10 @@ async function generateAISummary(
 }
 
 async function callDeepSeekAPI(content: string, apiKey: string): Promise<string> {
+  if (!apiKey) {
+    throw new Error('DeepSeek API key not found.')
+  }
+
   const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: {

@@ -15,7 +15,7 @@ interface StartTaskRequest {
 
 interface StartTaskResponse {
   success: boolean;
-  task_id?: number;
+  taskId?: number;
   message?: string;
   error?: string;
 }
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
 
     const response: StartTaskResponse = {
       success: true,
-      task_id: task.id,
+      taskId: task.id,
       message: `已创建处理任务 ID=${task.id}，请手动触发 execute-processing-task 或等待定时任务执行`
     }
 

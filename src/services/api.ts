@@ -865,10 +865,10 @@ export const userApi = {
     }
   },
 
-  // 🚀 NEW: 直接处理函数 - 用于手动按钮，绕过任务系统
+  // 🚀 REFACTORED: 直接处理函数 - 现在遵循 "先创建，再执行" 的模式
   processDirectly: async (timeRange: 'today' | 'week'): Promise<{ 
     success: boolean; 
-    data?: any; 
+    taskId?: number;
     error?: string;
     message?: string;
   }> => {
@@ -876,49 +876,62 @@ export const userApi = {
     if (!user) throw new Error('Not authenticated');
 
     try {
-      console.log(`🎯 直接处理模式: ${timeRange}`);
+      console.log(`🎯 [Step 1/2] Creating task for time range: ${timeRange}`);
       
-      // 直接调用execute-processing-task Edge Function，不通过任务系统
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/execute-processing-task`, {
+      // 1. 调用 start-processing 创建任务
+      const startResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/start-processing`, {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ time_range: timeRange })
+      });
+
+      if (!startResponse.ok) {
+        const errorText = await startResponse.text();
+        throw new Error(`Failed to create task: ${errorText}`);
+      }
+
+      const startResult = await startResponse.json();
+      const taskId = startResult.taskId;
+
+      if (!taskId) {
+        throw new Error("Task ID was not returned from start-processing.");
+      }
+
+      console.log(`✅ [Step 1/2] Task created successfully. Task ID: ${taskId}`);
+      console.log(`🎯 [Step 2/2] Executing task: ${taskId}`);
+
+      // 2. 调用 execute-processing-task 执行任务 (fire and forget)
+      // 我们不需要等待它完成，因为它会很耗时。前端只需知道它已成功启动。
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/execute-processing-task`, {
+        method: 'POST',
+        headers: {
+          // 注意：这里需要用 service_role_key，因为 execute-processing-task 可能需要更高权限
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          user_id: user.id,
-          timeRange: timeRange,
-          directMode: true  // 标记为直接模式
-        })
+        body: JSON.stringify({ taskId: taskId })
+      }).catch(executionError => {
+        // 这个错误只在网络层面失败时触发，我们只记录它，不影响UI
+        console.error(`🚨 Network error when trying to execute task ${taskId}:`, executionError);
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+      console.log(`✅ [Step 2/2] Task execution triggered for Task ID: ${taskId}.`);
 
-      const result = await response.json();
-      console.log('✅ 直接处理结果:', result);
-
-      if (result.success) {
-        return {
-          success: true,
-          data: result,
-          message: `Successfully processed ${timeRange} content directly`
-        };
-      } else {
-        return {
-          success: false,
-          error: result.error || 'Direct processing failed',
-          message: 'Processing failed'
-        };
-      }
+      return {
+        success: true,
+        taskId: taskId,
+        message: `Task ${taskId} started successfully for ${timeRange} content.`
+      };
 
     } catch (error) {
-      console.error('❌ 直接处理失败:', error);
+      console.error('❌ Direct processing orchestration failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        message: 'Direct processing failed'
+        message: 'Failed to start processing task.'
       };
     }
   }
