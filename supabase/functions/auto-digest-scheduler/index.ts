@@ -1,5 +1,3 @@
-/// <reference types="https://esm.sh/v135/@deno/shim-deno@0.19.0/dist/shim.d.ts" />
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0'
 
@@ -213,35 +211,17 @@ serve(async (req) => {
 
         console.log(`✅ Created task ${task.id} for user ${user.email}`)
 
-        // 立即调用 execute-processing-task 来处理刚创建的任务
-        console.log(`🚀 Triggering execute-processing-task for task ID: ${task.id}`);
-        const executionResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/execute-processing-task`, {
+        // 立即调用task-processor来处理刚创建的任务
+        const taskProcessorResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/task-processor`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
             'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ taskId: task.id })
-        });
+          }
+        })
 
-        // 我们在这里可以不等待 execute-processing-task 的完整结果，因为它可能是长时间运行的。
-        // 我们只关心它是否被成功触发。
-        if (!executionResponse.ok) {
-          const errorBody = await executionResponse.text();
-          console.error(`❌ Failed to trigger execute-processing-task for task ${task.id}. Status: ${executionResponse.status}, Body: ${errorBody}`);
-          // 即使触发失败，我们仍然记录任务创建成功，但标记触发失败
-          results.push({
-            userId: user.id,
-            email: user.email,
-            status: 'failed_to_trigger',
-            taskId: task.id,
-            error: `Failed to trigger execution: ${errorBody}`
-          });
-          continue; // 继续处理下一个用户
-        }
-
-        const executionResult = await executionResponse.json();
-        console.log(`✅ Successfully triggered execution for task ${task.id}. Response:`, executionResult);
+        const taskProcessorResult = await taskProcessorResponse.json()
+        console.log(`📋 Task processor result for user ${user.email}:`, taskProcessorResult)
 
         // Update user's last auto digest run timestamp
         const { error: updateError } = await supabaseClient
@@ -263,7 +243,7 @@ serve(async (req) => {
           email: user.email,
           status: 'success',
           taskId: task.id,
-          taskProcessorStatus: 'triggered'
+          taskProcessorStatus: taskProcessorResult.success ? 'triggered' : 'failed'
         })
 
       } catch (error) {

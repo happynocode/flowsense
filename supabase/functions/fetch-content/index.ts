@@ -1,7 +1,5 @@
-/// <reference types="https://deno.land/x/deno@v1.44.4/runtime/plugins/dom.d.ts" />
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { DOMParser, Document } from 'https://deno.land/x/deno_dom@v0.1.45/deno-dom-wasm.ts'
-import puppeteer from "https://deno.land/x/puppeteer@16.2.0/mod.ts";
+import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.45/deno-dom-wasm.ts'
 
 interface Article {
   title: string;
@@ -215,36 +213,6 @@ Deno.serve(async (req) => {
   }
 })
 
-// =================================================================
-// 网站专属抓取配置
-// =================================================================
-interface SiteConfig {
-  scrapeUrl?: (baseUrl: string) => string;
-  containerSelector: string;
-  linkSelector: string;
-  dateSelector?: string;
-  findDateInContainer?: boolean;
-}
-
-const siteConfigs: { [key: string]: SiteConfig } = {
-  'www.therundown.ai': {
-    containerSelector: 'div.collection-item-div',
-    linkSelector: 'a.article-preview',
-    dateSelector: 'p.tertiary-text',
-  },
-  'every.to': {
-    scrapeUrl: () => `https://every.to/everything`,
-    containerSelector: 'div.mb-10',
-    linkSelector: 'a[href^="/p/"]',
-    dateSelector: 'div.text-sm',
-  },
-  'www.exponentialview.co': {
-    containerSelector: 'div[id*="post-body"]',
-    linkSelector: 'a[data-testid="post-preview-title"]',
-    dateSelector: 'time',
-  }
-};
-
 async function processSource(
   supabaseClient: any,
   sourceId: number,
@@ -255,18 +223,9 @@ async function processSource(
 ): Promise<{ success: boolean; articlesCount: number; message: string }> {
   
   try {
-    const url = new URL(sourceUrl);
-    const siteConfig = siteConfigs[url.hostname];
-
-    let scrapeUrl = sourceUrl;
-    if (siteConfig?.scrapeUrl) {
-        scrapeUrl = siteConfig.scrapeUrl(sourceUrl);
-        console.log(`🌐 Using site-specific scrape URL: ${scrapeUrl}`);
-    }
-
-    console.log(`🔍 Detecting content type for: ${scrapeUrl}`)
+    console.log(`🔍 Detecting content type for: ${sourceUrl}`)
     
-    const detection = await detectContentType(scrapeUrl)
+    const detection = await detectContentType(sourceUrl)
     if (!detection) {
       const result = { success: false, articlesCount: 0, message: 'Failed to fetch content' }
       
@@ -279,45 +238,52 @@ async function processSource(
       return result
     }
 
-    let articles: Article[] = [];
     if (detection.isRSS) {
-      console.log(`📡 Processing RSS feed: ${scrapeUrl}`)
-      articles = await parseRSSContent(detection.content, scrapeUrl, timeRange)
-    } else {
-      console.log(`📄 Non-RSS content detected. Scraping index page for articles: ${scrapeUrl}`)
-      articles = await scrapeIndexPageForArticles(
-        detection.content,
-        scrapeUrl,
-        timeRange,
-        siteConfig
-      );
-    }
+      console.log(`📡 Processing RSS feed: ${sourceUrl}`)
+      const articles = await parseRSSContent(detection.content, sourceUrl, timeRange)
       
-    if (articles.length === 0) {
-      const result = { success: true, articlesCount: 0, message: 'No recent articles found' }
+      if (articles.length === 0) {
+        const result = { success: true, articlesCount: 0, message: 'No recent articles found' }
+        
+        // Update task progress - mark as completed (even if no articles)
+        if (taskId) {
+          await updateTaskProgress(supabaseClient, taskId, sourceName, 'completed', result)
+          await checkAndCompleteTask(supabaseClient, taskId)
+        }
+        
+        return result
+      }
+
+      // Queue content processing jobs
+      const queueResult = await queueContentProcessingJobs(supabaseClient, articles, sourceId)
       
-      // Update task progress - mark as completed (even if no articles)
+      const result = { 
+        success: true, 
+        articlesCount: articles.length, 
+        message: `Queued ${queueResult.queuedCount} articles for processing` 
+      }
+      
+      // Update task progress - mark as completed
       if (taskId) {
         await updateTaskProgress(supabaseClient, taskId, sourceName, 'completed', result)
         await checkAndCompleteTask(supabaseClient, taskId)
       }
       
       return result
+    } else {
+      const result = { success: false, articlesCount: 0, message: 'Source is not an RSS feed' }
+      
+      // Update task progress - mark as skipped
+      if (taskId) {
+        await updateTaskProgress(supabaseClient, taskId, sourceName, 'skipped', { error: result.message })
+        await checkAndCompleteTask(supabaseClient, taskId)
+      }
+      
+      return result
     }
-    
-    const { queuedCount } = await queueContentProcessingJobs(supabaseClient, articles, sourceId)
-    const result = { success: true, articlesCount: queuedCount, message: `Queued ${queuedCount} articles for processing` }
-
-    // Update task progress - mark as completed
-    if (taskId) {
-      await updateTaskProgress(supabaseClient, taskId, sourceName, 'completed', result)
-      await checkAndCompleteTask(supabaseClient, taskId)
-    }
-    
-    return result
 
   } catch (error) {
-    console.error(`❌ Error processing source ${sourceName}:`, error)
+    console.error('❌ Source processing error:', error)
     const result = { success: false, articlesCount: 0, message: error.message }
     
     // Update task progress - mark as skipped due to error
@@ -330,65 +296,59 @@ async function processSource(
   }
 }
 
-// =================================================================
-// 核心逻辑：检测内容类型 (已升级为使用无头浏览器)
-// =================================================================
 async function detectContentType(url: string): Promise<ContentDetectionResult | null> {
-  try {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-    const page = await browser.newPage();
-    
-    await page.setExtraHTTPHeaders({
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      'Accept-Language': 'en-US,en;q=0.9',
-    });
+  const userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+  ]
 
-    console.log(`🚀 Launching headless browser to fetch: ${url}`);
-    const response = await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-    const content = await page.content();
-    await browser.close();
-
-    if (!response) {
-        console.error(`❌ Headless browser failed to get a response from ${url}`);
-        return null;
-    }
-
-    const contentType = response.headers()['content-type'] || '';
-    const responseStatus = response.status();
-    
-    console.log(`✅ Fetched via headless browser. Status: ${responseStatus}, Content-Type: ${contentType}, Content Length: ${content.length}`);
-
-    const isRSS = isRSSContent(contentType, content);
-
-    return { isRSS, contentType, content, responseStatus };
-
-  } catch (error) {
-    console.error(`❌ Deep fetch error for ${url}:`, error);
-    // Fallback to simple fetch if puppeteer fails for some reason (e.g. RSS feeds)
+  for (let attempt = 0; attempt < userAgents.length; attempt++) {
     try {
-        console.log(` puppeteer failed, falling back to simple fetch...`);
-        const res = await fetch(url, { headers: { 'Accept': 'application/xml, text/xml, application/rss+xml, text/html' } });
-        if (!res.ok) {
-            console.error(`❌ Fallback fetch also failed with status: ${res.status}`);
-            return null;
-        }
-        const contentType = res.headers.get('content-type') || '';
-        const content = await res.text();
-        const isRSS = isRSSContent(contentType, content);
-        return { isRSS, contentType, content, responseStatus: res.status };
-    } catch (fallbackError) {
-        console.error(`❌ Fallback fetch also failed:`, fallbackError);
-        return null;
+      console.log(`🤖 Trying content detection with: ${userAgents[attempt]}`)
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': userAgents[attempt],
+          'Accept': 'application/rss+xml, application/atom+xml, text/xml, application/xml, text/html, */*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        redirect: 'follow'
+      })
+
+      if (!response.ok) {
+        console.log(`❌ Response ${response.status} for ${url} with user-agent ${attempt + 1}`)
+        continue
+      }
+
+      const contentType = response.headers.get('content-type') || ''
+      console.log(`📄 Content-Type: ${contentType}`)
+      
+      const content = await response.text()
+      console.log(`📝 Content length: ${content.length}`)
+
+      const isRSS = isRSSContent(contentType, content)
+
+      return {
+        isRSS,
+        contentType,
+        content,
+        responseStatus: response.status
+      }
+
+    } catch (error) {
+      console.log(`❌ Attempt ${attempt + 1} failed:`, error.message)
+      if (attempt === userAgents.length - 1) {
+        throw error
+      }
     }
   }
+
+  return null
 }
 
-// =================================================================
-// 辅助函数：判断是否为 RSS 内容
-// =================================================================
 function isRSSContent(contentType: string, content: string): boolean {
   if (contentType.includes('rss') || contentType.includes('atom') || contentType.includes('xml')) {
     console.log('✅ RSS detected by content-type')
@@ -555,137 +515,6 @@ async function parseRSSWithRegex(xmlContent: string, cutoffDate: Date): Promise<
   }
 }
 
-async function scrapeIndexPageForArticles(
-  htmlContent: string,
-  baseUrl: string,
-  timeRange: string = 'week',
-  config?: SiteConfig
-): Promise<Article[]> {
-  const dom = new DOMParser().parseFromString(htmlContent, 'text/html');
-  if (!dom) return [];
-
-  const cutoffDate = getCutoffDate(timeRange);
-  const articles: Article[] = [];
-  const processedLinks = new Set<string>();
-
-  if (config) {
-    console.log(`⚙️ Using site-specific config for ${baseUrl}`);
-    const containers = dom.querySelectorAll(config.containerSelector);
-    console.log(`   -> Found ${containers.length} containers with selector: ${config.containerSelector}`);
-
-    for (const container of containers) {
-       if (articles.length >= PROCESSING_CONFIG.ARTICLES_PER_SOURCE) break;
-       
-       let linkElement: Element | null = container.matches(config.linkSelector)
-         ? container
-         : container.querySelector(config.linkSelector);
-
-       if (!linkElement) {
-           console.log(`   -> 🔗 Link not found in container with selector "${config.linkSelector}"`);
-           continue;
-       }
-
-       const href = linkElement.getAttribute('href');
-       if (!href) continue;
-
-       const articleUrl = new URL(href, baseUrl).toString();
-       if (processedLinks.has(articleUrl)) continue;
-
-       let date: Date | null = null;
-       if (config.dateSelector) {
-           const dateElement = container.querySelector(config.dateSelector);
-           const dateString = dateElement?.getAttribute('datetime') || dateElement?.textContent || '';
-           date = flexibleDateParser(dateString);
-       } else if (config.findDateInContainer) {
-           date = flexibleDateParser(container.textContent || '');
-       }
-
-       if (!date || date < cutoffDate) continue;
-        
-       const title = linkElement.textContent?.trim().replace(/\s+/g, ' ') || 'Untitled';
-       if (!title || title.length < 5) continue;
-
-       console.log(`   -> ✅ [${date.toISOString()}] ${title} | ${articleUrl}`);
-       articles.push({ title, link: articleUrl, publishedDate: date.toISOString() });
-       processedLinks.add(articleUrl);
-    }
-
-  } else {
-    // Fallback to the generic link-first strategy
-    console.log(`🔄 No specific config found. Using generic link-first strategy for ${baseUrl}`);
-    const linkSelectors = ['h2 a[href]', 'h3 a[href]', 'a[rel="bookmark"]', 'a[data-testid="post-preview-title"]'];
-    const links: Element[] = [];
-    linkSelectors.forEach(selector => dom.querySelectorAll(selector).forEach(link => links.push(link)));
-    
-    console.log(`   -> Found ${links.length} potential article links.`);
-
-    for (const link of links) {
-        if (articles.length >= PROCESSING_CONFIG.ARTICLES_PER_SOURCE) break;
-
-        const href = link.getAttribute('href');
-        if (!href) continue;
-        
-        const articleUrl = new URL(href, baseUrl).toString();
-        if (processedLinks.has(articleUrl)) continue;
-
-        const container = link.closest('article, li, div[class*="item"], div[class*="post"]');
-        const textToSearchDate = container?.textContent || '';
-        const date = flexibleDateParser(textToSearchDate);
-
-        if (!date || date < cutoffDate) continue;
-
-        const title = link.textContent?.trim().replace(/\s+/g, ' ') || 'Untitled';
-        if (!title || title.length < 5) continue;
-
-        console.log(`   -> ✅ [${date.toISOString()}] ${title} | ${articleUrl}`);
-        articles.push({ title, link: articleUrl, publishedDate: date.toISOString() });
-        processedLinks.add(articleUrl);
-    }
-  }
-
-
-  if (articles.length === 0) {
-    console.log(`⚠️ No recent articles found after scraping ${baseUrl}.`);
-  }
-
-  return articles.slice(0, PROCESSING_CONFIG.ARTICLES_PER_SOURCE);
-}
-
-// 辅助函数：根据时间范围获取截止日期
-function getCutoffDate(timeRange: string): Date {
-  const now = new Date();
-  const daysToSubtract = timeRange === 'today' ? 2 : 7; // 'today' a bit wider
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysToSubtract);
-}
-
-// 辅助函数：更灵活的日期解析器 (重写)
-function flexibleDateParser(text: string): Date | null {
-  if (!text) return null;
-
-  // Pattern 1: ISO-like dates (YYYY-MM-DD or datetime attributes)
-  let match = text.match(/\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?/);
-  if (match) {
-    const d = new Date(match[0]);
-    if (!isNaN(d.getTime())) return d;
-  }
-  
-  // Pattern 2: Month Day, Year (e.g., "June 8, 2025", "Jun 8 2025")
-  match = text.match(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}/i);
-  if (match) {
-    const d = new Date(match[0].replace(/,/, ''));
-    if (!isNaN(d.getTime())) return d;
-  }
-
-  // Pattern 3: Day Month Year (e.g., "08 June 2025", "Sun 08 June 2025")
-  match = text.match(/\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}/i);
-  if (match) {
-    const d = new Date(match[0]);
-    if (!isNaN(d.getTime())) return d;
-  }
-
-  return null;
-}
-
 async function queueContentProcessingJobs(
   supabaseClient: any,
   articles: Article[],
@@ -694,10 +523,6 @@ async function queueContentProcessingJobs(
   
   console.log(`📋 Queueing ${articles.length} articles for content processing`)
   
-  if (articles.length === 0) {
-    return { success: true, queuedCount: 0 }
-  }
-
   try {
     // Check for existing content items to avoid duplicates
     const contentItems = articles.map(article => ({
@@ -709,26 +534,107 @@ async function queueContentProcessingJobs(
     }))
 
     // Try to insert content items, handling duplicates gracefully
-    const { data, error } = await supabaseClient
+    let finalData: any[] = []
+    
+    try {
+      const { data, error } = await supabaseClient
         .from('content_items')
         .insert(contentItems)
         .select('id')
 
-    if (error) {
-        // 23505 is the error code for unique violation
-        if (error.code === '23505') {
-            console.log('⚠️ Some content items were duplicates, which is expected.')
-            // Even with duplicates, we can consider the operation "successful"
-            // We'll query to see how many were actually inserted if needed, but for now this is fine.
-            const { count } = await supabaseClient.from('content_items').select('id', { count: 'exact' }).in('content_url', articles.map(a => a.link))
-            return { success: true, queuedCount: count || 0 }
-        } else {
-            throw error;
+      if (data) {
+        finalData = data
+      } else if (error) {
+        throw error
+      }
+    } catch (insertError) {
+      // If bulk insert fails (likely due to duplicates), try individual inserts
+      console.log('⚠️ Bulk insert failed, trying individual inserts to handle duplicates:', insertError.message)
+      
+      for (const item of contentItems) {
+        try {
+          const { data: singleData, error: singleError } = await supabaseClient
+            .from('content_items')
+            .insert(item)
+            .select('id')
+            .single()
+          
+          if (singleData) {
+            finalData.push(singleData)
+          } else if (singleError && singleError.code === '23505') {
+            // Duplicate key error - this is expected and OK
+            console.log(`⏭️ Content item already exists, skipping: "${item.title}"`)
+          } else {
+            console.error(`❌ Failed to insert content item "${item.title}":`, singleError)
+          }
+        } catch (itemError) {
+          console.log(`⏭️ Skipping duplicate content item: "${item.title}"`)
         }
+      }
     }
     
-    console.log(`✅ Successfully queued ${data?.length || 0} new content items for processing`)
-    return { success: true, queuedCount: data?.length || 0 }
+    if (finalData.length === 0) {
+      console.log('📝 All content items were duplicates, but still triggering processing to ensure workflow completion')
+      
+      // Even if no new items, we still need to get existing items to trigger processing
+      const { data: existingItems } = await supabaseClient
+        .from('content_items')
+        .select('id')
+        .eq('source_id', sourceId)
+        .order('created_at', { ascending: false })
+        .limit(Math.min(articles.length, 5)) // Take up to 5 recent items
+      
+      finalData = existingItems || []
+    }
+
+    console.log(`✅ Successfully queued ${finalData.length} content items for processing`)
+    
+    // Trigger content processing jobs with batch control
+    const BATCH_SIZE = 5  // 控制批次大小，避免过多并发
+    const BATCH_DELAY = 2000  // 批次间延迟（毫秒）
+    
+    let triggeredCount = 0
+    for (let i = 0; i < finalData.length; i += BATCH_SIZE) {
+      const batch = finalData.slice(i, i + BATCH_SIZE)
+      
+      // 并行触发当前批次
+      const batchPromises = batch.map(async (item) => {
+        try {
+          console.log(`🚀 Triggering process-content for item ${item.id}`)
+          
+          const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-content`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ contentItemId: item.id })
+          })
+          
+          if (response.ok) {
+            console.log(`✅ Successfully triggered processing for item ${item.id}`)
+            triggeredCount++
+          } else {
+            console.error(`❌ Failed to trigger processing for item ${item.id}: ${response.status}`)
+          }
+        } catch (error) {
+          console.error(`❌ Failed to trigger processing for item ${item.id}:`, error)
+        }
+      })
+      
+      // 等待当前批次完成（但不会阻塞整个fetch-content响应）
+      await Promise.allSettled(batchPromises)
+      
+      // 如果还有下一批次，稍微延迟
+      if (i + BATCH_SIZE < finalData.length) {
+        console.log(`⏳ Waiting ${BATCH_DELAY}ms before next batch...`)
+        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY))
+      }
+    }
+    
+    console.log(`🚀 Successfully triggered ${triggeredCount}/${finalData.length} processing jobs`)
+
+    return { success: true, queuedCount: finalData.length }
 
   } catch (error) {
     console.error('❌ Failed to queue content processing jobs:', error)

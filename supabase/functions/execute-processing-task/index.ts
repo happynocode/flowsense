@@ -1,188 +1,352 @@
-/// <reference types="https://deno.land/x/deno@v1.44.4/runtime/plugins/dom.d.ts" />
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders } from '../_shared/cors.ts'
+import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-console.log('🚀 Execute-processing-task function initialized')
+// Configuration for batch processing
+const PROCESSING_CONFIG = {
+  TIMEOUT_MS: 10000, // 10 seconds - just for orchestration
+}
 
-// Helper function to update task progress
-async function updateTaskStatus(supabaseClient: any, taskId: number, status: string, result?: any) {
-  const { error } = await supabaseClient
-    .from('processing_tasks')
-    .update({ status, result: result || undefined, updated_at: new Date().toISOString() })
-    .eq('id', taskId)
-  if (error) {
-    console.error(`❌ Failed to update task ${taskId} status to ${status}:`, error)
-  } else {
-    console.log(`✅ Task ${taskId} status updated to ${status}`)
-  }
+// Helper function to create timeout promise
+function createTimeoutPromise<T>(ms: number, errorMessage: string): Promise<T> {
+  return new Promise((_, reject) => {
+    setTimeout(() => reject(new Error(errorMessage)), ms);
+  });
+}
+
+// CORS headers helper
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    })
   }
 
-  const supabaseClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  )
-
-  let taskId: number | null = null;
-
   try {
-    const body = await req.json()
-    console.log("✅ Received request body:", body);
-    taskId = body.taskId
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
-    if (!taskId || typeof taskId !== 'number') {
-      throw new Error('A valid numeric taskId is required')
+    if (req.method !== 'POST') {
+      return new Response('Method not allowed', { 
+        status: 405,
+        headers: corsHeaders,
+      })
     }
 
-    console.log(`▶️ Starting execution for task: ${taskId}`)
-    await updateTaskStatus(supabaseClient, taskId, 'processing')
+    const body = await req.json()
+    const taskId = body.taskId || body.task_id  // 支持两种参数名
+    const directMode = body.directMode || false
+    const userId = body.user_id
+    const timeRange = body.timeRange
 
-    // 1. Get user_id from the task
-    const { data: taskData, error: taskError } = await supabaseClient
+    // 检查是否为直接模式
+    if (directMode) {
+      if (!userId || !timeRange) {
+        return new Response(JSON.stringify({ error: 'Missing user_id or timeRange for direct mode' }), { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        })
+      }
+
+      console.log(`🎯 Starting direct processing for user: ${userId}, timeRange: ${timeRange}`)
+
+      // 直接处理模式，绕过任务系统
+      const result = await Promise.race([
+        startDirectProcessing(supabaseClient, userId, timeRange),
+        createTimeoutPromise(PROCESSING_CONFIG.TIMEOUT_MS, 'Direct processing startup timeout')
+      ])
+
+      return new Response(JSON.stringify(result), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      })
+    }
+
+    // 原有的任务模式
+    if (!taskId) {
+      return new Response(JSON.stringify({ error: 'Missing taskId or task_id' }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      })
+    }
+
+    console.log(`🚀 Starting processing orchestration for task: ${taskId}`)
+
+    // Wrap the orchestration in a timeout (short timeout since we're not waiting for completion)
+    const result = await Promise.race([
+      startProcessingOrchestration(supabaseClient, taskId),
+      createTimeoutPromise(PROCESSING_CONFIG.TIMEOUT_MS, 'Orchestration startup timeout')
+    ])
+
+    return new Response(JSON.stringify(result), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    })
+
+  } catch (error) {
+    console.error('❌ Processing orchestration error:', error)
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error.message 
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    })
+  }
+})
+
+// 🎯 NEW: 直接处理函数 - 绕过任务系统
+async function startDirectProcessing(
+  supabaseClient: any,
+  userId: string,
+  timeRange: string
+): Promise<{ success: boolean; message: string; results: any }> {
+  
+  try {
+    console.log(`🎯 Starting direct processing for user: ${userId}, timeRange: ${timeRange}`)
+
+    // Get user sources directly
+    const { data: userSources, error: sourcesError } = await supabaseClient
+      .from('content_sources')
+      .select('id, name, url, source_type')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+
+    if (sourcesError) {
+      console.error('❌ Failed to fetch user sources:', sourcesError)
+      return { success: false, message: 'Failed to fetch user sources', results: null }
+    }
+
+    console.log(`📊 Direct processing for user ${userId} with ${userSources?.length || 0} sources`)
+
+    const sourcesCount = userSources?.length || 0
+
+    // Start processing each source (fire and forget)
+    if (userSources && userSources.length > 0) {
+      console.log(`🎯 Starting direct processing for ${sourcesCount} sources...`)
+      
+      for (const source of userSources) {
+        if (!source) continue
+
+        // Fire and forget - don't await, 直接模式不需要taskId
+        triggerFetchContentDirect(
+          source.id,
+          source.url,
+          source.name,
+          timeRange,
+          userId
+        ).catch(error => {
+          console.error(`❌ Failed to trigger direct processing for source ${source.name}:`, error)
+        })
+      }
+    }
+
+    console.log(`✅ Direct processing started for user ${userId}`)
+
+    return {
+      success: true,
+      message: `Direct processing started for ${sourcesCount} sources. Processing will continue in background.`,
+      results: {
+        userId,
+        timeRange,
+        totalSources: sourcesCount,
+        status: 'direct_processing_started'
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Direct processing error:', error)
+    return { success: false, message: error.message, results: null }
+  }
+}
+
+async function startProcessingOrchestration(
+  supabaseClient: any,
+  taskId: number
+): Promise<{ success: boolean; message: string; results: any }> {
+  
+  try {
+    console.log(`📋 Starting orchestration for task: ${taskId}`)
+
+    // Get task details
+    const { data: task, error: taskError } = await supabaseClient
       .from('processing_tasks')
-      .select('user_id, config')
+      .select('*')
       .eq('id', taskId)
       .single()
 
-    if (taskError || !taskData) {
-      throw new Error(`Task not found or failed to retrieve: ${taskError?.message || 'No data'}`)
+    if (taskError || !task) {
+      console.error('❌ Failed to fetch task:', taskError)
+      return { success: false, message: 'Task not found', results: null }
     }
-    
-    const { user_id, config } = taskData;
-    const timeRange = config?.time_range || 'week';
-    console.log(`🧑‍💻 Task for user ${user_id} with time range '${timeRange}'.`);
 
-    // 2. REFACTORED: Get all active sources for the user directly
-    console.log(`🔍 Fetching active sources for user ${user_id}...`);
-    const { data: sources, error: sourcesError } = await supabaseClient
-        .from('content_sources')
-        .select('id, url, name')
-        .eq('user_id', user_id)
-        .eq('is_active', true);
-    
+    // Get user sources separately  
+    const { data: userSources, error: sourcesError } = await supabaseClient
+      .from('content_sources')
+      .select('id, name, url, source_type')
+      .eq('user_id', task.user_id)
+      .eq('is_active', true)
+
     if (sourcesError) {
-        throw new Error(`Failed to fetch sources for user ${user_id}: ${sourcesError.message}`);
+      console.error('❌ Failed to fetch user sources:', sourcesError)
+      return { success: false, message: 'Failed to fetch user sources', results: null }
     }
 
-    if (!sources || sources.length === 0) {
-      await updateTaskStatus(supabaseClient, taskId, 'completed', { message: 'User has no active sources to process.' })
-      return new Response(JSON.stringify({ success: true, message: 'No active sources to process.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Update task status to running
+    await supabaseClient
+      .from('processing_tasks')
+      .update({ 
+        status: 'running',
+        started_at: new Date().toISOString()
       })
-    }
-    
-    console.log(`📚 Task ${taskId} has ${sources.length} active sources to process.`)
+      .eq('id', taskId)
 
-    // 3. Sequentially invoke fetch-content for each source
-    for (const source of sources) {
-      console.log(`--- Invoking fetch-content for source: ${source.name} (ID: ${source.id}) ---`)
-      try {
-        const fetchResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/fetch-content`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            sourceId: source.id, 
-            sourceUrl: source.url,
-            sourceName: source.name,
-            timeRange: timeRange
-          }),
+    console.log(`📊 Task: ${task.task_type} for user ${task.user_id} with ${userSources?.length || 0} sources`)
+
+    const sourcesCount = userSources?.length || 0
+
+    // Start processing each source (fire and forget)
+    if (userSources && userSources.length > 0) {
+      console.log(`🚀 Starting async processing for ${sourcesCount} sources...`)
+      
+      for (const source of userSources) {
+        if (!source) continue
+
+        // Fire and forget - don't await
+        triggerFetchContentAsync(
+          source.id,
+          source.url,
+          source.name,
+          task.config?.time_range || 'week',
+          taskId
+        ).catch(error => {
+          console.error(`❌ Failed to trigger processing for source ${source.name}:`, error)
         })
-
-        if (!fetchResponse.ok) {
-          const errorBody = await fetchResponse.text()
-          console.error(`❌ fetch-content for ${source.name} failed with status ${fetchResponse.status}: ${errorBody}`)
-        } else {
-          const result = await fetchResponse.json()
-          console.log(`✅ fetch-content for ${source.name} succeeded: ${result.message}`)
-        }
-      } catch (e) {
-        console.error(`❌ Error invoking fetch-content for ${source.name}:`, e.message)
       }
-      console.log(`--- Finished fetch-content for source: ${source.name} ---`)
     }
 
-    // 4. Get all unprocessed content items for the user from this task's sources
-    console.log(`🧐 Getting all unprocessed items for user ${user_id} from this task...`)
-    const sourceIds = sources.map((s: any) => s.id);
-    const { data: contentItems, error: itemsError } = await supabaseClient
-      .from('content_items')
-      .select('id')
-      .in('source_id', sourceIds)
-      .eq('is_processed', false)
+    console.log(`✅ Processing orchestration started for task ${taskId}`)
 
-    if (itemsError) throw itemsError
-    if (!contentItems || contentItems.length === 0) {
-        console.log('✅ No new content items to process for this task.')
-    } else {
-        console.log(`Found ${contentItems.length} unprocessed content items to process.`)
+    return {
+      success: true,
+      message: `Processing started for ${sourcesCount} sources. Processing will continue in background.`,
+      results: {
+        taskId,
+        totalSources: sourcesCount,
+        status: 'processing_started'
+      }
     }
 
-    // 5. Batch-invoke process-content
-    if (contentItems && contentItems.length > 0) {
-        const BATCH_SIZE = 5
-        const BATCH_DELAY = 1000 // Reduced delay
-        for (let i = 0; i < contentItems.length; i += BATCH_SIZE) {
-            const batch = contentItems.slice(i, i + BATCH_SIZE)
-            console.log(`⚙️ Processing batch ${Math.floor(i/BATCH_SIZE) + 1} with ${batch.length} items.`)
-            
-            const promises = batch.map(item =>
-                fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-content`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ contentItemId: item.id })
-                }).then(res => {
-                    if(!res.ok) console.error(`Error processing item ${item.id}: ${res.statusText}`)
-                    else console.log(`👍 Successfully triggered processing for item ${item.id}`)
-                })
-            )
-            await Promise.allSettled(promises)
-
-            if (i + BATCH_SIZE < contentItems.length) {
-                await new Promise(resolve => setTimeout(resolve, BATCH_DELAY))
-            }
-        }
-    }
-    
-    // 6. Final check and trigger digest generation
-    console.log(`✅ All processing jobs triggered for task ${taskId}.`)
-    console.log(`➡️ Triggering digest generation for user ${user_id}.`)
-    
-    const digestResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-digest`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ userId: user_id, timeRange: timeRange })
-    })
-
-    if (!digestResponse.ok) {
-        throw new Error(`Failed to trigger digest generation: ${await digestResponse.text()}`)
-    }
-
-    await updateTaskStatus(supabaseClient, taskId, 'completed', { message: 'All jobs triggered and digest generation initiated.' })
-
-    return new Response(JSON.stringify({ success: true, message: 'Processing complete and digest generation triggered.' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
   } catch (error) {
-    console.error(`❌ Unhandled error in execute-processing-task for task ${taskId}:`, error.message)
-    if (taskId) {
-        await updateTaskStatus(supabaseClient, taskId, 'failed', { error: error.message })
+    console.error('❌ Processing orchestration error:', error)
+    
+    // Update task status to failed
+    try {
+      await supabaseClient
+        .from('processing_tasks')
+        .update({ 
+          status: 'failed',
+          completed_at: new Date().toISOString(),
+          error_message: `Orchestration failed: ${error.message}`
+        })
+        .eq('id', taskId)
+    } catch (updateError) {
+      console.error('❌ Failed to update task status:', updateError)
     }
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    
+    return { success: false, message: error.message, results: null }
   }
-}) 
+}
+
+// 🎯 NEW: 直接模式的内容处理触发器
+async function triggerFetchContentDirect(
+  sourceId: number,
+  sourceUrl: string,
+  sourceName: string,
+  timeRange: string,
+  userId: string
+): Promise<void> {
+  
+  try {
+    console.log(`🎯 Triggering direct processing for source: ${sourceName}`)
+    
+    // Call fetch-content in fire-and-forget mode for direct processing
+    fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/fetch-content`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sourceId,
+        sourceUrl,
+        sourceName,
+        timeRange,
+        userId,
+        directMode: true  // 标记为直接模式
+      })
+    }).then(async (response) => {
+      if (response.ok) {
+        const result = await response.json()
+        console.log(`✅ Direct processing started for ${sourceName}: ${result.message}`)
+      } else {
+        console.error(`❌ Failed to start direct processing for ${sourceName}: ${response.status}`)
+      }
+    }).catch(error => {
+      console.error(`❌ Network error calling fetch-content for ${sourceName}:`, error)
+    })
+
+  } catch (error) {
+    console.error(`❌ Failed to trigger fetch-content for ${sourceName}:`, error)
+    throw error
+  }
+}
+
+async function triggerFetchContentAsync(
+  sourceId: number,
+  sourceUrl: string,
+  sourceName: string,
+  timeRange: string,
+  taskId: number
+): Promise<void> {
+  
+  try {
+    console.log(`🔄 Triggering async processing for source: ${sourceName}`)
+    
+    // Call fetch-content in fire-and-forget mode
+    fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/fetch-content`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sourceId,
+        sourceUrl,
+        sourceName,
+        timeRange,
+        taskId
+      })
+    }).then(async (response) => {
+      if (response.ok) {
+        const result = await response.json()
+        console.log(`✅ Async processing started for ${sourceName}: ${result.message}`)
+      } else {
+        console.error(`❌ Failed to start processing for ${sourceName}: ${response.status}`)
+      }
+    }).catch(error => {
+      console.error(`❌ Network error calling fetch-content for ${sourceName}:`, error)
+    })
+
+  } catch (error) {
+    console.error(`❌ Failed to trigger fetch-content for ${sourceName}:`, error)
+    throw error
+  }
+} 

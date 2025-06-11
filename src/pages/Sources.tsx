@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -43,8 +43,6 @@ const Sources = () => {
   const [currentTask, setCurrentTask] = useState<any>(null);
   const [taskProgress, setTaskProgress] = useState<any>(null);
   const [isPollingTask, setIsPollingTask] = useState(false);
-  
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const { toast } = useToast();
 
@@ -160,6 +158,8 @@ const Sources = () => {
     }
   };
 
+
+
   // 🔄 轮询任务状态
   const pollTaskStatus = async (taskId: string) => {
     console.log('🔄 开始轮询任务状态, TaskID:', taskId);
@@ -194,7 +194,7 @@ const Sources = () => {
             // 🎉 任务完成通知，引导用户查看digest
             toast({
               title: "🎉 Processing Complete!",
-              description: `Successfully processed ${result?.processedSources?.length || 0} sources and generated ${result?.totalSummaries || 0} summaries. Click to view your digest!`,
+              description: `Successfully processed ${result.processedSources.length} sources and generated ${result.totalSummaries} summaries. Click to view your digest!`,
               action: (
                 <Button 
                   variant="outline" 
@@ -321,10 +321,11 @@ const Sources = () => {
     }
   };
 
-  // 🎯 REFACTORED: 直接处理函数 - 现在启动一个任务并开始轮询
+  // 🎯 NEW: 直接处理函数 - 用于手动按钮
   const handleProcessDirectly = async (timeRange: 'today' | 'week') => {
     console.log('🎯 ===== handleProcessDirectly CALLED =====');
     console.log('🎯 timeRange:', timeRange);
+    console.log('🎯 user:', user);
     
     setGlobalProcessing(true);
     setProcessResults(null);
@@ -333,134 +334,55 @@ const Sources = () => {
 
     try {
       const timeRangeText = timeRange === 'today' ? '今天' : '过去一周';
-      console.log(`🎯 启动处理任务 (${timeRangeText})...`);
+      console.log(`🎯 启动直接处理 (${timeRangeText})...`);
       
       toast({
-        title: "🚀 Starting Task...",
-        description: `Requesting to process ${timeRangeText}'s content...`,
+        title: "🚀 Processing Started",
+        description: `Processing ${timeRangeText}'s content directly...`,
       });
       
-      // 调用新的两步处理函数
+      // 直接调用处理函数，不通过任务系统
       const result = await userApi.processDirectly(timeRange);
       
-      console.log('🎯 Task start result:', result);
+      console.log('🎯 Direct processing result:', result);
       
-      if (result.success && result.taskId) {
-        setCurrentTask({ id: result.taskId, status: 'processing', time_range: timeRange });
-        setTaskProgress({ status: 'started', message: 'Task initiated, waiting for execution...' });
+      if (result.success) {
+        setProcessResults({ success: true, data: result.data });
         
         toast({
-          title: "✅ Task Started!",
-          description: `Task ID: ${result.taskId} is now processing. You can monitor the progress.`,
+          title: "🎉 Processing Complete!",
+          description: `Successfully processed ${timeRangeText}'s content directly. Click to view your digest!`,
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = '/digests'}
+              className="ml-2"
+            >
+              View Digest
+            </Button>
+          ),
         });
-
-        // 立即开始轮询任务状态
-        startPollingTaskStatus(result.taskId);
-
       } else {
         setProcessResults({ success: false, error: result.error });
         toast({
-          title: "❌ Task Start Failed",
-          description: result.error || "Failed to start processing task.",
+          title: "❌ Processing Failed",
+          description: result.error || "Failed to process content directly",
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error('🎯 ===== PROCESSING START ERROR =====');
-      console.error('🎯 启动任务失败:', error);
+      console.error('🎯 ===== DIRECT PROCESSING ERROR =====');
+      console.error('🎯 直接处理失败:', error);
       setProcessResults({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
       toast({
-        title: "❌ Critical Error",
-        description: "An unexpected error occurred while starting the task.",
+        title: "❌ Processing Failed",
+        description: "Failed to process content directly. Please try again.",
         variant: "destructive",
       });
-    }
-  };
-
-  // 🎯 轮询任务状态
-  const startPollingTaskStatus = (taskId: number) => {
-    // 确保不会重复启动轮询
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-    }
-
-    pollingIntervalRef.current = setInterval(async () => {
-      try {
-        const statusResult = await sourcesApi.getTaskStatus(taskId.toString(), user?.id);
-        
-        if (statusResult.success && statusResult.task) {
-          const task = statusResult.task;
-          setCurrentTask(task);
-          setTaskProgress(task.progress);
-          
-          console.log('📊 Task status:', {
-            taskId,
-            status: task.status,
-            progress: task.progress,
-            created_at: task.created_at,
-            started_at: task.started_at,
-            elapsed_time: task.progress?.elapsed_time
-          });
-          
-          // 任务完成
-          if (task.status === 'completed') {
-            clearInterval(pollingIntervalRef.current);
-            setIsPollingTask(false);
-            setGlobalProcessing(false);
-            
-            const result = task.result;
-            setProcessResults({ success: true, data: result });
-            
-            // 🎉 任务完成通知，引导用户查看digest
-            toast({
-              title: "🎉 Processing Complete!",
-              description: `Successfully processed ${result?.processedSources?.length || 0} sources and generated ${result?.totalSummaries || 0} summaries. Click to view your digest!`,
-              action: (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => window.location.href = '/digests'}
-                  className="ml-2"
-                >
-                  View Digest
-                </Button>
-              ),
-            });
-            
-            // 刷新 sources 列表
-            fetchSources();
-            
-          } else if (task.status === 'failed') {
-            clearInterval(pollingIntervalRef.current);
-            setIsPollingTask(false);
-            setGlobalProcessing(false);
-            
-            toast({
-              title: "❌ Processing Failed",
-              description: task.error_message || "An error occurred during processing",
-              variant: "destructive",
-            });
-          }
-        }
-      } catch (error) {
-        console.error('❌ 轮询任务状态失败:', {
-          taskId,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          errorDetails: error,
-          timestamp: new Date().toISOString()
-        });
-        
-        // 记录轮询失败
-        console.warn('⚠️ Polling failure, this may indicate the task has failed or timed out');
-      }
-    }, 3000); // 每3秒轮询一次以获得更及时的进度更新
-    
-    // 设置最大轮询时间（10分钟）
-    setTimeout(() => {
-      clearInterval(pollingIntervalRef.current);
-      setIsPollingTask(false);
+    } finally {
       setGlobalProcessing(false);
-    }, 10 * 60 * 1000);
+    }
   };
 
   // 🗑️ 清除已抓取内容的功能
@@ -1033,6 +955,8 @@ const Sources = () => {
             </Card>
           </div>
         )}
+
+
 
         {/* Empty State */}
         {sourcesArray.length === 0 ? (
