@@ -157,22 +157,16 @@ async function processSource(
       is_processed: false,
     }))
     
-    // Use upsert with ignoreDuplicates to prevent errors on duplicate content_url
-    const { error: upsertError } = await supabaseClient
+    const { error: insertError } = await supabaseClient
       .from('content_items')
-      .upsert(newContentItems, { 
-        onConflict: 'content_url',
-        ignoreDuplicates: true,
-      })
-
-    if (upsertError) {
-      console.error('❌ Failed to upsert content items:', upsertError)
-      // We will still throw a generic error to ensure the calling job is marked as failed.
-      throw new Error('Failed to upsert content items')
+      .insert(newContentItems)
+      
+    if (insertError) {
+      console.error('❌ Failed to insert content items:', insertError)
+      throw new Error('Failed to insert content items')
     }
-    
-    console.log(`✅ Successfully upserted ${newContentItems.length} content items. Duplicates were ignored.`)
 
+    console.log(`✅ Successfully queued ${newContentItems.length} content items for processing`)
     return { success: true, articlesCount: newContentItems.length, message: `Queued ${newContentItems.length} articles.` }
 
   } catch (error) {

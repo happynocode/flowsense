@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { corsHeaders } from '../_shared/cors.ts'
 
-const BATCH_SIZE = 30; // Process 30 jobs at a time
+const BATCH_SIZE = 20; // Process 20 jobs at a time
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {

@@ -135,30 +135,43 @@ async function generateDigestFromSummaries(
     // Generate the digest content using AI first (before any DB operations)
     const digestContent = await generateDigestContent(summaries, timeRange, userSources)
 
-    // ALWAYS INSERT a new digest record. The unique constraint has been removed.
-    const { data: insertedDigest, error: insertError } = await supabaseClient
+    // Use upsert to handle concurrency - this will either insert or update existing
+    const { data: upsertedDigest, error: upsertError } = await supabaseClient
       .from('digests')
-      .insert({
+      .upsert({
         user_id: userId,
         title: digestTitle,
         content: digestContent,
         generation_date: generationDate,
         created_at: now.toISOString(),
         updated_at: now.toISOString()
+      }, {
+        onConflict: 'user_id,generation_date', // Unique constraint on these fields
+        ignoreDuplicates: false // Always update with latest content
       })
       .select('id')
       .single()
 
-    if (insertError || !insertedDigest) {
-      console.error('❌ Failed to insert digest:', insertError)
-      return { success: false, message: 'Failed to create digest' }
+    if (upsertError || !upsertedDigest) {
+      console.error('❌ Failed to upsert digest:', upsertError)
+      return { success: false, message: 'Failed to create/update digest' }
     }
 
-    console.log(`✅ Successfully inserted digest with ID: ${insertedDigest.id}`)
+    console.log(`✅ Successfully upserted digest with ID: ${upsertedDigest.id}`)
 
-    // Link summaries to the newly created digest
+    // Clear existing digest_items for this digest to refresh the list
+    const { error: deleteItemsError } = await supabaseClient
+      .from('digest_items')
+      .delete()
+      .eq('digest_id', upsertedDigest.id)
+
+    if (deleteItemsError) {
+      console.log('⚠️ Warning: Failed to clear existing digest items:', deleteItemsError)
+    }
+
+    // Create fresh digest_items to link summaries to the digest
     const digestItems = summaries.map((summary, index) => ({
-      digest_id: insertedDigest.id,
+      digest_id: upsertedDigest.id,
       summary_id: summary.id,
       order_position: index + 1
     }))
@@ -177,7 +190,7 @@ async function generateDigestFromSummaries(
     return { 
       success: true, 
       message: `Digest generated with ${summaries.length} summaries`, 
-      digestId: insertedDigest.id 
+      digestId: upsertedDigest.id 
     }
 
   } catch (error) {
