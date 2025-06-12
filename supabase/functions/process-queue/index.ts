@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const BATCH_SIZE = 20
+const BATCH_SIZE = 30
 
 Deno.serve(async (req) => {
   try {
