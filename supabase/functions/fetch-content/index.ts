@@ -27,145 +27,12 @@ function createTimeoutPromise<T>(ms: number, errorMessage: string): Promise<T> {
   })
 }
 
-// 更新任务进度的辅助函数
-async function updateTaskProgress(
-  supabaseClient: any,
-  taskId: number,
-  currentSource: string,
-  status: 'processing' | 'completed' | 'skipped',
-  sourceResult?: any
-): Promise<void> {
-  try {
-    // 获取当前任务
-    const { data: task, error: taskError } = await supabaseClient
-      .from('processing_tasks')
-      .select('progress')
-      .eq('id', taskId)
-      .single()
-
-    if (taskError || !task) {
-      console.log(`⚠️ Could not find task ${taskId} for progress update`)
-      return
-    }
-
-    const progress = task.progress || { current: 0, total: 0, processed_sources: [], skipped_sources: [] }
-
-    // 更新当前处理的source
-    if (status === 'processing') {
-      progress.current_source = currentSource
-      console.log(`📊 Task ${taskId}: Now processing ${currentSource}`)
-    } else if (status === 'completed') {
-      // 添加到已完成列表
-      if (!progress.processed_sources.some((s: any) => s.name === currentSource)) {
-        progress.processed_sources.push({
-          name: currentSource,
-          articles_count: sourceResult?.articlesCount || 0,
-          completed_at: new Date().toISOString()
-        })
-        progress.current += 1
-      }
-      delete progress.current_source
-      console.log(`✅ Task ${taskId}: Completed ${currentSource} (${progress.current}/${progress.total})`)
-    } else if (status === 'skipped') {
-      // 添加到跳过列表
-      if (!progress.skipped_sources.some((s: any) => s.name === currentSource)) {
-        progress.skipped_sources.push({
-          name: currentSource,
-          reason: sourceResult?.error || 'Unknown error',
-          skipped_at: new Date().toISOString()
-        })
-        progress.current += 1
-      }
-      delete progress.current_source
-      console.log(`⏭️ Task ${taskId}: Skipped ${currentSource} (${progress.current}/${progress.total})`)
-    }
-
-    // 更新数据库
-    const { error: updateError } = await supabaseClient
-      .from('processing_tasks')
-      .update({ progress })
-      .eq('id', taskId)
-
-    if (updateError) {
-      console.error(`❌ Failed to update task progress:`, updateError)
-    }
-
-  } catch (error) {
-    console.error(`❌ Error updating task progress:`, error)
-  }
-}
-
-// 检查并完成任务的辅助函数
-async function checkAndCompleteTask(supabaseClient: any, taskId: number): Promise<void> {
-  try {
-    // 获取当前任务状态
-    const { data: task, error: taskError } = await supabaseClient
-      .from('processing_tasks')
-      .select('progress, user_id')
-      .eq('id', taskId)
-      .single()
-
-    if (taskError || !task) {
-      console.log(`⚠️ Could not find task ${taskId} for completion check`)
-      return
-    }
-
-    const progress = task.progress || { current: 0, total: 0, processed_sources: [], skipped_sources: [] }
-    const completedCount = (progress.processed_sources?.length || 0) + (progress.skipped_sources?.length || 0)
-
-    console.log(`📊 Task ${taskId} completion check: ${completedCount}/${progress.total}`)
-
-    // 如果所有源都已处理完成
-    if (completedCount >= progress.total && progress.total > 0) {
-      console.log(`🎉 Task ${taskId} is complete! Triggering digest generation...`)
-
-      // 更新任务状态为已完成
-      const { error: updateError } = await supabaseClient
-        .from('processing_tasks')
-        .update({ 
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          result: {
-            processedSources: progress.processed_sources || [],
-            skippedSources: progress.skipped_sources || [],
-            totalSummaries: progress.processed_sources?.reduce((total: number, source: any) => total + (source.articles_count || 0), 0) || 0
-          }
-        })
-        .eq('id', taskId)
-
-      if (updateError) {
-        console.error(`❌ Failed to complete task:`, updateError)
-        return
-      }
-
-      // 触发生成digest
-      try {
-        const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-digest`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
-            userId: task.user_id,
-            timeRange: 'week'
-          })
-        })
-        
-        if (response.ok) {
-          console.log(`✅ Successfully triggered digest generation for task ${taskId}`)
-        } else {
-          console.error(`❌ Failed to trigger digest generation: ${response.status}`)
-        }
-      } catch (error) {
-        console.error(`❌ Error triggering digest generation:`, error)
-      }
-    }
-
-  } catch (error) {
-    console.error(`❌ Error checking task completion:`, error)
-  }
-}
+// ----------------------------------------------------------------
+// 🗑️ DELETED FUNCTIONS: updateTaskProgress & checkAndCompleteTask
+// These functions created a faulty, decentralized logic for checking
+// task completion, which led to race conditions. This responsibility
+// now solely belongs to the 'check-task-completion' cron job.
+// ----------------------------------------------------------------
 
 async function updateFetchJobStatus(
   supabaseClient: any,
@@ -205,7 +72,7 @@ Deno.serve(async (req) => {
     sourceName, 
     timeRange = 'week', 
     taskId,
-    fetchJobId // <-- New parameter from our queue processor
+    fetchJobId // <-- The primary identifier for this job
   } = await req.json()
 
   if (!fetchJobId || !sourceId || !sourceUrl) {
@@ -215,12 +82,7 @@ Deno.serve(async (req) => {
   console.log(`🚀 Starting content fetch for source: ${sourceName} (${sourceUrl}) [Task: ${taskId}, Job: ${fetchJobId}]`)
   
   try {
-    // Update task progress - mark as current source
-    if (taskId) {
-      await updateTaskProgress(supabaseClient, taskId, sourceName, 'processing')
-    }
-
-    // Wrap the main processing in a timeout
+    // Main processing is wrapped in a timeout for safety
     const result = await Promise.race([
       processSource(supabaseClient, sourceId, sourceUrl, sourceName, timeRange, taskId),
       createTimeoutPromise(PROCESSING_CONFIG.TIMEOUT_MS, 'Content fetch timeout')
@@ -257,53 +119,61 @@ async function processSource(
   timeRange: string,
   taskId?: number
 ): Promise<{ success: boolean; articlesCount: number; message: string }> {
+  let articles: Article[] = []
   
-  let articlesCount = 0;
   try {
-    console.log(`🔍 Detecting content type for: ${sourceUrl}`);
-    const detection = await detectContentType(sourceUrl);
-    if (!detection) {
-      throw new Error('Content detection failed');
+    console.log(`🧐 Detecting content type for: ${sourceUrl}`)
+    const detectionResult = await detectContentType(sourceUrl)
+    
+    if (!detectionResult) {
+      throw new Error("Could not detect content type")
     }
+    
+    const { isRSS, contentType, content } = detectionResult
 
-    let articles: Article[] = [];
-    if (detection.isRSS) {
-      console.log(`📡 Processing RSS feed: ${sourceUrl}`);
-      articles = await parseRSSContent(detection.content, sourceUrl, timeRange);
+    console.log(`📝 Content type detected: ${contentType}, isRSS: ${isRSS}`)
+
+    if (isRSS) {
+      articles = await parseRSSContent(content, sourceUrl, timeRange)
     } else {
-      // Future logic for non-RSS content can go here
-      console.log(`🤷‍♀️ Non-RSS content type (${detection.contentType}) not yet supported. Skipping.`);
+      articles = await parseHTMLContent(content, sourceUrl, timeRange)
     }
 
-    const { success, queuedCount } = await queueContentProcessingJobs(supabaseClient, articles, sourceId);
-    articlesCount = queuedCount;
-
-    if (!success) {
-      // Log the error but don't throw, as the job should be considered "completed" from a fetch perspective
-      console.error(`⚠️ Failed to queue articles for source ${sourceName}, but marking fetch as complete.`);
-    }
-
-    const result = { success: true, articlesCount, message: `Found and queued ${articlesCount} new articles.` };
+    console.log(`📰 Found ${articles.length} articles from ${sourceName}`)
     
-    if (taskId) {
-      await updateTaskProgress(supabaseClient, taskId, sourceName, 'completed', result);
-      await checkAndCompleteTask(supabaseClient, taskId);
+    // If no articles found, it's a success, just with 0 articles
+    if (articles.length === 0) {
+      return { success: true, articlesCount: 0, message: 'No new articles found within the time range.' }
     }
     
-    return result;
+    // Insert new content into the content_items table
+    const newContentItems = articles.map(article => ({
+      source_id: sourceId,
+      task_id: taskId, // Pass the taskId down to the content_item
+      title: article.title,
+      content_url: article.link,
+      published_date: article.publishedDate,
+      content_text: article.description || article.content, // Use description as initial text
+      is_processed: false,
+    }))
+    
+    const { error: insertError } = await supabaseClient
+      .from('content_items')
+      .insert(newContentItems)
+      
+    if (insertError) {
+      console.error('❌ Failed to insert content items:', insertError)
+      throw new Error('Failed to insert content items')
+    }
+
+    console.log(`✅ Successfully queued ${newContentItems.length} content items for processing`)
+    return { success: true, articlesCount: newContentItems.length, message: `Queued ${newContentItems.length} articles.` }
 
   } catch (error) {
-    console.error(`❌ Processing source ${sourceName} failed:`, error.message);
-    const result = { success: false, articlesCount: 0, message: error.message };
-    
-    if (taskId) {
-      await updateTaskProgress(supabaseClient, taskId, sourceName, 'skipped', { error: error.message });
-      await checkAndCompleteTask(supabaseClient, taskId);
-    }
-    
-    // We re-throw the error so the main Deno.serve handler catches it
-    // and correctly updates the fetch job status to 'failed'.
-    throw error;
+    console.error(`❌ Failed to process source ${sourceName}:`, error)
+    // Even if fetching fails, this specific fetch job is "complete" in the sense
+    // that it has finished its attempt. The error is logged on the job itself.
+    throw error; // Re-throw to be caught by the main handler which updates the job status to 'failed'
   }
 }
 
@@ -524,6 +394,14 @@ async function parseRSSWithRegex(xmlContent: string, cutoffDate: Date): Promise<
     console.error('❌ Regex parsing failed:', error)
     return []
   }
+}
+
+async function parseHTMLContent(htmlContent: string, url: string, timeRange: string = 'week'): Promise<Article[]> {
+  // Implementation of parseHTMLContent function
+  // This function should return an array of Article objects
+  // based on the HTML content and the URL
+  // For now, we'll return an empty array
+  return []
 }
 
 async function queueContentProcessingJobs(

@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
 async function processContentItem(
   supabaseClient: any,
   contentItemId: number
-): Promise<{ success: boolean; message: string; hasSummary: boolean }> {
+): Promise<{ success: boolean; message: string; taskId?: number }> {
   
   try {
     console.log(`🔍 Fetching content item: ${contentItemId}`)
@@ -65,16 +65,23 @@ async function processContentItem(
     // Get content item details
     const { data: contentItem, error: fetchError } = await supabaseClient
       .from('content_items')
-      .select('*')
+      .select(`
+        *,
+        source:content_sources (
+          name
+        )
+      `)
       .eq('id', contentItemId)
       .single()
 
     if (fetchError || !contentItem) {
       console.error('❌ Failed to fetch content item:', fetchError)
-      return { success: false, message: 'Content item not found', hasSummary: false }
+      // We can't get the task_id here, so we return an error. The calling function should handle this gracefully.
+      return { success: false, message: 'Content item not found' }
     }
 
-    console.log(`📄 Processing: "${contentItem.title}"`)
+    const taskId = contentItem.task_id; // Get task_id from the content_item
+    console.log(`📄 Processing: "${contentItem.title}" for task ${taskId}`)
 
     // Check if summary already exists
     const { data: existingSummary } = await supabaseClient
@@ -85,9 +92,8 @@ async function processContentItem(
 
     if (existingSummary) {
       console.log('⏭️ Summary already exists for this content item, skipping duplicate processing')
-      await checkAndTriggerDigestGeneration(supabaseClient, contentItem.source_id)
-      
-      return { success: true, message: 'Content already processed (duplicate skip)', hasSummary: true }
+      // No longer triggers digest generation from here.
+      return { success: true, message: 'Content already processed (duplicate skip)', taskId }
     }
 
     // Item is now considered processing. The lock in get_and_lock_pending_items prevents others from picking it.
@@ -115,7 +121,7 @@ async function processContentItem(
         })
         .eq('id', contentItemId)
       
-      return { success: false, message: 'Insufficient content', hasSummary: false }
+      return { success: false, message: 'Insufficient content', taskId }
     }
 
     // Update content item with full content
@@ -141,9 +147,9 @@ async function processContentItem(
       
       console.log(`✅ Successfully processed content item: ${contentItemId}`)
       
-      await checkAndTriggerDigestGeneration(supabaseClient, contentItem.source_id)
+      // REMOVED: No longer triggers digest generation. This is now handled by process-queue.
       
-      return { success: true, message: 'Content processed and summarized', hasSummary: true }
+      return { success: true, message: 'Content processed and summarized', taskId }
     } else {
       await supabaseClient
         .from('content_items')
@@ -153,11 +159,24 @@ async function processContentItem(
         })
         .eq('id', contentItemId)
       
-      return { success: false, message: summaryResult.error || 'Summary generation failed', hasSummary: false }
+      return { success: false, message: summaryResult.error || 'Summary generation failed', taskId }
     }
 
   } catch (error) {
     console.error('❌ Content processing error:', error)
+    
+    // Attempt to fetch taskId if not already available
+    let taskId;
+    try {
+        const { data: contentItem } = await supabaseClient
+            .from('content_items')
+            .select('task_id')
+            .eq('id', contentItemId)
+            .single();
+        taskId = contentItem?.task_id;
+    } catch {
+        // Ignore errors, we just won't have the task id
+    }
     
     // Update status to failed
     try {
@@ -172,7 +191,7 @@ async function processContentItem(
       console.error('❌ Failed to update error status:', updateError)
     }
     
-    return { success: false, message: error.message, hasSummary: false }
+    return { success: false, message: error.message, taskId }
   }
 }
 
@@ -288,174 +307,61 @@ async function generateAISummary(
   content: string,
   originalUrl: string
 ): Promise<{ success: boolean; error?: string }> {
-  
+  console.log(`🤖 Generating summary for URL: ${originalUrl}`);
+
   try {
-    console.log(`🤖 Checking for existing summary for content item: ${contentItemId}`)
-    
-    // Double-check for existing summary to prevent duplicates
-    const { data: existingSummary } = await supabaseClient
-      .from('summaries')
-      .select('id')
-      .eq('content_item_id', contentItemId)
-      .single()
-
-    if (existingSummary) {
-      console.log('⏭️ Summary already exists, skipping duplicate AI generation')
-      return { success: true }
+    const apiKey = Deno.env.get('DEEPSEEK_API_KEY');
+    if (!apiKey) {
+      throw new Error('DEEPSEEK_API_KEY is not configured in Supabase secrets.');
     }
 
-    console.log('🤖 No existing summary found, generating new one with DeepSeek API')
-    
-    const deepSeekApiKey = Deno.env.get('DEEPSEEK_API_KEY')
-    if (!deepSeekApiKey) {
-      throw new Error('DEEPSEEK_API_KEY not configured')
-    }
+    const summaryText = await callDeepSeekAPI(content, apiKey);
 
-    // Truncate content if too long
-    const truncatedContent = content.length > PROCESSING_CONFIG.MAX_CONTENT_LENGTH 
-      ? content.substring(0, PROCESSING_CONFIG.MAX_CONTENT_LENGTH) + '...'
-      : content
-
-    const summary = await callDeepSeekAPI(truncatedContent, deepSeekApiKey)
-
-    // Store the summary
     const { error: insertError } = await supabaseClient
       .from('summaries')
       .insert({
         content_item_id: contentItemId,
-        summary_text: summary,
-        model_used: 'deepseek'
-      })
+        summary_text: summaryText,
+        model_used: 'deepseek-chat',
+      });
 
     if (insertError) {
-      console.error('❌ Failed to store summary:', insertError)
-      return { success: false, error: 'Failed to store summary' }
+      console.error('❌ Failed to insert summary:', insertError);
+      return { success: false, error: 'Failed to save summary.' };
     }
 
-    console.log('✅ Successfully generated and stored new AI summary')
-    return { success: true }
+    return { success: true };
 
   } catch (error) {
-    console.error('❌ AI summary generation failed:', error)
-    return { success: false, error: error.message }
+    console.error('❌ AI summary generation failed:', error);
+    return { success: false, error: error.message };
   }
 }
 
 async function callDeepSeekAPI(content: string, apiKey: string): Promise<string> {
-  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+  const prompt = `Please provide a concise summary of the following article content. The summary should be in Chinese, clear, objective, and capture the main points and key information. Do not include any personal opinions or analysis. Do not just translate. The summary should be between 200 and 400 characters. Here is the article content:\n\n${content}`;
+  
+  const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
+      'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'deepseek-chat',
+      model: "deepseek-chat",
       messages: [
-        {
-          role: 'system',
-          content: 'You are a helpful assistant that summarizes articles into 1-3 main themes. For each theme, provide a relevant quote from the original article to support it.'
-        },
-        {
-          role: 'user',
-          content: `Please summarize this article into 1-3 main themes. For each theme, include a direct quote from the original article:\n\n${content}`
-        }
+        { "role": "system", "content": "You are a helpful assistant that summarizes articles." },
+        { "role": "user", "content": prompt }
       ],
-      max_tokens: 500,
-      temperature: 0.3
-    })
-  })
+    }),
+  });
 
   if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`)
+    const errorBody = await response.text();
+    console.error('❌ DeepSeek API error response:', errorBody);
+    throw new Error(`DeepSeek API request failed with status ${response.status}`);
   }
 
-  const data = await response.json()
-  
-  if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-    throw new Error('Invalid response format from DeepSeek API')
-  }
-
-  return data.choices[0].message.content.trim()
-}
-
-async function checkAndTriggerDigestGeneration(
-  supabaseClient: any,
-  sourceId: number
-): Promise<void> {
-  try {
-    console.log(`🔍 Checking if ALL user's content items are processed (triggered by source: ${sourceId})`)
-    
-    // Get the source to find the user_id
-    const { data: source } = await supabaseClient
-      .from('content_sources')
-      .select('user_id')
-      .eq('id', sourceId)
-      .single()
-    
-    if (!source) {
-      console.log('❌ Source not found, cannot trigger digest generation')
-      return
-    }
-    
-    // Check if there are any unprocessed content items for ALL user's sources from today
-    const today = new Date()
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    
-    // Get all user's active sources
-    const { data: userSources } = await supabaseClient
-      .from('content_sources')
-      .select('id')
-      .eq('user_id', source.user_id)
-      .eq('is_active', true)
-    
-    if (!userSources || userSources.length === 0) {
-      console.log('❌ No active sources found for user')
-      return
-    }
-    
-    const sourceIds = userSources.map(s => s.id)
-    
-    // Check for unprocessed items across ALL user's sources
-    const { data: unprocessedItems, count } = await supabaseClient
-      .from('content_items')
-      .select('id', { count: 'exact' })
-      .gte('created_at', startOfDay.toISOString())
-      .eq('is_processed', false)
-      .in('source_id', sourceIds)
-    
-    console.log(`📊 Found ${count || 0} unprocessed items across ALL user sources`)
-    
-    if (count === 0) {
-      // All items for ALL user sources are processed, trigger digest generation
-      console.log(`🎯 ALL sources processing complete! Triggering digest generation for user: ${source.user_id}`)
-      
-      try {
-        const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-digest`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
-            userId: source.user_id,
-            timeRange: 'week'
-          })
-        })
-        
-        if (response.ok) {
-          console.log(`✅ Successfully triggered digest generation for user: ${source.user_id}`)
-        } else {
-          console.error(`❌ Failed to trigger digest generation: ${response.status}`)
-        }
-      } catch (error) {
-        console.error(`❌ Error triggering digest generation:`, error)
-      }
-    } else {
-      console.log(`⏳ Still waiting for ${count} items across all user sources to be processed`)
-    }
-    
-  } catch (error) {
-    console.error('❌ Error checking digest generation trigger:', error)
-  }
+  const data = await response.json();
+  return data.choices[0].message.content.trim();
 }

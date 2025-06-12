@@ -211,17 +211,25 @@ serve(async (req) => {
 
         console.log(`✅ Created task ${task.id} for user ${user.email}`)
 
-        // 立即调用task-processor来处理刚创建的任务
-        const taskProcessorResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/task-processor`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json',
-          }
+        // 立即调用 execute-processing-task 来处理刚创建的任务
+        const { error: invokeError } = await supabaseClient.functions.invoke('execute-processing-task', {
+          body: { taskId: task.id },
         })
 
-        const taskProcessorResult = await taskProcessorResponse.json()
-        console.log(`📋 Task processor result for user ${user.email}:`, taskProcessorResult)
+        if (invokeError) {
+          console.error(`❌ Failed to invoke execute-processing-task for task ${task.id}:`, invokeError)
+          // 即使调用失败，也继续处理下一个用户，但记录错误
+          results.push({
+            userId: user.id,
+            email: user.email,
+            status: 'failed',
+            error: `Failed to trigger task execution: ${invokeError.message}`,
+            taskId: task.id,
+          })
+          continue; // 继续下一个用户
+        }
+
+        console.log(`✅ Successfully invoked execute-processing-task for task ${task.id}`);
 
         // Update user's last auto digest run timestamp
         const { error: updateError } = await supabaseClient
@@ -243,7 +251,7 @@ serve(async (req) => {
           email: user.email,
           status: 'success',
           taskId: task.id,
-          taskProcessorStatus: taskProcessorResult.success ? 'triggered' : 'failed'
+          taskProcessorStatus: 'triggered'
         })
 
       } catch (error) {

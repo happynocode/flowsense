@@ -65,7 +65,7 @@ async function generateDigestFromSummaries(
     let startDate: Date
     
     switch (timeRange) {
-      case 'day':
+      case 'today':
         startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
         break
       case 'week':
@@ -103,7 +103,7 @@ async function generateDigestFromSummaries(
       .select(`
         id,
         summary_text,
-        content_items!inner (
+        content_item:content_items!inner (
           id,
           title,
           content_url,
@@ -111,9 +111,9 @@ async function generateDigestFromSummaries(
           source_id
         )
       `)
-      .in('content_items.source_id', sourceIds)
-      .gte('content_items.published_date', startDate.toISOString())
-      .lte('content_items.published_date', now.toISOString())
+      .in('content_item.source_id', sourceIds)
+      .gte('content_item.published_date', startDate.toISOString())
+      .lte('content_item.published_date', now.toISOString())
       .order('created_at', { ascending: false })
 
     if (summariesError) {
@@ -133,7 +133,7 @@ async function generateDigestFromSummaries(
     const generationDate = now.toISOString().split('T')[0] // Use date for deduplication
     
     // Generate the digest content using AI first (before any DB operations)
-    const digestContent = await generateDigestContent(summaries, timeRange)
+    const digestContent = await generateDigestContent(summaries, timeRange, userSources)
 
     // Use upsert to handle concurrency - this will either insert or update existing
     const { data: upsertedDigest, error: upsertError } = await supabaseClient
@@ -199,15 +199,19 @@ async function generateDigestFromSummaries(
   }
 }
 
-async function generateDigestContent(summaries: any[], timeRange: string): Promise<string> {
+async function generateDigestContent(summaries: any[], timeRange: string, userSources: any[]): Promise<string> {
   try {
     console.log(`🤖 Generating digest content from ${summaries.length} summaries`)
+
+    // Create a map for quick source lookup
+    const sourceMap = new Map(userSources.map(s => [s.id, s.name]));
 
     // Group summaries by source
     const sourceGroups: { [key: string]: any[] } = {}
     
     for (const summary of summaries) {
-      const sourceName = summary.content_items?.sources?.name || 'Unknown Source'
+      const sourceId = summary.content_item?.source_id;
+      const sourceName = sourceMap.get(sourceId) || 'Unknown Source';
       if (!sourceGroups[sourceName]) {
         sourceGroups[sourceName] = []
       }
@@ -217,25 +221,25 @@ async function generateDigestContent(summaries: any[], timeRange: string): Promi
     // Build digest content
     let digestContent = `# ${timeRange.charAt(0).toUpperCase() + timeRange.slice(1)}ly Digest\n\n`
     digestContent += `*Generated on ${new Date().toLocaleDateString()}*\n\n`
-    digestContent += `## Summary\n\nThis digest includes ${summaries.length} articles from ${Object.keys(sourceGroups).length} sources.\n\n`
+    digestContent += `This digest includes ${summaries.length} articles from ${Object.keys(sourceGroups).length} sources.\n\n---\n\n`
 
     // Add content by source
     for (const [sourceName, sourceSummaries] of Object.entries(sourceGroups)) {
       digestContent += `## ${sourceName}\n\n`
       
       for (const summary of sourceSummaries) {
-        const title = summary.content_items?.title || 'Untitled'
-        const url = summary.content_items?.url || '#'
-        const summaryText = summary.summary || 'No summary available'
+        const title = summary.content_item?.title || 'Untitled'
+        const url = summary.content_item?.content_url || '#'
+        const summaryText = summary.summary_text || 'No summary available'
         
-        digestContent += `### [${title}](${url})\n\n`
+        digestContent += `### [${title}](${url})\n`
         digestContent += `${summaryText}\n\n`
-        digestContent += '---\n\n'
       }
+      digestContent += '---\n\n'
     }
 
     // Add footer
-    digestContent += `\n\n*This digest was automatically generated from your subscribed sources.*`
+    digestContent += `\n*This digest was automatically generated from your subscribed sources.*`
 
     return digestContent
 

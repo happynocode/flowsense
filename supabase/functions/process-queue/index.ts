@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    console.log('⚙️ Starting queue processing...')
+    console.log('⚙️ Starting queue processing (fast, async dispatch mode)...')
 
     // 1. Atomically fetch and update a batch of items to prevent race conditions.
     const { data: itemsToProcess, error: rpcError } = await supabaseClient
@@ -26,32 +26,29 @@ Deno.serve(async (req) => {
       })
     }
 
-    console.log(`📋 Found ${itemsToProcess.length} items to process in this batch.`)
+    console.log(`📋 Found ${itemsToProcess.length} items to process. Dispatching asynchronously...`)
     
     // 2. Fire-and-forget the process-content function for each item
+    // We do NOT await these promises. This ensures the function returns quickly.
     for (const item of itemsToProcess) {
-      console.log(`🚀 Triggering process-content for item ${item.id}`)
-      fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-content`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ contentItemId: item.id })
+      console.log(`🚀 Dispatching process-content for item ${item.id}`)
+      supabaseClient.functions.invoke('process-content', {
+        body: { contentItemId: item.id }
       }).catch(error => {
-        console.error(`❌ Background trigger for item ${item.id} failed:`, error.message)
+        // This catch is for cases where the invocation itself fails network-wise
+        console.error(`❌ Function invocation for item ${item.id} failed:`, error.message)
       })
     }
 
     return new Response(JSON.stringify({
       success: true,
-      message: `Successfully triggered processing for ${itemsToProcess.length} items.`
+      message: `Successfully dispatched processing for ${itemsToProcess.length} items.`
     }), {
       headers: { 'Content-Type': 'application/json' },
     })
 
   } catch (error) {
-    console.error('❌ Queue processor error:', error)
+    console.error('❌ Queue processor (dispatch mode) error:', error)
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

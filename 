@@ -1,0 +1,1020 @@
+[33mcommit f8f137342eb5996f58dd212d6b373973737136b6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Wed Jun 11 08:36:43 2025 -0700
+
+    refactor: Architect to robust dual-queue system
+    
+    BREAKING CHANGE: Replaced fragile function chaining with a database-backed queuing system for fetching and processing to enhance stability and scalability.
+    
+    - Introduced 'source_fetch_jobs' and a processing queue for 'content_items'.
+    
+    - 'execute-processing-task' now acts as a fast dispatcher.
+    
+    - Created 'process-fetch-queue' and 'process-queue' cron-based processors.
+    
+    - Refactored all related functions to support the new async, queue-based workflow, resolving cascading timeouts and improving error handling.
+
+[33mcommit c7f9de03443353544fccebea3a7f131b2f2abe51[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Tue Jun 10 22:48:50 2025 -0700
+
+    Revert "add more web scrape"
+    
+    This reverts commit 2e56e50a3cb3fb289d71144cb013e983bb7e3755.
+
+[33mcommit 2e56e50a3cb3fb289d71144cb013e983bb7e3755[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Tue Jun 10 21:51:29 2025 -0700
+
+    add more web scrape
+
+[33mcommit 3f747eb532f6dd324a425e0630849a891ac5f2b5[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Tue Jun 10 19:24:40 2025 -0700
+
+    okay
+
+[33mcommit c4b571a279341d40aa2d1ff828e1fee4f7f64857[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Mon Jun 9 21:42:45 2025 -0700
+
+    chore: update and cleanup files
+
+[33mcommit fbed256e0d27b3e2e11b23173c95ff32b71af8de[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Mon Jun 9 21:26:45 2025 -0700
+
+    feat(subscription): Complete end-to-end subscription flow and add comprehensive testing suite
+
+[33mcommit 0c71bff5969c9edc1feb6efc28e0eb0c76777ced[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Mon Jun 9 19:35:49 2025 -0700
+
+    Step 4: Add Supabase Edge Functions for Stripe integration
+
+[33mcommit c7aeb8cef82e1e98e2c1a0c5328bfe3e42c78f0b[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Mon Jun 9 19:28:56 2025 -0700
+
+    feat: step 3 - integrate Stripe payment system
+
+[33mcommit a194767ead231463c03b0755a2a46d875a7cb84b[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Mon Jun 9 19:20:30 2025 -0700
+
+    fix: add subscription restrictions to all auto digest settings controls
+
+[33mcommit e214936a0d576ff791ebcc95e9701cd6c5e9ff79[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Mon Jun 9 19:17:07 2025 -0700
+
+    feat: step 2 - add subscription restrictions to Sources page
+
+[33mcommit 1ad6faa5a0ede7d778b74c157be5131f09f0aa9c[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Mon Jun 9 18:58:20 2025 -0700
+
+    feat: step 1 - add subscription limits and permissions system
+
+[33mcommit ab27c00d803a182ee793975c95ed67a0f6d88932[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Mon Jun 9 18:55:15 2025 -0700
+
+    feat: prepare for subscription feature implementation - save current progress
+
+[33mcommit 05e1b5f3a6d7f32b5ec15386322a01af3f003ca0[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Mon Jun 9 15:41:28 2025 -0700
+
+    Add auto digest features and cleanup architecture
+
+[33mcommit a97727288ba45faf5d4262de7a71f839a88a4758[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 20:59:25 2025 -0700
+
+    revert: restore early exit logic and original time ranges per user request
+
+[33mcommit 8020ae48672e4b3ec7b00a49d74a7f85a682a71b[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 20:57:08 2025 -0700
+
+    fix: improve RSS parsing to get more TechCrunch articles - Remove early exit logic that stops on first old article - Extend time range from 7 to 10 days for weekly processing - Continue checking all articles instead of assuming time-ordered RSS
+
+[33mcommit 1e9ff3c1f50b626fee8f3b18e2180289b03d1a0e[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 20:41:02 2025 -0700
+
+    fix: pass task_id to enable queue system for TechCrunch processing
+
+[33mcommit af4a51d4ca4ef124f320418347071609dd317faa[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 18:17:33 2025 -0700
+
+    feat: implement asynchronous queue architecture for scalable processing
+
+[33mcommit 874fe9166c47a29d9b1a317923cc0edc55eef33d[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 18:01:26 2025 -0700
+
+    feat: implement intelligent article limits to prevent CPU timeout - Add smart detection for high-frequency sources requiring full article fetch - Limit TechCrunch-style sources to 5 articles vs 50 for low-maintenance sources - Prevent CPU Time exceeded errors during batch processing
+
+[33mcommit 927aecca9ac3676433c12b9e3d5fbe93985ab7b0[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 15:04:45 2025 -0700
+
+    \fix: improve stale task detection to clean up zombie running tasks"
+
+[33mcommit 43747992b2a6161b4862dc1917bc3106778ed60f[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 15:02:01 2025 -0700
+
+    \fix: add automatic cleanup of stale processing tasks to prevent 409 conflicts"
+
+[33mcommit bd13f2a329b6a5f044a2cf03c67239275a2631c6[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 14:59:03 2025 -0700
+
+    \perf: add early exit optimization for time-ordered RSS feeds to skip processing older articles"
+
+[33mcommit d91eb75819931afbcd4c6fba02baef353cd7ce60[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 14:55:47 2025 -0700
+
+    \fix: improve RSS link parsing to handle multiple RSS formats and add detailed debugging"
+
+[33mcommit 95a0777d81960cb1c2dfa928c10001f133224ff3[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 12:19:03 2025 -0700
+
+    cleanup: remove obsolete edge functions and clean up codebase
+
+[33mcommit c13475c76d8f4a2e4d286450fd9ce06e86a6074c[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 12:16:11 2025 -0700
+
+    fix: extend RSS article time filtering from 7 days to 30 days and add detailed logging
+
+[33mcommit 1ba3569bfec773f093433d7fd72153e1ddecc222[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 11:56:03 2025 -0700
+
+    fix: create processing_tasks table with correct migration naming
+
+[33mcommit b812ef54f76fc7c6355a53e153f85eb5d32dccad[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 11:48:57 2025 -0700
+
+    feat: implement async processing architecture with task management
+
+[33mcommit 4f97e82be51d277d3e54eeab45380fad19ded3e4[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 11:46:18 2025 -0700
+
+    feat: 完善execute-processing-task函数，支持异步执行后台任务
+
+[33mcommit 0da72151320b5dd6f1f0a530d2637597695a362a[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 10:15:16 2025 -0700
+
+    Fix CORS issues by adding OPTIONS request handling and proper CORS headers
+
+[33mcommit e6e3a517c32602cf936a1e0da01c9112cd2d84ac[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 10:11:50 2025 -0700
+
+    Completely rewrite content processing with intelligent RSS vs webpage detection
+
+[33mcommit c08527aa288c17db377b35d3c3083e75a8878efa[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 10:04:17 2025 -0700
+
+    Remove redundant RSS validation step and directly try RSS processing
+
+[33mcommit 8aee858f760b4a6f51fdb1709248273d7a52d8eb[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 10:01:17 2025 -0700
+
+    Improve RSS parsing with better error handling and multiple user agents
+
+[33mcommit f7ab4a3cc6e80fef3392c8d44d92761ca5950d22[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sun Jun 8 09:51:25 2025 -0700
+
+    Implement real RSS parsing and web scraping with DeepSeek API integration
+
+[33mcommit 2a27caa6b1da15b08ea26b8a6353b400cc758a93[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 23:09:14 2025 -0700
+
+    feat: complete frontend refactoring for Edge Functions (Phase 2.1-2.3)
+
+[33mcommit 68d2d5492c5780a707cb5f6b03c7840de8700645[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 22:56:33 2025 -0700
+
+    feat: implement Edge Functions for backend migration (Phase 1.2-1.4) - Created process-all-sources, clear-content, and validate-source Edge Functions - Added CORS, JWT auth, DeepSeek AI integration - Successfully deployed all functions to Supabase - Updated MIGRATION_TODO.md - Ready for Phase 2: Frontend refactoring
+
+[33mcommit 29b90f36ac0dbc812608b28a37710eea95565755[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 21:55:27 2025 -0700
+
+    优化依赖配置适应Windows环境
+
+[33mcommit 9f6a49835130cc89e1653a6e4d5e62e84bea596a[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 21:49:00 2025 -0700
+
+    feat: 集成真实的DeepSeek API和增强网页抓取功能
+
+[33mcommit b062765d8a53bbcc3d179d7e529724e95598e9a8[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 20:29:26 2025 -0700
+
+    Updated Sources.tsx
+
+[33mcommit d3eb7a80f3c4c187e84d67e066b7c0f86c995eb3[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 20:29:21 2025 -0700
+
+    Updated Sources.tsx
+
+[33mcommit 3c0c4496d35d527d72e1083f96a54a96ab72cd46[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 20:29:20 2025 -0700
+
+    Fix article URLs and add clear content button
+
+[33mcommit bfcf26f67999d8055ca535f2a082b5758663782d[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 20:24:00 2025 -0700
+
+    Fix Supabase digest query error
+
+[33mcommit cfb36175ae3dbcb07698fbaa22a0ee35fee5eb17[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 20:20:28 2025 -0700
+
+    Updated Digests.tsx
+
+[33mcommit 1a6c6a6483350a8bbafc78b196d7c7b6be8b978b[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 20:20:25 2025 -0700
+
+    修改Clear All Data功能只删除digests
+
+[33mcommit 1a74f8caef7c55631636274658b9ad7204b699a5[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 20:15:32 2025 -0700
+
+    改进DeepSeek prompt和摘要格式
+
+[33mcommit 5211dd653dba03948373b589a64fd22124d9707a[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 20:01:49 2025 -0700
+
+    Updated DigestDetail.tsx
+
+[33mcommit b19529b77c1edab08f78ec5ce5e2c934f662ae50[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 20:01:48 2025 -0700
+
+    改进抓取和摘要功能
+
+[33mcommit 610aa7ef98d863b5d002430e7bdda43b7b7b3057[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 13:05:20 2025 -0700
+
+    Updated Digests.tsx
+
+[33mcommit 0491d9592b8b36730ac4964e4ef9db3bd0d597a5[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 13:05:19 2025 -0700
+
+    Updated Sources.tsx
+
+[33mcommit 654925098dbe4dd071c68215c267da95260a8cb3[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 13:05:17 2025 -0700
+
+    全局抓取和摘要功能
+
+[33mcommit 3096c804b95dab08a5d04ca45c56fd642ab7c135[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:31:20 2025 -0700
+
+    Updated Digests.tsx
+
+[33mcommit 40998115e2352271e9c9c4e9e1b7b670ff26f3a9[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:31:19 2025 -0700
+
+    Updated Sources.tsx
+
+[33mcommit 1aea0a3fbb96a8685692e4218132f078c4e488dd[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:31:16 2025 -0700
+
+    整合 Scraping 和 DeepSeek 功能
+
+[33mcommit 7c4d30d108d193608ea0a8c5522d0c0106c66b9c[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:22:48 2025 -0700
+
+    Updated Sources.tsx
+
+[33mcommit 0dafe49c59aed63596af1f590c5068608e49a7aa[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:22:46 2025 -0700
+
+    添加 DeepSeek 摘要生成功能
+
+[33mcommit 81dff5d66b09d7dc54276e77f272cdef114472d5[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:16:01 2025 -0700
+
+    Fix content_items RLS INSERT policy
+
+[33mcommit 2f67172bcd61aecf936cecca11a5bc31949ea8eb[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:15:15 2025 -0700
+
+    修复 StackBlitz 环境网络问题
+
+[33mcommit c979fa3e8346df89378f0d4f171e4039ba0c284a[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:11:17 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749323472766-9e2ea4ae2a5818.mjs
+
+[33mcommit 0d8a2b8f38ac022adbaf08c7ea4c3e75c34a11e6[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:11:15 2025 -0700
+
+    Added vite.config.ts.timestamp-1749323472766-9e2ea4ae2a5818.mjs
+
+[33mcommit 5f799fe3eb668aa6e757b81e7deef9671c47d89f[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:09:41 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749323379737-997bac67d83d8.mjs
+
+[33mcommit e470bf90d5301ad866f77e61bc6f386f9fe8fef2[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:09:40 2025 -0700
+
+    Added vite.config.ts.timestamp-1749323379737-997bac67d83d8.mjs
+
+[33mcommit d888b5abdfcaa4422bc9d35b9f14a33d35c10ff4[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:08:14 2025 -0700
+
+    集成 DeepSeek API 进行内容摘要
+
+[33mcommit 26e7081925795e4d007df86558a46b95617a59c6[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:04:36 2025 -0700
+
+    改进 RSS Feed 处理功能
+
+[33mcommit 40dd3d745e274e091b00820ac958ddec4a2c1638[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:02:07 2025 -0700
+
+    Updated api.ts
+
+[33mcommit 4d0241eee8031f127dff606b8f9f338e5473d5a9[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 12:02:06 2025 -0700
+
+    简化 Web Scraping 功能
+
+[33mcommit aa1d42a098ae747e469d0f53e6ae334126f9b8ba[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:57:57 2025 -0700
+
+    Fix duplicate export of sourcesApi
+
+[33mcommit ac031b85e86f806e230b6b9a72b8283374ae94c3[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:54:19 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749322456147-aa328f46619a28.mjs
+
+[33mcommit 09c58fbdfbfc5e95363853eacba8adff52e2d20e[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:54:17 2025 -0700
+
+    Added vite.config.ts.timestamp-1749322456147-aa328f46619a28.mjs
+
+[33mcommit b7757386ca5a60f355234ae61a98ee0abec23e6b[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:51:16 2025 -0700
+
+    Updated api.ts
+
+[33mcommit a99bfb488d35fc7de3d86b897eeee80f96c04232[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:48:54 2025 -0700
+
+    Fix Web Scraping Errors
+
+[33mcommit a9f8d8a2351ed86cb61c44fc51885d7a4fd3988c[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:45:52 2025 -0700
+
+    Updated Sources.tsx
+
+[33mcommit 97f1dc4934e236b649c9f85d6e33b5501c13e8ac[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:45:49 2025 -0700
+
+    添加测试 Web Scraping 和 AI 总结功能
+
+[33mcommit 3497b37edadb4c748f6510d9e8a2cd5888e71a67[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:42:40 2025 -0700
+
+    添加调试日志来验证用户和数据关联
+
+[33mcommit 568d40e755cdc814d3f78f40f95d085a49cf7b05[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:39:06 2025 -0700
+
+    Updated Sources.tsx
+
+[33mcommit cacf4721fdfe55309815b60ef4a48e74b14440b6[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:39:04 2025 -0700
+
+    Fix Sources page to use real Supabase data
+
+[33mcommit 709dc9da4c385d7bb2e2f10423e29f35302173d6[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:36:37 2025 -0700
+
+    Fix routing and subscription API errors
+
+[33mcommit 04ae10656df63ca7c5d9da44b70653e580159d4d[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:33:38 2025 -0700
+
+    Fix Supabase user queries to use ID instead of email
+
+[33mcommit dd09e3aaf049e36bcd1af2299a962cfebeadcb61[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:31:44 2025 -0700
+
+    Fix foreign key type mismatches in database schema
+
+[33mcommit a2bd5f90818354b49a357347870ce693b29f0b69[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:29:30 2025 -0700
+
+    Fix Supabase migration for email/password authentication
+
+[33mcommit cb4eb3550d4d6d3a44a00f9b34345c8185d34c61[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:28:12 2025 -0700
+
+    修复 Supabase 连接超时问题
+
+[33mcommit f32750eed9266d23caaec9ad2936d9dba49e0c88[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:24:50 2025 -0700
+
+    忽略 StackBlitz 环境警告的配置
+
+[33mcommit 27cc6decd9fbcd5b0e91410dc3797808c6b5ed09[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:24:15 2025 -0700
+
+    优化 StackBlitz 环境下的 Supabase 认证配置
+
+[33mcommit 29d0e7cb0735807cadd3d468e4eed10b11f30262[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:20:16 2025 -0700
+
+    忽略 StackBlitz 环境警告的配置
+
+[33mcommit f833f1326f4eaaafdef94d3a496efc3d13eac87b[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:19:29 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749320364423-6d9ce6d1ef946.mjs
+
+[33mcommit 458fcf23df57fe13901f71fef1f59bd9e8fe0e67[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:19:28 2025 -0700
+
+    Added vite.config.ts.timestamp-1749320364423-6d9ce6d1ef946.mjs
+
+[33mcommit 498782ebba5ed2c52d3bb361b1e96c48464d56f6[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:15:06 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749320102765-5462965b541e18.mjs
+
+[33mcommit 08fc72e665da17afbc9273118968ee87488bbde0[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:15:05 2025 -0700
+
+    Added vite.config.ts.timestamp-1749320102765-5462965b541e18.mjs
+
+[33mcommit 57f5778253294ac3a4d09fecdae6fcf8e83919f3[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 11:01:53 2025 -0700
+
+    Fix Login Redirect Issue
+
+[33mcommit aec53cb3297a1cf3005fdd2166bfd84dae9e6754[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:59:30 2025 -0700
+
+    Fix Navigation URL Error
+
+[33mcommit ac8585e6ea10425fd4fd0c42119859c80241607f[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:55:23 2025 -0700
+
+    Environment Variables Debug Check
+
+[33mcommit 9f93f4aeaf6d7e0cec34652ff3285bfe9e4f497e[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:42:38 2025 -0700
+
+    Comprehensive fix for Supabase auth timeout issues
+
+[33mcommit 987ca43e6f22cab6049156d61635acc6d99aedf3[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:40:34 2025 -0700
+
+    Updated supabase.ts
+
+[33mcommit 1f10f070a6e96849aa345ea79931b92f3beb5140[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:40:33 2025 -0700
+
+    Fix Supabase timeout errors by increasing timeout duration
+
+[33mcommit d00cf2b8fbc038be116a1497311f4d08e095abca[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:37:47 2025 -0700
+
+    Updated useAuth.tsx
+
+[33mcommit 1a7b9e5a4aece2508561f436e77423b86ceb9f7a[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:35:29 2025 -0700
+
+    修复 Supabase Auth 超时问题
+
+[33mcommit 80830c64f6374d6b0552f5c45db6ca2e01460d0b[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:33:49 2025 -0700
+
+    Fix Supabase Connection Timeout Error
+
+[33mcommit 66ff1fad23ef276216828c2afce9e5be96de385f[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:30:38 2025 -0700
+
+    Fix Supabase timeout error in authentication
+
+[33mcommit c1000ba2f5af16b31758dd31f7dc1a41137f58fb[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:27:37 2025 -0700
+
+    修复认证刷新超时问题
+
+[33mcommit 292a27cf32c90c58e908d71427579bce1996a254[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:24:48 2025 -0700
+
+    修复认证加载超时问题
+
+[33mcommit fd1f935c7210a7c95ce5f7c9101738f05a76b9f4[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:22:51 2025 -0700
+
+    修复用户数据刷新卡住问题
+
+[33mcommit ff49ad19685be74cb6fc0a3b4a395eaa44bf734e[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:21:18 2025 -0700
+
+    Fix Authentication Timeout Error
+
+[33mcommit 4558e89dcfbdb1b8a638aeb6cf8c4930d21c65e7[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:19:46 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749316784017-4324a5f18362f8.mjs
+
+[33mcommit 14783c8848c3db8aa103b0232b5d7c3c50912c4c[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:19:45 2025 -0700
+
+    Added vite.config.ts.timestamp-1749316784017-4324a5f18362f8.mjs
+
+[33mcommit b210b98a33bb953b52feba9b00740e96856f73ad[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:19:44 2025 -0700
+
+    全面修复认证加载问题
+
+[33mcommit 52bd7aa6363ed8ef5aa57fb9454a3ef03a416fb7[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:16:07 2025 -0700
+
+    修复登录加载问题
+
+[33mcommit 0a21db0118ac4ff4d308d8e02ebfd476ed5a03f5[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:13:42 2025 -0700
+
+    实现邮箱注册登录功能
+
+[33mcommit ccff28fdd3d5d931681272d2feb41024610edca6[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:10:25 2025 -0700
+
+    Fix Supabase conditional export issue
+
+[33mcommit 1a4d5d6abbff7e377a206e48bee2ef4392ee51e4[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:09:05 2025 -0700
+
+    Fix Persistent Loading Issue
+
+[33mcommit d282ff1c8db102b055fbf9381c1d06ecd07cf576[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:07:56 2025 -0700
+
+    Fix Loading Issue and Show Landing Page
+
+[33mcommit 8f3004e6133485ed94db8730433599800bbdf03f[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:06:25 2025 -0700
+
+    Supabase Setup Guide
+
+[33mcommit 4d9c009380a22368fb1fb870a7262d80eb68a868[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:03:15 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749315791871-ba2a8471d2639.mjs
+
+[33mcommit fd41a2b1d6baad11ac46309e0d8e986d5da96c87[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 10:03:13 2025 -0700
+
+    Added vite.config.ts.timestamp-1749315791871-ba2a8471d2639.mjs
+
+[33mcommit 1640eda7d1315fda16b8c0c541fff1eb6099d280[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:58:08 2025 -0700
+
+    Updated bun.lockb
+
+[33mcommit 5f0a58e95ed652d24ccae8c37ee35e0bd9409360[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:56:34 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749315391139-145cb65b2e03b8.mjs
+
+[33mcommit 5d56e6b19d6ff9fdd30e05ee8281cd5cb58fb96b[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:56:32 2025 -0700
+
+    Added vite.config.ts.timestamp-1749315391139-145cb65b2e03b8.mjs
+
+[33mcommit 2cf735172e0aa8ce0b9877a704b73fb29ea960d1[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:55:38 2025 -0700
+
+    使用Supabase内置认证
+
+[33mcommit 9f659f9fbab040f4ada0c80f712e761473bb3b4d[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:55:17 2025 -0700
+
+    Fix Homepage Loading Issue
+
+[33mcommit e06f89a3fc86450f9a519647eb539ed98c89ad00[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:53:49 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749315226724-a25932b6062688.mjs
+
+[33mcommit 809e71d571d2a9d898b755c3fdba738d45581348[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:53:48 2025 -0700
+
+    Added vite.config.ts.timestamp-1749315226724-a25932b6062688.mjs
+
+[33mcommit e84e97b7a56b07a5ee71f7fdd0926c52c69f50df[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:53:43 2025 -0700
+
+    Fix Login Redirect Issue
+
+[33mcommit a482051c1a13d5c584bdc13ce1fe3a9e4722fa71[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:52:24 2025 -0700
+
+    Apply Database Schema to Fix Authentication Errors
+
+[33mcommit 2f2d181a6835d828ce431bf44d07fa8090890a15[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:49:39 2025 -0700
+
+    使用Supabase内置认证
+
+[33mcommit f554b427d83508d43b7c9f2e1536ca3b9dd8d28f[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:47:54 2025 -0700
+
+    Updated Login.tsx
+
+[33mcommit 7756617746206db508db9eca13d6164a9fe93495[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:47:52 2025 -0700
+
+    修复Supabase Auth Google登录
+
+[33mcommit 9c0a962c5233e2cca9070370ea9a22cf61091724[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:44:29 2025 -0700
+
+    更新定价计划，只保留Premium Plan
+
+[33mcommit 997ff81946fd67ddc0d786e651c1d3412f80c92c[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:42:09 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749314526680-894964211fa488.mjs
+
+[33mcommit b5a8a5ccdab36702a4871bb1da1d16764099d2b0[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:42:08 2025 -0700
+
+    Added vite.config.ts.timestamp-1749314526680-894964211fa488.mjs
+
+[33mcommit c6e7c9bcf30c54c902d673070a8b47f6f8f87483[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:41:41 2025 -0700
+
+    Updated package-lock.json
+
+[33mcommit 5097cb1ff247e3a559a4b78c8c3aec75da8bda9e[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:41:40 2025 -0700
+
+    Updated package.json
+
+[33mcommit 2a1ba06ee1a59fbaf2e7947154fa1958b380db45[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:41:38 2025 -0700
+
+    Update Project to Use Supabase
+
+[33mcommit b6225ae83c6c9afcfa724481319677b656510d27[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:33:38 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749314015463-8cc8f5301558c.mjs
+
+[33mcommit 89ff9634a68fdc2fba9f7113aa69d809c22f4467[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:33:37 2025 -0700
+
+    Added vite.config.ts.timestamp-1749314015463-8cc8f5301558c.mjs
+
+[33mcommit 64291627fe0d760caab23f54f9ea20fab28f041d[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:33:33 2025 -0700
+
+    Supabase Database Integration
+
+[33mcommit b5f522f8859f543d77f2f0f80b65feafd1116c66[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:29:56 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749313793862-022123b987da28.mjs
+
+[33mcommit e41b131eec46dfcf5315791f92fdd4939e8aa357[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:29:55 2025 -0700
+
+    Added vite.config.ts.timestamp-1749313793862-022123b987da28.mjs
+
+[33mcommit 10a15a65c8e7dad0c296e793b0c57e50ff1496e1[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:29:40 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749313777173-9aeb9fa413e12.mjs
+
+[33mcommit bf63621bc7f1d21ccb0dfb215b644fa323c239fb[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:29:38 2025 -0700
+
+    Added vite.config.ts.timestamp-1749313777173-9aeb9fa413e12.mjs
+
+[33mcommit d1798237e2a1bc3089c055eaa91544fceb651454[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:28:06 2025 -0700
+
+    Daily Content Digest Backend Setup
+
+[33mcommit f0f38d6e0f779b1ef40777cb54f13549dc546dbd[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:20:44 2025 -0700
+
+    Deleted vite.config.ts.timestamp-1749313241709-9fc8b8c268b64.mjs
+
+[33mcommit a66e72ca2714c3ad60255838990173a0253dca6a[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:20:43 2025 -0700
+
+    Added vite.config.ts.timestamp-1749313241709-9fc8b8c268b64.mjs
+
+[33mcommit 450adc1558f0f5c73d49744d75bb2007d972f488[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:20:33 2025 -0700
+
+    Updated package-lock.json
+
+[33mcommit 25a91783e4d5ccdfa0beec7446f45a33144ca7cf[m
+Author: Ruofei Wang <ruofei.wang29@gmail.com>
+Date:   Sat Jun 7 09:20:24 2025 -0700
+
+    Updated .gitignore
+
+[33mcommit 2f29b47f376ffc6e026daa23cead99407572fca0[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Jun 7 04:47:04 2025 +0000
+
+    Refactor: Simplify pricing to a single tier
+    
+    Removed the Professional and Enterprise pricing tiers, leaving only the Starter plan. Updated the UI and related logic to reflect the single-tier pricing model.
+
+[33mcommit f46cb5474c3ce216589e92a9bda1f579a0a7746f[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Jun 7 04:45:24 2025 +0000
+
+    Remove customer logos section
+    
+    Removes the customer logos section from the landing page.
+
+[33mcommit 131e0f88ef431f461c2b56cb59301d745a921860[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Jun 7 01:28:26 2025 +0000
+
+    Refactor: Improve user-facing content
+    
+    Improved the wording and messaging throughout the application to be more human-readable and user-friendly. This includes changes to titles, descriptions, and button text.
+
+[33mcommit e56d66df853b651d08eb4bdae5c9d57c4d4f0473[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Wed Jun 4 03:35:46 2025 +0000
+
+    Remove all animations
+    
+    Remove all animations and transitions across the application.
+
+[33mcommit 64ca3a12106fb6186b845dd39221e9274b296aa5[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Wed Jun 4 01:17:29 2025 +0000
+
+    Implement design system and UI guidelines
+    
+    Implement the design system and UI guidelines outlined in the design document. This includes color palette, typography, UI elements, animations, and layout guidelines. Apply the new design to all pages.
+
+[33mcommit e32715b31faaf7ec70ca2ca8bee58383b5f7e13a[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 05:25:53 2025 +0000
+
+    Reverted to commit a16f06a1f0a1154409f7153734e73f3d6197ebdf
+
+[33mcommit 90a06d600dbd35fbc6ee7405503374f79311c98a[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 05:25:36 2025 +0000
+
+    Reverted to commit 7ded5931aaed40d5645af477f104af59e3d73a89
+
+[33mcommit 5cd3e1d3c054e910c8ca4ef8a24afd0751ce571d[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 05:24:44 2025 +0000
+
+    Refactor: Apply futuristic design to all pages
+    
+    Apply a futuristic design with gradients, glowing buttons, floating cards, and glassmorphism UI to all pages, including landing, login, sources, and digests.
+
+[33mcommit 1ad38a794e0629bd675e0b42f126ac91d851686f[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 05:21:28 2025 +0000
+
+    Reverted to commit 7ded5931aaed40d5645af477f104af59e3d73a89
+
+[33mcommit b2c7e8f8ba9b1607b2cd57efa62090ebb53744ee[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 05:19:40 2025 +0000
+
+    feat: Implement futuristic landing page design
+    
+    This commit introduces a futuristic design for the landing page, incorporating gradients, glowing buttons, floating cards, and glassmorphism UI elements. The design includes sections for product features, customer logos, and pricing plans.
+
+[33mcommit 7ded5931aaed40d5645af477f104af59e3d73a89[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 05:16:25 2025 +0000
+
+    Refactor landing page layout
+    
+    Refactor the landing page to use a different layout while maintaining the modern style.
+
+[33mcommit b52641d86db3a13f14b7b1757ff853381e20acdc[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 05:12:00 2025 +0000
+
+    Refactor: Implement design style options
+    
+    Implement three different design style options for the landing page.
+
+[33mcommit a16f06a1f0a1154409f7153734e73f3d6197ebdf[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 05:07:22 2025 +0000
+
+    Fix: Landing page not showing after logout
+    
+    The landing page was not being displayed after logout. This commit ensures the landing page is shown when the user is not authenticated by correcting the routing logic in `Index.tsx` and the logout function in `useAuth.tsx`.
+
+[33mcommit 5ddc3e04c8cb5388e9f6c35a3f5caa925070bd8d[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 05:05:45 2025 +0000
+
+    Fix: Logout redirects to landing page
+    
+    The logout functionality was not correctly redirecting to the landing page. This commit ensures that the user is redirected to the landing page after logging out.
+
+[33mcommit f8647870652540b340db4e5b8306f997c8e133d2[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 05:01:21 2025 +0000
+
+    Add landing page and subscription pricing
+    
+    -   Added a landing page for unauthenticated users.
+    -   Added pricing information to the subscription page.
+
+[33mcommit 09eb58030702ffad5116379c78b7c6956ecd4cbf[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 04:51:20 2025 +0000
+
+    Fix: Digests page filter error
+    
+    Handle potential undefined digests array in Digests component to prevent runtime error.
+
+[33mcommit e08a3db649413325716bcbf9cde03d5ed2185d6f[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 04:50:11 2025 +0000
+
+    Fix: Resolve "Cannot read properties of undefined" error
+    
+    The error occurred in the Sources component. The code was updated to handle potential undefined values, specifically when accessing the length property of an array.
+
+[33mcommit 7f6a1ee5ebe59ca3d089903bd2be7aa0dbf0ef2e[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 04:48:51 2025 +0000
+
+    Fix: Cannot read properties of undefined (reading 'length')
+    
+    The error occurs in Home.tsx, likely when accessing the length of an undefined array.
+
+[33mcommit 0488e977dba02996edb0b6955f6d0301d37989cd[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 04:47:36 2025 +0000
+
+    Fix: Bypass login and show all pages
+    
+    Modify the application to allow access to all pages without requiring login. This is likely for development or testing purposes.
+
+[33mcommit c49900ffd7d48a2e7682fa2816a47d1519a39a74[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 04:46:10 2025 +0000
+
+    Fix: Resolve axios import error
+    
+    Fixes the "Failed to resolve import 'axios'" error in src/services/api.ts by ensuring axios is installed and available.
+
+[33mcommit e252d9cdcb0432a4bff3dd69316aa102a0ba49d5[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 04:42:10 2025 +0000
+
+    feat: Implement Daily Content Digest Frontend
+    
+    This commit implements the frontend for the Daily Content Digest web application, including user authentication, content source management, digest viewing, and subscription management. It follows a component-based architecture with responsive design and error handling.
+
+[33mcommit 1230740064337b3f46f54ac244f712bf0b5ebf05[m
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Tue Jun 3 04:36:57 2025 +0000
+
+    Use tech stack vite_react_shadcn_ts
