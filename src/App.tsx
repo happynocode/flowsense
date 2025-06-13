@@ -25,7 +25,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter basename="/digest-flow-daily">
         <AuthProvider>
           <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
             <Header />
