@@ -19,5 +19,5 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  base: '/<你的仓库名>/',
+  base: '/digest-flow-daily/',
 }));
