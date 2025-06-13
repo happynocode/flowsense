@@ -21,17 +21,17 @@ Deno.serve(async (req) => {
       return new Response('Method not allowed', { status: 405 })
     }
 
-    const { userId, timeRange = 'week', taskId, partial = false } = await req.json()
+    const { userId, timeRange = 'week', taskId, partial = false, userTimezone = 'UTC' } = await req.json()
 
     if (!userId || !taskId) {
       return new Response('Missing userId or taskId', { status: 400 })
     }
 
-    console.log(`🚀 Starting digest generation for user: ${userId} (${timeRange}). Task ID: ${taskId}, Partial: ${partial}`)
+    console.log(`🚀 Starting digest generation for user: ${userId} (${timeRange}). Task ID: ${taskId}, Partial: ${partial}, Timezone: ${userTimezone}`)
 
     // Wrap the main processing in a timeout
     const result = await Promise.race([
-      generateDigestFromSummaries(supabaseClient, userId, timeRange, taskId, partial),
+      generateDigestFromSummaries(supabaseClient, userId, timeRange, taskId, partial, userTimezone),
       createTimeoutPromise(PROCESSING_CONFIG.TIMEOUT_MS, 'Digest generation timeout')
     ])
 
@@ -56,7 +56,8 @@ async function generateDigestFromSummaries(
   userId: string, 
   timeRange: string = 'week',
   taskId: number,
-  partial: boolean
+  partial: boolean,
+  userTimezone: string = 'UTC'
 ): Promise<{ success: boolean; message: string; digestId?: number }> {
   
   let finalStatus = partial ? 'completed_with_errors' : 'completed';
@@ -162,8 +163,16 @@ async function generateDigestFromSummaries(
     console.log(`📰 Found ${summaries.length} summaries to include in digest`)
 
     // Generate unique identifier for this digest to prevent concurrent duplicates
-    const digestTitle = `${timeRange.charAt(0).toUpperCase() + timeRange.slice(1)}ly Digest - ${now.toLocaleDateString()}`
-    const generationDate = now.toISOString().split('T')[0] // Use date for deduplication
+    // Use user's timezone for display date
+    const userDate = new Intl.DateTimeFormat('en-US', {
+      timeZone: userTimezone,
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric'
+    }).format(now);
+    
+    const digestTitle = `${timeRange.charAt(0).toUpperCase() + timeRange.slice(1)}ly Digest - ${userDate}`
+    const generationDate = now.toISOString().split('T')[0] // Use UTC date for deduplication
     
     // Generate the digest content using AI first (before any DB operations)
     const digestContent = await generateDigestContent(summaries, timeRange, userSources)

@@ -82,12 +82,22 @@ Deno.serve(async (req) => {
           console.log(`✅ Task ${task.id} is complete (partial: ${isPartial}). Triggering digest generation...`);
           
           try {
+            // 获取用户的时区设置
+            const { data: userSettings } = await supabaseClient
+              .from('user_settings')
+              .select('auto_digest_timezone')
+              .eq('user_id', task.user_id)
+              .single();
+            
+            const userTimezone = userSettings?.auto_digest_timezone || 'UTC';
+            
             const { data: invokeData, error: invokeError } = await supabaseClient.functions.invoke('generate-digest', {
               body: {
                 userId: task.user_id,
                 timeRange: task.config?.time_range || 'week',
                 taskId: task.id,
                 partial: isPartial,
+                userTimezone: userTimezone,
               },
             });
 
