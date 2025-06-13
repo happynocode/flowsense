@@ -63,7 +63,7 @@ graph TD
     F -- Triggers 'check-task-completion' --> D
 
     D -- Interacts with --> C
-    D -- Fetches from --> G[External Content Sources <br/> (RSS Feeds)]
+    D -- Fetches from --> G["External Content Sources <br/> (RSS Feeds)"]
     
 ```
 
