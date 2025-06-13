@@ -21,17 +21,17 @@ Deno.serve(async (req) => {
       return new Response('Method not allowed', { status: 405 })
     }
 
-    const { userId, timeRange = 'week' } = await req.json()
+    const { userId, timeRange = 'week', taskId, partial = false } = await req.json()
 
-    if (!userId) {
-      return new Response('Missing userId', { status: 400 })
+    if (!userId || !taskId) {
+      return new Response('Missing userId or taskId', { status: 400 })
     }
 
-    console.log(`🚀 Starting digest generation for user: ${userId} (${timeRange})`)
+    console.log(`🚀 Starting digest generation for user: ${userId} (${timeRange}). Task ID: ${taskId}, Partial: ${partial}`)
 
     // Wrap the main processing in a timeout
     const result = await Promise.race([
-      generateDigestFromSummaries(supabaseClient, userId, timeRange),
+      generateDigestFromSummaries(supabaseClient, userId, timeRange, taskId, partial),
       createTimeoutPromise(PROCESSING_CONFIG.TIMEOUT_MS, 'Digest generation timeout')
     ])
 
@@ -54,9 +54,13 @@ Deno.serve(async (req) => {
 async function generateDigestFromSummaries(
   supabaseClient: any, 
   userId: string, 
-  timeRange: string = 'week'
+  timeRange: string = 'week',
+  taskId: number,
+  partial: boolean
 ): Promise<{ success: boolean; message: string; digestId?: number }> {
   
+  let finalStatus = partial ? 'completed_with_errors' : 'completed';
+
   try {
     console.log(`📊 Generating digest for user ${userId} with timeRange: ${timeRange}`)
 
@@ -97,8 +101,8 @@ async function generateDigestFromSummaries(
     const sourceIds = userSources.map(us => us.id)
     console.log(`📋 Found ${sourceIds.length} sources for user`)
 
-    // Get summaries from the specified time range
-    const { data: summaries, error: summariesError } = await supabaseClient
+    // Base query for summaries
+    let summaryQuery = supabaseClient
       .from('summaries')
       .select(`
         id,
@@ -108,21 +112,49 @@ async function generateDigestFromSummaries(
           title,
           content_url,
           published_date,
-          source_id
+          source_id,
+          fetch_job_id
         )
       `)
       .in('content_item.source_id', sourceIds)
       .gte('content_item.published_date', startDate.toISOString())
       .lte('content_item.published_date', now.toISOString())
-      .order('created_at', { ascending: false })
+
+    // If it's a partial digest, only fetch content from successful jobs for this task
+    if (partial) {
+      const { data: successfulJobs, error: jobsError } = await supabaseClient
+        .from('source_fetch_jobs')
+        .select('id')
+        .eq('task_id', taskId)
+        .eq('status', 'completed')
+
+      if (jobsError) {
+        throw new Error(`Failed to fetch successful jobs for partial digest: ${jobsError.message}`)
+      }
+      
+      const successfulJobIds = successfulJobs.map(j => j.id)
+      summaryQuery = summaryQuery.in('content_item.fetch_job_id', successfulJobIds)
+    }
+
+    // Execute the query
+    const { data: summaries, error: summariesError } = await summaryQuery.order('created_at', { ascending: false })
 
     if (summariesError) {
       console.error('❌ Failed to fetch summaries:', summariesError)
+      finalStatus = 'failed';
       return { success: false, message: 'Failed to fetch summaries' }
     }
 
     if (!summaries || summaries.length === 0) {
       console.log('⚠️ No summaries found for the specified time range')
+      
+      // If no content, we still mark the task as complete.
+      await supabaseClient.from('processing_tasks').update({ 
+        status: finalStatus,
+        result: { message: 'No content found for the specified time range.' },
+        updated_at: new Date().toISOString()
+      }).eq('id', taskId)
+
       return { success: false, message: 'No content found for the specified time range' }
     }
 
@@ -187,6 +219,16 @@ async function generateDigestFromSummaries(
       console.log(`✅ Successfully linked ${digestItems.length} items to digest`)
     }
     
+    // Finally, update the parent processing_task to 'completed'
+    await supabaseClient.from('processing_tasks').update({ 
+      status: finalStatus, 
+      result: { 
+        digestId: upsertedDigest.id, 
+        message: `Digest generated with ${summaries.length} summaries.`
+      },
+      updated_at: new Date().toISOString()
+    }).eq('id', taskId)
+    
     return { 
       success: true, 
       message: `Digest generated with ${summaries.length} summaries`, 
@@ -195,6 +237,14 @@ async function generateDigestFromSummaries(
 
   } catch (error) {
     console.error('❌ Digest generation error:', error)
+    
+    // On any failure, mark the parent task as failed
+    await supabaseClient.from('processing_tasks').update({
+      status: 'failed',
+      result: { error: `Digest generation failed: ${error.message}` },
+      updated_at: new Date().toISOString()
+    }).eq('id', taskId)
+
     return { success: false, message: error.message }
   }
 }

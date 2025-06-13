@@ -42,18 +42,22 @@ Deno.serve(async (req) => {
 
       const totalJobs = jobStatus.length
       const finishedJobs = jobStatus.filter(s => s.status === 'completed' || s.status === 'failed').length
+      const failedJobs = jobStatus.filter(s => s.status === 'failed').length
 
-      console.log(`🔍 Task ${task.id}: ${finishedJobs} of ${totalJobs} jobs are finished.`)
+      console.log(`🔍 Task ${task.id}: ${finishedJobs} of ${totalJobs} jobs are finished. ${failedJobs} failed.`)
 
       if (totalJobs > 0 && finishedJobs === totalJobs) {
-        // All jobs for this task are done, trigger digest generation
-        console.log(`✅ Task ${task.id} is complete. Invoking generate-digest...`)
+        const isPartial = failedJobs > 0;
+        const nextStatus = isPartial ? 'generating_digest_with_errors' : 'generating_digest';
+        
+        console.log(`✅ Task ${task.id} is complete. Partial: ${isPartial}. Invoking generate-digest...`)
         
         const { error: invokeError } = await supabaseClient.functions.invoke('generate-digest', {
           body: {
             userId: task.user_id,
             timeRange: task.config?.time_range || 'week',
             taskId: task.id,
+            partial: isPartial,
           },
         })
 
@@ -65,11 +69,11 @@ Deno.serve(async (req) => {
             .update({ status: 'failed', result: { error: `Digest generation trigger failed: ${invokeError.message}` } })
             .eq('id', task.id)
         } else {
-          console.log(`✅ Successfully invoked generate-digest for task ${task.id}`)
-          // Update task to 'generating_digest' to prevent re-triggering
+          console.log(`✅ Successfully invoked generate-digest for task ${task.id}. New status: ${nextStatus}`)
+          // Update task to 'generating_digest' or 'generating_digest_with_errors' to prevent re-triggering
            await supabaseClient
             .from('processing_tasks')
-            .update({ status: 'generating_digest' })
+            .update({ status: nextStatus })
             .eq('id', task.id)
         }
       }
