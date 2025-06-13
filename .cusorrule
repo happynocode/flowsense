@@ -1,0 +1,14 @@
+你只说中文。
+
+每做完一步都git commit一下 加上meaningful commit message， 但不要push。
+
+
+用npx supabase。
+
+npm run build
+
+npx supabase functions deploy fetch-content
+
+npx supabase db push 20250611000001_create_queue_processor_function.sql
+
+windows powershell不能用&& 要用;。

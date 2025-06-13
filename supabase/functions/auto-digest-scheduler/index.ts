@@ -79,10 +79,16 @@ serve(async (req) => {
         const timezone = user.auto_digest_timezone || 'UTC'
         const scheduledTime = user.auto_digest_time // e.g., "09:00"
         
-        // Get current time in user's timezone
-        const nowInUserTimezone = new Date(now.toLocaleString("en-US", { timeZone: timezone }))
-        const currentHour = nowInUserTimezone.getHours()
-        const currentMinute = nowInUserTimezone.getMinutes()
+        // Get current time in user's timezone using Intl.DateTimeFormat for robustness
+        const timeFormatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: timezone,
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: false
+        });
+        const parts = timeFormatter.formatToParts(now);
+        const currentHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+        const currentMinute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
         const currentTimeStr = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
         
         // Parse scheduled time
@@ -132,26 +138,31 @@ serve(async (req) => {
       try {
         console.log(`🚀 Processing auto digest for user: ${user.email} (${user.id})`)
         
-        // Check if we've already run today (to prevent multiple runs)
+        // Check if we've already run today (to prevent multiple runs) using robust timezone check
         const timezone = user.auto_digest_timezone || 'UTC';
-        // 当前时间的用户时区日期
-        const nowInUserTimezone = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
-        const todayInUserTz = nowInUserTimezone.toISOString().split('T')[0];
         const lastRun = user.last_auto_digest_run;
-        let lastRunDateInUserTz = null;
+        
+        const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+          timeZone: timezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        });
+
+        const todayInUserTz = dateFormatter.format(now);
+        
         if (lastRun) {
-          const lastRunInUserTz = new Date(new Date(lastRun).toLocaleString("en-US", { timeZone: timezone }));
-          lastRunDateInUserTz = lastRunInUserTz.toISOString().split('T')[0];
-        }
-        if (lastRunDateInUserTz === todayInUserTz) {
-          console.log(`⏭️ Skipping user ${user.email} - already processed today (user timezone)`);
-          results.push({
-            userId: user.id,
-            email: user.email,
-            status: 'skipped',
-            reason: 'Already processed today (user timezone)'
-          });
-          continue;
+          const lastRunDateInUserTz = dateFormatter.format(new Date(lastRun));
+          if (lastRunDateInUserTz === todayInUserTz) {
+            console.log(`⏭️ Skipping user ${user.email} - already processed today (${todayInUserTz} in ${timezone})`);
+            results.push({
+              userId: user.id,
+              email: user.email,
+              status: 'skipped',
+              reason: 'Already processed today (user timezone)'
+            });
+            continue;
+          }
         }
 
         // 直接创建处理任务，不调用需要用户认证的start-processing函数

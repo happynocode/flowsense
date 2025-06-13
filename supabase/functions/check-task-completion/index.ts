@@ -1,80 +1,4 @@
-import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-// --- Helper function to check if a task is complete ---
-async function isTaskComplete(supabaseClient: SupabaseClient, taskId: number) {
-  const { count: totalItemsCount, error: totalError } = await supabaseClient
-    .from('content_items')
-    .select('*', { count: 'exact', head: true })
-    .eq('task_id', taskId);
-
-  if (totalError) {
-    console.error(`❌ Error counting total items for task ${taskId}:`, totalError);
-    return false;
-  }
-
-  // A task with no items is not "complete" in a sense that it should trigger a digest.
-  if (totalItemsCount === 0) {
-    return false;
-  }
-
-  const { count: processedItemsCount, error: processedError } = await supabaseClient
-    .from('content_items')
-    .select('*', { count: 'exact', head: true })
-    .eq('task_id', taskId)
-    .eq('is_processed', true);
-
-  if (processedError) {
-    console.error(`❌ Error counting processed items for task ${taskId}:`, processedError);
-    return false;
-  }
-  
-  console.log(`📊 Task ${taskId} Progress: ${processedItemsCount} / ${totalItemsCount} items processed.`);
-  
-  return totalItemsCount === processedItemsCount;
-}
-
-// --- Helper function to trigger digest generation ---
-async function triggerDigestGeneration(supabaseClient: SupabaseClient, taskId: number) {
-  const { data: taskData, error: taskError } = await supabaseClient
-    .from('processing_tasks')
-    .select('user_id, config')
-    .eq('id', taskId)
-    .single();
-
-  if (taskError || !taskData) {
-    console.error(`❌ Could not retrieve task details for task ${taskId}. Cannot trigger digest.`, taskError);
-    return;
-  }
-
-  const timeRange = taskData.config?.time_range || 'week';
-  const userId = taskData.user_id;
-
-  console.log(`🎯 Task ${taskId} complete! Triggering digest generation for user ${userId} with timeRange: ${timeRange}`);
-
-  try {
-    const { error } = await supabaseClient.functions.invoke('generate-digest', {
-      body: {
-        userId: userId,
-        timeRange: timeRange
-      },
-    });
-
-    if (error) throw error;
-    
-    console.log(`✅ Successfully triggered digest generation for task ${taskId}.`);
-    await supabaseClient
-        .from('processing_tasks')
-        .update({ status: 'completed', updated_at: new Date().toISOString() })
-        .eq('id', taskId);
-
-  } catch (invokeError) {
-    console.error(`❌ Failed to trigger digest generation for task ${taskId}:`, invokeError);
-    await supabaseClient
-        .from('processing_tasks')
-        .update({ status: 'failed', result: { error: `Digest generation trigger failed: ${invokeError.message}` } })
-        .eq('id', taskId);
-  }
-}
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 Deno.serve(async (req) => {
   try {
@@ -83,49 +7,81 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    console.log('⚙️ Starting task completion check...')
+    console.log('⚙️ Starting completion check for source fetch jobs...')
 
-    // 1. Get all tasks that are currently being processed.
-    const { data: processingTasks, error: tasksError } = await supabaseClient
+    // 1. Get all tasks that are currently 'processing'
+    const { data: pendingTasks, error: tasksError } = await supabaseClient
       .from('processing_tasks')
-      .select('id')
-      .eq('status', 'processing');
+      .select('id, user_id, config')
+      .eq('status', 'processing')
 
     if (tasksError) {
-      console.error('❌ Failed to fetch processing tasks:', tasksError);
-      throw tasksError;
+      console.error('❌ Error fetching pending tasks:', tasksError.message)
+      throw tasksError
     }
 
-    if (!processingTasks || processingTasks.length === 0) {
-      return new Response(JSON.stringify({ success: true, message: 'No tasks in "processing" state to check.' }), {
+    if (!pendingTasks || pendingTasks.length === 0) {
+      return new Response(JSON.stringify({ message: 'No pending tasks to check.' }), {
         headers: { 'Content-Type': 'application/json' },
-      });
+      })
     }
 
-    console.log(`🔍 Found ${processingTasks.length} tasks to check for completion.`);
-    
-    // 2. For each task, check if it's complete and trigger digest if so.
-    for (const task of processingTasks) {
-      const isComplete = await isTaskComplete(supabaseClient, task.id);
-      if (isComplete) {
-        await triggerDigestGeneration(supabaseClient, task.id);
-      } else {
-        console.log(`⏳ Task ${task.id} is not yet complete. Will check again on next run.`);
+    console.log(`🔍 Found ${pendingTasks.length} pending tasks.`)
+
+    // For each pending task, check if all its fetch jobs are done (completed or failed)
+    for (const task of pendingTasks) {
+      const { data: jobStatus, error: jobError } = await supabaseClient
+        .from('source_fetch_jobs')
+        .select('status')
+        .eq('task_id', task.id)
+
+      if (jobError) {
+        console.error(`Error fetching job statuses for task ${task.id}:`, jobError)
+        continue // Skip to the next task
+      }
+
+      const totalJobs = jobStatus.length
+      const finishedJobs = jobStatus.filter(s => s.status === 'completed' || s.status === 'failed').length
+
+      console.log(`🔍 Task ${task.id}: ${finishedJobs} of ${totalJobs} jobs are finished.`)
+
+      if (totalJobs > 0 && finishedJobs === totalJobs) {
+        // All jobs for this task are done, trigger digest generation
+        console.log(`✅ Task ${task.id} is complete. Invoking generate-digest...`)
+        
+        const { error: invokeError } = await supabaseClient.functions.invoke('generate-digest', {
+          body: {
+            userId: task.user_id,
+            timeRange: task.config?.time_range || 'week',
+            taskId: task.id,
+          },
+        })
+
+        if (invokeError) {
+          console.error(`❌ Failed to invoke generate-digest for task ${task.id}:`, invokeError)
+          // Update task to 'failed' if invocation fails
+          await supabaseClient
+            .from('processing_tasks')
+            .update({ status: 'failed', result: { error: `Digest generation trigger failed: ${invokeError.message}` } })
+            .eq('id', task.id)
+        } else {
+          console.log(`✅ Successfully invoked generate-digest for task ${task.id}`)
+          // Update task to 'generating_digest' to prevent re-triggering
+           await supabaseClient
+            .from('processing_tasks')
+            .update({ status: 'generating_digest' })
+            .eq('id', task.id)
+        }
       }
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      message: `Checked ${processingTasks.length} tasks.`
-    }), {
+    return new Response(JSON.stringify({ success: true, message: `Checked ${pendingTasks.length} tasks.` }), {
       headers: { 'Content-Type': 'application/json' },
     })
-
   } catch (error) {
-    console.error('❌ Task completion checker error:', error)
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
+    return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })
   }
-}) 
+})
