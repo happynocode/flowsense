@@ -11,4 +11,4 @@ npx supabase functions deploy fetch-content
 
 npx supabase db push 20250611000001_create_queue_processor_function.sql
 
-windows powershell不能用&& 要用;。
+windows powershell不能用&& 要用;

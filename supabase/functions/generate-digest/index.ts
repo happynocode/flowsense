@@ -136,7 +136,8 @@ async function generateDigestFromSummaries(
       summaryQuery = summaryQuery.in('content_item.fetch_job_id', successfulJobIds)
     }
 
-    // Execute the query
+    // Execute the query - Note: Supabase doesn't allow ordering by nested field directly in join queries
+    // We'll order by the summary's created_at field instead, which is accessible
     const { data: summaries, error: summariesError } = await summaryQuery.order('created_at', { ascending: false })
 
     if (summariesError) {

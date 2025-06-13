@@ -6,6 +6,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/**
+ * Checks if the auto-digest has already run today for a user in their specific timezone.
+ * @param lastRunISO The ISO 8601 string of the last run time.
+ * @param timezone The user's timezone (e.g., 'America/New_York').
+ * @param now The current Date object (UTC).
+ * @returns True if a run has occurred today in the user's timezone, false otherwise.
+ */
+function hasRunToday(lastRunISO: string | null | undefined, timezone: string, now: Date): boolean {
+  if (!lastRunISO) {
+    return false; // Never run before
+  }
+
+  try {
+    const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+
+    const todayInUserTz = dateFormatter.format(now);
+    const lastRunDateInUserTz = dateFormatter.format(new Date(lastRunISO));
+
+    console.log(`[Date Check] TZ: ${timezone}, Last Run (UTC): ${lastRunISO}, Last Run (User TZ): ${lastRunDateInUserTz}, Today (User TZ): ${todayInUserTz}`);
+
+    return lastRunDateInUserTz === todayInUserTz;
+  } catch (error) {
+    console.error(`[Date Check] Error during timezone date comparison for timezone ${timezone}:`, error);
+    // In case of error, default to allowing the run to avoid blocking a user indefinitely.
+    return false;
+  }
+}
+
 interface User {
   id: string;
   email: string;
@@ -13,6 +46,16 @@ interface User {
   auto_digest_time: string;
   auto_digest_timezone: string;
   last_auto_digest_run?: string;
+}
+
+interface ProcessResult {
+  userId: string;
+  email: string;
+  status: 'skipped' | 'failed' | 'success' | 'error';
+  reason?: string;
+  error?: string;
+  taskId?: string;
+  taskProcessorStatus?: string;
 }
 
 serve(async (req) => {
@@ -71,7 +114,7 @@ serve(async (req) => {
     }
 
     // Filter users whose current local time matches their scheduled time
-    const eligibleUsers = []
+    const eligibleUsers: User[] = []
     const timeWindow = 5 // minutes tolerance
 
     for (const user of users) {
@@ -132,37 +175,23 @@ serve(async (req) => {
       )
     }
 
-    const results = []
+    const results: ProcessResult[] = []
     
     for (const user of eligibleUsers) {
       try {
         console.log(`🚀 Processing auto digest for user: ${user.email} (${user.id})`)
         
-        // Check if we've already run today (to prevent multiple runs) using robust timezone check
+        // Check if we've already run today using the dedicated helper function
         const timezone = user.auto_digest_timezone || 'UTC';
-        const lastRun = user.last_auto_digest_run;
-        
-        const dateFormatter = new Intl.DateTimeFormat('en-CA', {
-          timeZone: timezone,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-        });
-
-        const todayInUserTz = dateFormatter.format(now);
-        
-        if (lastRun) {
-          const lastRunDateInUserTz = dateFormatter.format(new Date(lastRun));
-          if (lastRunDateInUserTz === todayInUserTz) {
-            console.log(`⏭️ Skipping user ${user.email} - already processed today (${todayInUserTz} in ${timezone})`);
-            results.push({
-              userId: user.id,
-              email: user.email,
-              status: 'skipped',
-              reason: 'Already processed today (user timezone)'
-            });
-            continue;
-          }
+        if (hasRunToday(user.last_auto_digest_run, timezone, now)) {
+          console.log(`⏭️ Skipping user ${user.email} - already processed today in their timezone.`);
+          results.push({
+            userId: user.id,
+            email: user.email,
+            status: 'skipped',
+            reason: 'Already processed today (user timezone)'
+          });
+          continue;
         }
 
         // 直接创建处理任务，不调用需要用户认证的start-processing函数

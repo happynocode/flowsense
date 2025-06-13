@@ -209,12 +209,27 @@ export const sourcesApi = {
   },
 
   deleteSource: async (id: string): Promise<void> => {
+    // 获取当前认证用户
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    console.log(`🗑️ Deleting source ${id} for user ${user.id}`);
+
+    // 删除时同时验证用户权限
     const { error } = await supabase
       .from('content_sources')
       .delete()
-      .eq('id', parseInt(id));
+      .eq('id', parseInt(id))
+      .eq('user_id', user.id); // 确保只能删除自己的source
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Delete source error:', error);
+      throw error;
+    }
+
+    console.log(`✅ Successfully deleted source ${id}`);
   },
 
   toggleSource: async (id: string, isActive: boolean): Promise<void> => {

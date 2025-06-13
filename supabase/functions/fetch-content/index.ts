@@ -159,17 +159,21 @@ async function processSource(
       is_processed: false,
     }))
     
-    const { error: insertError } = await supabaseClient
+    // Upsert new content to ignore duplicates
+    const { error: upsertError } = await supabaseClient
       .from('content_items')
-      .insert(newContentItems)
+      .upsert(newContentItems, {
+        onConflict: 'content_url',
+        ignoreDuplicates: true, // For upsert, this means "do nothing" on conflict
+      })
       
-    if (insertError) {
-      console.error('❌ Failed to insert content items:', insertError)
-      throw new Error('Failed to insert content items')
+    if (upsertError) {
+      console.error('❌ Failed to upsert content items:', upsertError)
+      throw new Error('Failed to upsert content items')
     }
 
-    console.log(`✅ Successfully queued ${newContentItems.length} content items for processing`)
-    return { success: true, articlesCount: newContentItems.length, message: `Queued ${newContentItems.length} articles.` }
+    console.log(`✅ Successfully upserted content items for processing`)
+    return { success: true, articlesCount: newContentItems.length, message: `Upserted articles.` }
 
   } catch (error) {
     console.error(`❌ Failed to process source ${sourceName}:`, error)
@@ -267,13 +271,15 @@ async function parseRSSContent(xmlContent: string, feedUrl: string, timeRange: s
   let cutoffDate: Date
   
   switch (timeRange) {
-    case 'day':
-      cutoffDate = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000) // 2 days
+    case 'today':
+    case 'day': // Treat legacy 'day' as 'today'
+      cutoffDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000) // 1 day
       break
     case 'week':
       cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) // 7 days  
       break
     default:
+      console.warn(`Unknown timeRange "${timeRange}", defaulting to 'week'`)
       cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) // default to 7 days
   }
   

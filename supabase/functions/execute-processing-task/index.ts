@@ -3,7 +3,8 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { corsHeaders } from '../_shared/cors.ts'
+import { corsHeaders } from '../shared/cors.ts'
+import { updateTaskStatus } from '../shared/utils.ts'
 
 // Configuration for batch processing
 const PROCESSING_CONFIG = {
@@ -18,19 +19,6 @@ function createTimeoutPromise<T>(ms: number, errorMessage: string): Promise<T> {
 }
 
 console.log('🚀 Execute-processing-task function initialized')
-
-// Helper function to update task progress
-async function updateTaskStatus(supabaseClient: any, taskId: number, status: string, result?: any) {
-  const { error } = await supabaseClient
-    .from('processing_tasks')
-    .update({ status, result: result || undefined, updated_at: new Date().toISOString() })
-    .eq('id', taskId)
-  if (error) {
-    console.error(`❌ Failed to update task ${taskId} status to ${status}:`, error)
-  } else {
-    console.log(`✅ Task ${taskId} status updated to ${status}`)
-  }
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
