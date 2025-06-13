@@ -178,7 +178,7 @@ async function generateDigestFromSummaries(
         created_at: now.toISOString(),
         updated_at: now.toISOString()
       }, {
-        onConflict: 'user_id,generation_date', // Unique constraint on these fields
+        onConflict: 'user_id,generation_date,title', // Corrected to match the current unique constraint
         ignoreDuplicates: false // Always update with latest content
       })
       .select('id')
