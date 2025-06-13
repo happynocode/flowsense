@@ -13,6 +13,7 @@ interface ValidationResult {
     isRSS?: boolean;
     contentType?: string;
     feedTitle?: string;
+    correctedUrl?: string;
   };
 }
 
@@ -39,9 +40,32 @@ Deno.serve(async (req) => {
       throw new Error('URL is required')
     }
 
-    console.log('🔍 Validating source URL:', url)
+    // Auto-correct Reddit URLs
+    let correctedUrl = url;
+    let correctionMessage: string | undefined;
 
-    const result = await validateSourceUrl(url)
+    if (correctedUrl.includes('reddit.com/r/') && !correctedUrl.endsWith('.rss')) {
+      if (correctedUrl.endsWith('/')) {
+        correctedUrl = correctedUrl.slice(0, -1);
+      }
+      correctedUrl += '.rss';
+      correctionMessage = 'Reddit URL automatically corrected to its RSS feed.';
+      console.log('🔧 Reddit URL auto-corrected to:', correctedUrl);
+    }
+
+    console.log('🔍 Validating source URL:', correctedUrl)
+
+    const result = await validateSourceUrl(correctedUrl)
+
+    // Add correction message to the final result if URL was corrected
+    if (correctionMessage) {
+      result.message = `${correctionMessage} ${result.message}`;
+      if (result.details) {
+        result.details.correctedUrl = correctedUrl;
+      } else {
+        result.details = { correctedUrl };
+      }
+    }
 
     return new Response(
       JSON.stringify(result),

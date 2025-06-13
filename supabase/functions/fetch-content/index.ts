@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
   try {
     // Main processing is wrapped in a timeout for safety
     const result = await Promise.race([
-      processSource(supabaseClient, sourceId, sourceUrl, sourceName, timeRange, taskId),
+      processSource(supabaseClient, sourceId, sourceUrl, sourceName, timeRange, taskId, fetchJobId),
       createTimeoutPromise(PROCESSING_CONFIG.TIMEOUT_MS, 'Content fetch timeout')
     ])
     
@@ -117,7 +117,8 @@ async function processSource(
   sourceUrl: string,
   sourceName: string,
   timeRange: string,
-  taskId?: number
+  taskId: number | undefined,
+  fetchJobId: number
 ): Promise<{ success: boolean; articlesCount: number; message: string }> {
   let articles: Article[] = []
   
@@ -149,7 +150,8 @@ async function processSource(
     // Insert new content into the content_items table
     const newContentItems = articles.map(article => ({
       source_id: sourceId,
-      task_id: taskId, // Pass the taskId down to the content_item
+      task_id: taskId,
+      fetch_job_id: fetchJobId,
       title: article.title,
       content_url: article.link,
       published_date: article.publishedDate,
