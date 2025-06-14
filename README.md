@@ -1,156 +1,208 @@
 # Digest Flow Daily
 
-**A smart, resilient, and automated content digest application powered by Supabase and React.**
+**A modern, intelligent content aggregation and digest generation platform built with React and Supabase.**
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge&logo=githubpages)](https://ruofei29.github.io/digest-flow-daily/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+[![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Backend-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
 
 ---
 
-## 📖 Overview
+## 🌟 Overview
 
-Digest Flow Daily is a web application designed to help users stay informed without being overwhelmed. Users can subscribe to their favorite content sources (like blogs, news sites, and subreddits via RSS feeds), and the application will automatically fetch, process, and deliver a personalized summary digest at a user-defined schedule.
+Digest Flow Daily is a comprehensive content aggregation platform that helps users stay informed without information overload. The application automatically fetches content from various sources (RSS feeds, blogs, news sites), processes it using AI, and delivers personalized digest summaries on a customizable schedule.
 
-This project showcases a modern web architecture, combining a static React frontend with a powerful serverless backend provided by Supabase.
+### Key Features
 
-## ✨ Key Features
+- **🔗 Multi-Source Content Aggregation**: Support for RSS feeds, blogs, and news websites
+- **🤖 AI-Powered Summarization**: Intelligent content processing and summarization using DeepSeek API
+- **⏰ Automated Scheduling**: Configurable digest generation (daily/weekly) with timezone support
+- **🎯 Smart Content Processing**: Automatic URL correction and resilient error handling
+- **👤 User Management**: Complete authentication system with email verification
+- **💎 Premium Features**: Subscription-based advanced features with Stripe integration
+- **📱 Responsive Design**: Modern, mobile-first UI built with Tailwind CSS and Shadcn/ui
+- **🚀 Serverless Architecture**: Scalable backend powered by Supabase Edge Functions
 
-- **Personalized Content Feeds**: Users can add, manage, and validate their own content sources.
-- **Automated Digest Generation**: A robust, user-configurable scheduling system automatically generates daily or weekly digests.
-- **Intelligent Source Handling**:
-  - **Auto-Correction**: Automatically corrects plain Reddit URLs to their proper `.rss` feed format.
-  - **Resilient Processing**: Even if some sources fail to fetch, the system generates a partial digest with the content that was successfully retrieved.
-- **Secure Authentication**: Full user management system including email confirmation and password resets handled by Supabase Auth.
-- **Dynamic Frontend**: A responsive and modern user interface built with React and Shadcn/ui.
-- **Automated Deployment**: Continuous deployment pipeline set up with GitHub Actions for seamless updates to the live application on GitHub Pages.
+## 🏗️ Architecture
 
-## 🛠️ Tech Stack & Architecture
-
-### Tech Stack
-
-- **Frontend**: React, Vite, TypeScript, Tailwind CSS, Shadcn/ui
-- **Backend**: Supabase
-  - **Database**: Supabase Postgres
-  - **Authentication**: Supabase Auth
-  - **Serverless Functions**: Deno Edge Functions
-- **Deployment**: GitHub Actions & GitHub Pages
-
-### System Architecture
-
-The application follows a modern JAMstack architecture. The frontend is a static site that interacts directly with the Supabase backend for data and authentication. The core business logic, such as fetching content and generating digests, is encapsulated in serverless Edge Functions, which are triggered by schedulers or frontend events.
+The application follows a modern JAMstack architecture with a React frontend and Supabase backend:
 
 ```mermaid
 graph TD
-    subgraph User's Browser
-        A[React Frontend on GitHub Pages]
-    end
-
-    subgraph Supabase Cloud
-        B[Supabase Auth]
-        C[Supabase DB]
-        D[Edge Functions]
-    end
+    A[React Frontend] --> B[Supabase Auth]
+    A --> C[Supabase Database]
+    A --> D[Edge Functions]
     
-    subgraph Schedulers
-        E[Auto-Digest Cron]
-        F[Task Completion Cron]
-    end
-
-    A -- Auth Requests --> B
-    A -- Data Queries (CRUD) --> C
-    A -- Triggers 'validate-source' --> D
+    E[Cron Schedulers] --> D
+    D --> F[External RSS Feeds]
+    D --> G[AI Processing DeepSeek]
     
-    E -- Triggers 'auto-digest-scheduler' --> D
-    F -- Triggers 'check-task-completion' --> D
-
-    D -- Interacts with --> C
-    D -- Fetches from --> G["External Content Sources <br/> (RSS Feeds)"]
-    
+    H[Stripe Webhooks] --> D
+    D --> I[Email Notifications]
 ```
 
-## 🚀 Getting Started
+### Tech Stack
 
-Follow these instructions to set up and run the project locally for development.
+**Frontend:**
+- React 18 with TypeScript
+- Vite for build tooling
+- Tailwind CSS for styling
+- Shadcn/ui component library
+- React Router for navigation
+
+**Backend:**
+- Supabase (PostgreSQL database)
+- Supabase Auth for authentication
+- Supabase Edge Functions (Deno runtime)
+- Row Level Security (RLS) policies
+
+**External Services:**
+- DeepSeek API for content summarization
+- Stripe for payment processing
+- GitHub Actions for CI/CD
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18 or higher)
-- [Supabase CLI](https://supabase.com/docs/guides/cli)
-- A Supabase account and a new project created on [supabase.com](https://supabase.com)
+- Node.js 18+ 
+- npm or yarn
+- Supabase account
+- (Optional) Supabase CLI for local development
 
-### 1. Clone the Repository
+### Installation
 
-```bash
-git clone https://github.com/Ruofei29/digest-flow-daily.git
-cd digest-flow-daily
-```
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Ruofei29/digest-flow-daily.git
+   cd digest-flow-daily
+   ```
 
-### 2. Install Dependencies
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-```bash
-npm install
-```
+3. **Environment setup**
+   ```bash
+   cp env.example .env
+   ```
+   
+   Fill in your environment variables:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_project_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
 
-### 3. Set up Supabase Locally
+4. **Start development server**
+   ```bash
+   npm run dev
+   ```
 
-First, link your local repository to your Supabase project. You will need your project's reference ID.
+The application will be available at `http://localhost:5173`
 
-```bash
-supabase login
-supabase link --project-ref <your-project-ref>
-```
+### Production Deployment
 
-Next, pull any existing schema changes from your remote Supabase project.
+The project is configured for automatic deployment to GitHub Pages:
 
-```bash
-supabase db pull
-```
+1. Fork this repository
+2. Set up GitHub Secrets:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+3. Push to main branch to trigger deployment
 
-### 4. Configure Environment Variables
+## 📖 Usage
 
-Create a `.env` file in the root of the project by copying the example file.
+### For End Users
 
-```bash
-cp env.example .env
-```
+1. **Sign Up**: Create an account with email verification
+2. **Add Sources**: Add RSS feeds, blog URLs, or news sites
+3. **Configure Settings**: Set up automatic digest preferences
+4. **Generate Digests**: Process content manually or set up automated schedules
+5. **Read Summaries**: Access AI-generated content summaries
 
-Now, fill in the `.env` file with your Supabase project's URL and `anon` key. You can find these in your Supabase project dashboard under `Project Settings > API`.
+### For Developers
 
-```env
-VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-anon-key>
-VITE_SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
-```
-*Note: The `SERVICE_ROLE_KEY` is needed for running some functions locally but is correctly excluded from the frontend build.*
+#### Database Schema
 
-### 5. Start the Development Servers
+The application uses several key tables:
+- `users` - User profiles and settings
+- `content_sources` - RSS feeds and content sources
+- `digests` - Generated digest summaries
+- `content_items` - Individual content pieces
+- `processing_tasks` - Background job queue
 
-To run the full application, you need to start both the Supabase local services (database, functions) and the React development server.
+#### Edge Functions
 
-**Start Supabase services:**
-This command starts the local Supabase Docker container, applies database migrations, and serves your Edge Functions.
+Key serverless functions:
+- `validate-source` - Validates RSS feeds and URLs
+- `start-processing` - Initiates content processing
+- `generate-digest` - Creates AI summaries
+- `auto-digest-scheduler` - Handles scheduled processing
 
-```bash
-supabase start
-```
+#### API Endpoints
 
-**Start the React frontend:**
-Open a **new terminal window** and run:
+Main API services are located in `src/services/`:
+- `api.ts` - Core CRUD operations
+- `subscription.ts` - Stripe integration
+- Authentication handled by Supabase Auth
 
-```bash
-npm run dev
-```
+## 🔧 Configuration
 
-Your application should now be running on `http://localhost:8080`.
+### Environment Variables
 
-## 📦 Deployment
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `VITE_SUPABASE_URL` | Supabase project URL | Yes |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
+| `VITE_SUPABASE_SERVICE_ROLE_KEY` | Service role key (server-side only) | No |
 
-This project is configured for automated deployment to GitHub Pages via GitHub Actions.
+### Supabase Setup
 
-- **Trigger**: A push to the `main` branch automatically triggers the `Deploy to GitHub Pages` workflow defined in `.github/workflows/deploy.yml`.
-- **Process**:
-  1. The workflow checks out the code.
-  2. It installs dependencies and builds the React application.
-  3. During the build, the `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are securely injected from GitHub Actions Secrets.
-  4. The workflow creates a `404.html` file to correctly handle SPA routing on GitHub Pages.
-  5. The final built assets from the `dist/` directory are pushed to the `gh-pages` branch, which is served by GitHub Pages.
-- **Backend**: Supabase Edge Functions are deployed separately using the Supabase CLI commands (e.g., `supabase functions deploy <function-name>`). 
+1. Create a new Supabase project
+2. Run the database migrations from `supabase/migrations/`
+3. Set up Row Level Security policies
+4. Deploy Edge Functions using Supabase CLI
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how you can help:
+
+### Development Workflow
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes
+4. Run tests: `npm test`
+5. Commit changes: `git commit -m 'Add amazing feature'`
+6. Push to branch: `git push origin feature/amazing-feature`
+7. Open a Pull Request
+
+### Code Style
+
+- Use TypeScript for type safety
+- Follow ESLint configuration
+- Use Prettier for code formatting
+- Write meaningful commit messages
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🙏 Acknowledgments
+
+- [Supabase](https://supabase.com/) for the excellent backend platform
+- [Shadcn/ui](https://ui.shadcn.com/) for the beautiful component library
+- [DeepSeek](https://www.deepseek.com/) for AI-powered content processing
+- [Tailwind CSS](https://tailwindcss.com/) for the utility-first CSS framework
+
+## 📞 Support
+
+- 🐛 Issues: [GitHub Issues](https://github.com/Ruofei29/digest-flow-daily/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/Ruofei29/digest-flow-daily/discussions)
+
+---
+
+**Made with ❤️ by [Ruofei29](https://github.com/Ruofei29)**
