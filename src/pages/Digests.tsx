@@ -196,7 +196,7 @@ const Digests = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-hero">
       <div className="container mx-auto px-4 py-8">
         {/* Left-Right Layout */}
         <div className="flex flex-col lg:flex-row gap-8">
@@ -225,14 +225,14 @@ const Digests = () => {
               {/* Controls */}
               {digestsArray.length > 0 && (
                 <div className="bg-white rounded-lg border p-4">
-                  <h3 className="font-medium text-gray-900 mb-3">管理操作</h3>
+                  <h3 className="font-medium text-gray-900 mb-3">Management Actions</h3>
                   <Button
                     variant="outline"
                     onClick={() => setShowClearDialog(true)}
                     className="w-full text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    清除所有摘要
+                    Clear All Digests
                   </Button>
                 </div>
               )}

@@ -123,54 +123,16 @@ const Subscription = () => {
   return (
     <div className="min-h-screen bg-gradient-hero">
       <div className="container mx-auto px-4 py-8">
-        {/* Current Subscription Status */}
-        <SubscriptionStatus className="mb-8" showUpgradePrompt={false} />
-
         {/* Page Header */}
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6 text-balance">
-            <span className="text-gray-800">选择您的</span>{" "}
-            <span className="text-gradient-primary">订阅计划</span>
+            <span className="text-gray-800">Choose Your</span>{" "}
+            <span className="text-gradient-primary">Subscription Plan</span>
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto text-balance">
-            升级到高级版，解锁更多强大功能
+            Upgrade to Premium and unlock powerful features
           </p>
         </div>
-
-        {/* Current Subscription Management */}
-        {isPremium && currentSubscription && (
-          <div className="max-w-2xl mx-auto mb-12">
-            <div className="bg-white rounded-lg shadow-lg p-6 border border-yellow-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <Crown className="h-6 w-6 text-yellow-600" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800">当前订阅</h3>
-                    <p className="text-sm text-gray-600">
-                      {currentSubscription.planName} • 
-                      状态: {currentSubscription.status === 'active' ? '激活' : '非激活'}
-                    </p>
-                    {currentSubscription.currentPeriodEnd && (
-                      <p className="text-sm text-gray-600">
-                        下次计费: {new Date(currentSubscription.currentPeriodEnd).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <Button
-                  onClick={handleManageBilling}
-                  disabled={loading}
-                  variant="outline"
-                  className="flex items-center space-x-2"
-                >
-                  <Settings className="w-4 h-4" />
-                  <span>管理计费</span>
-                  <ExternalLink className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Pricing Plans */}
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-16">

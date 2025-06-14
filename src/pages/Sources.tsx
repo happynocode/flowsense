@@ -578,10 +578,10 @@ const Sources = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8">
               <div className="mb-4 sm:mb-0">
-                <h1 className="text-3xl font-bold text-gray-800">内容信息源</h1>
-                <p className="text-gray-600 mt-2">
-                  管理您的博客、播客和新闻源
-                </p>
+                            <h1 className="text-3xl font-bold text-gray-800">Content Sources</h1>
+            <p className="text-gray-600 mt-2">
+              Manage your blogs, podcasts, and news feeds
+            </p>
                 {/* Debug Info */}
                 <div className="mt-2 text-xs text-gray-500 bg-gray-100 rounded p-2">
                   📊 当前显示: {sourcesArray.length} 个信息源 | 
@@ -594,7 +594,7 @@ const Sources = () => {
                 {canAddSource(sources.length) ? (
                   <button onClick={() => setShowForm(true)} className="btn-primary">
                     <Plus className="h-4 w-4" />
-                    添加信息源
+                    Add Source
                   </button>
                 ) : (
                   <div className="relative group">

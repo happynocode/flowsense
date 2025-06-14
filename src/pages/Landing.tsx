@@ -89,15 +89,15 @@ const Landing = () => {
             
             {/* Main Headline */}
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-space-grotesk font-bold mb-6 leading-tight text-balance">
-              <span className="text-gradient-primary">您喜爱的内容，</span>{" "}
-              <span className="text-gray-800">每日</span>{" "}
-              <span className="text-gradient-primary">智能摘要</span>
+              <span className="text-gradient-primary">Your Favorite Content,</span>{" "}
+              <span className="text-gray-800">Daily</span>{" "}
+              <span className="text-gradient-primary">AI Summaries</span>
             </h1>
             
             {/* Subtitle */}
             <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed text-balance">
-              停止在信息海洋中溺水。从您喜爱的博客、播客和新闻源获得个性化摘要，
-              每天早上直接发送到您的邮箱。
+              Stop drowning in information overload. Get personalized summaries from your favorite blogs, 
+              podcasts, and news sources delivered straight to your inbox every morning.
             </p>
             
             {/* CTA Buttons */}
@@ -105,7 +105,7 @@ const Landing = () => {
               <Link to="/login">
                 <button className="btn-primary btn-lg">
                   <Brain className="w-5 h-5" />
-                  开始免费试用
+                  Start Free Trial
                 </button>
               </Link>
               <button className="btn-outline btn-lg">

@@ -163,15 +163,15 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
       {/* 手动处理控制 */}
       <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-indigo-800 flex items-center">
-            <Zap className="h-5 w-5 mr-2" />
-            内容处理控制
-          </CardTitle>
+                      <CardTitle className="text-lg font-semibold text-indigo-800 flex items-center">
+              <Zap className="h-5 w-5 mr-2" />
+              Content Processing Control
+            </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* 手动处理按钮 */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">手动处理</Label>
+            <Label className="text-sm font-medium text-gray-700">Manual Processing</Label>
             <div className="flex flex-col gap-2">
               {sourcesArray.length > 0 ? (
                 <>
@@ -184,12 +184,12 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                     {globalProcessing ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        处理中...
+                        Processing...
                       </>
                     ) : (
                       <>
                         <Sparkles className="h-4 w-4 mr-2" />
-                        处理今日内容
+                        Process Today's Content
                       </>
                     )}
                   </Button>
@@ -203,7 +203,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                       className="border-indigo-300 text-indigo-600 hover:bg-indigo-50 w-full justify-start"
                     >
                       <Sparkles className="h-4 w-4 mr-2" />
-                      处理本周内容
+                      Process This Week's Content
                     </Button>
                   ) : (
                     <Button

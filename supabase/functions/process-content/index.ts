@@ -346,7 +346,7 @@ async function generateAISummary(
 }
 
 async function callDeepSeekAPI(content: string, apiKey: string): Promise<string> {
-  const prompt = `Please provide a concise summary of the following article content. The summary should be in Chinese, clear, objective, and capture the main points and key information. Do not include any personal opinions or analysis. Do not just translate. The summary should be between 200 and 400 characters. Here is the article content:\n\n${content}`;
+  const prompt = `Please provide a concise summary of the following article content. The summary should be in English, clear, objective, and capture the main points and key information. Do not include any personal opinions or analysis. Focus on the essential facts and insights. The summary should be between 100 and 300 words. Here is the article content:\n\n${content}`;
   
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -357,7 +357,7 @@ async function callDeepSeekAPI(content: string, apiKey: string): Promise<string>
     body: JSON.stringify({
       model: "deepseek-chat",
       messages: [
-        { "role": "system", "content": "You are a helpful assistant that summarizes articles." },
+        { "role": "system", "content": "You are a helpful assistant that summarizes articles in clear, professional English." },
         { "role": "user", "content": prompt }
       ],
     }),
