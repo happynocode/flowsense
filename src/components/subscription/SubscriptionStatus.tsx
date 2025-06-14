@@ -3,6 +3,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Crown, Zap, Shield, ArrowRight } from 'lucide-react';
 import { useSubscription } from '../../hooks/useSubscription';
+import { navigateTo } from '../../utils/navigation';
 
 interface SubscriptionStatusProps {
   showUpgradePrompt?: boolean;
@@ -35,7 +36,7 @@ const SubscriptionStatus: React.FC<SubscriptionStatusProps> = ({
         {isFree && showUpgradePrompt && (
           <div className="mb-4 p-1 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-xl">
             <Button 
-              onClick={() => window.location.href = '/subscription'}
+              onClick={() => navigateTo('/subscription')}
               className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 py-3 text-base"
               size="lg"
             >

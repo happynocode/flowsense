@@ -3,6 +3,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCircle, Sparkles, Zap, Eraser, Crown, Lock, Calendar, RefreshCw } from 'lucide-react';
+import { navigateTo } from '../utils/navigation';
 import { sourcesApi, userApi } from '../services/api';
 import { ContentSource } from '../types';
 import { useToast } from '../hooks/use-toast';
@@ -216,7 +217,7 @@ const Sources = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => window.location.href = '/digests'}
+                  onClick={() => navigateTo('/digests')}
                   className="ml-2"
                 >
                   View Digest
@@ -364,20 +365,20 @@ const Sources = () => {
       console.log('🎯 Direct processing result:', result);
       
       if (result.success) {
-        toast({
-          title: "🎉 Processing Complete!",
-          description: `Successfully processed ${timeRangeText}'s content directly. Click to view your digest!`,
-          action: (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => window.location.href = '/digests'}
-              className="ml-2"
-            >
-              View Digest
-            </Button>
-          ),
-        });
+                  toast({
+            title: "🎉 Processing Complete!",
+            description: `Successfully processed ${timeRangeText}'s content directly. Click to view your digest!`,
+            action: (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigateTo('/digests')}
+                className="ml-2"
+              >
+                View Digest
+              </Button>
+            ),
+          });
       } else {
         toast({
           title: "❌ Processing Failed",
@@ -633,7 +634,7 @@ const Sources = () => {
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              onClick={() => window.location.href = '/subscription'}
+                              onClick={() => navigateTo('/subscription')}
                               className="ml-2"
                             >
                               <Crown className="w-4 h-4 mr-1" />

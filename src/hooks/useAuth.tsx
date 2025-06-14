@@ -3,6 +3,7 @@ import { User } from '../types';
 import { useToast } from './use-toast';
 import { supabase } from '../lib/supabase';
 import { userApi } from '../services/api';
+import { navigateTo } from '../utils/navigation';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -601,8 +602,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: "You have been safely logged out.",
         });
         
-        // 跳转到landing page
-        window.location.href = '/';
+        // 跳转到landing page (GitHub Pages 兼容)
+        navigateTo('/');
       }
     } catch (error) {
       console.error('❌ Logout error:', error);

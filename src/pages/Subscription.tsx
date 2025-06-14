@@ -10,6 +10,7 @@ import { stripePromise, SUBSCRIPTION_PLANS, type SubscriptionPlan } from '../lib
 import { subscriptionService, type SubscriptionInfo } from '../services/subscription';
 import PaymentForm from '../components/subscription/PaymentForm';
 import SubscriptionStatus from '../components/subscription/SubscriptionStatus';
+import { navigateTo, navigateToExternal } from '../utils/navigation';
 
 const Subscription = () => {
   const { user, loading: authLoading } = useAuth();
@@ -47,7 +48,7 @@ const Subscription = () => {
         
         // 如果订阅很新，说明刚完成支付，重定向到成功页面进行权限同步
         console.log('Found recent active subscription, redirecting to success page');
-        window.location.href = '/subscription/success';
+        navigateTo('/subscription/success');
         return;
       }
       
@@ -78,8 +79,8 @@ const Subscription = () => {
         cancelUrl: `${window.location.origin}/subscription`,
       });
 
-      // 跳转到Stripe Checkout
-      window.location.href = checkoutSession.url;
+      // 跳转到Stripe Checkout (外部URL)
+      navigateToExternal(checkoutSession.url);
     } catch (error) {
       console.error('Failed to create checkout session:', error);
       toast({

@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useAuth } from '@/hooks/useAuth';
 import { userApi } from '@/services/api';
+import { navigateTo } from '@/utils/navigation';
 import { 
   Zap, 
   Sparkles, 
@@ -132,7 +133,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => window.location.href = '/subscription'}
+            onClick={() => navigateTo('/subscription')}
             className="ml-2"
           >
             <Crown className="w-4 h-4 mr-1" />
@@ -312,7 +313,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              onClick={() => window.location.href = '/subscription'}
+                              onClick={() => navigateTo('/subscription')}
                               className="ml-2"
                             >
                               <Crown className="w-4 h-4 mr-1" />
