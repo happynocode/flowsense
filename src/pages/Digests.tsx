@@ -189,14 +189,15 @@ const Digests = () => {
 
   // 生成基于用户时区的digest标题
   const generateDigestTitle = (digest: Digest, userTimezone: string) => {
-    const digestDate = new Date(digest.date);
+    // 使用digest创建时间，转换为用户时区的当天日期
+    const digestCreatedDate = new Date(digest.createdAt);
     
     // 判断是否为weekly digest（通过原标题或其他方式）
     const isWeekly = digest.title.toLowerCase().includes('weekly');
     
     if (isWeekly) {
       // Weekly digest: "Weekly Digest - M/D/YYYY"
-      const formattedDate = digestDate.toLocaleDateString('en-US', {
+      const formattedDate = digestCreatedDate.toLocaleDateString('en-US', {
         month: 'numeric',
         day: 'numeric',
         year: 'numeric',
@@ -205,7 +206,7 @@ const Digests = () => {
       return `Weekly Digest - ${formattedDate}`;
     } else {
       // Daily digest: "Daily Digest - M/D/YYYY"
-      const formattedDate = digestDate.toLocaleDateString('en-US', {
+      const formattedDate = digestCreatedDate.toLocaleDateString('en-US', {
         month: 'numeric',
         day: 'numeric',
         year: 'numeric',
@@ -323,7 +324,7 @@ const Digests = () => {
                       <div className="flex items-center space-x-2 mb-2">
                         <Calendar className="h-4 w-4 text-gray-500" />
                         <span className="text-sm text-gray-600">
-                          {formatDate(digest.date, userTimezone)}
+                          {formatDate(digest.createdAt, userTimezone)}
                         </span>
                       </div>
                       <CardTitle className="text-xl mb-2 break-words">{generateDigestTitle(digest, userTimezone)}</CardTitle>
