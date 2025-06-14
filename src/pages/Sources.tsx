@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCircle, Sparkles, Zap, Eraser, Crown, Lock, Calendar } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCircle, Sparkles, Zap, Eraser, Crown, Lock, Calendar, RefreshCw } from 'lucide-react';
 import { sourcesApi, userApi } from '../services/api';
 import { ContentSource } from '../types';
 import { useToast } from '../hooks/use-toast';
@@ -25,7 +25,7 @@ import {
 } from '../components/ui/alert-dialog';
 
 const Sources = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const { isPremium, limits, canAddSource, canUseFeature, upgradeRequired } = useSubscription();
   const [sources, setSources] = useState<ContentSource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +43,25 @@ const Sources = () => {
   const [isPollingTask, setIsPollingTask] = useState(false);
   
   const { toast } = useToast();
+
+  // 刷新用户订阅状态
+  const handleRefreshUserData = async () => {
+    try {
+      console.log('🔄 手动刷新用户数据...');
+      await refreshUser();
+      toast({
+        title: "✅ User Data Refreshed",
+        description: "Subscription status has been updated.",
+      });
+    } catch (error) {
+      console.error('❌ 刷新用户数据失败:', error);
+      toast({
+        title: "❌ Refresh Failed",
+        description: "Failed to refresh user data. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     // Only fetch sources when user is authenticated and auth loading is complete
@@ -588,6 +607,16 @@ const Sources = () => {
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
+                {/* 刷新用户数据按钮 */}
+                <button 
+                  onClick={handleRefreshUserData}
+                  className="btn-outline text-blue-600 border-blue-300 hover:bg-blue-50 hover:border-blue-500"
+                  title="Refresh subscription status"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh Status
+                </button>
+                
                 {canAddSource(sources.length) ? (
                   <button onClick={() => setShowForm(true)} className="btn-primary">
                     <Plus className="h-4 w-4" />
