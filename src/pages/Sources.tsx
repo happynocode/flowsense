@@ -86,8 +86,8 @@ const Sources = () => {
       console.log('📡 Starting fetchSources...');
       setLoading(true);
       
-      // 获取所有sources，使用默认的大limit
-      const response = await sourcesApi.getSources(1, undefined, user?.id);
+      // 获取所有sources，明确设置大limit以确保没有限制
+      const response = await sourcesApi.getSources(1, 1000, user?.id);
       console.log('✅ Sources response:', response);
       setSources(response.data || []);
     } catch (error) {
@@ -553,7 +553,9 @@ const Sources = () => {
     loading,
     authLoading,
     globalProcessing,
-    user: user ? { id: user.id, email: user.email } : null
+    user: user ? { id: user.id, email: user.email } : null,
+    limits,
+    isPremium
   });
 
   return (
@@ -569,6 +571,13 @@ const Sources = () => {
             <p className="text-gray-600 mt-2">
               管理您的博客、播客和新闻源
             </p>
+            {/* Debug Info */}
+            <div className="mt-2 text-xs text-gray-500 bg-gray-100 rounded p-2">
+              📊 当前显示: {sourcesArray.length} 个信息源 | 
+              订阅类型: {isPremium ? '高级版' : '免费版'} | 
+              限制: {sources.length}/{limits.maxSources} | 
+              状态: {loading ? '加载中' : '已加载'}
+            </div>
           </div>
           <div className="flex gap-3">
             {canAddSource(sources.length) ? (
