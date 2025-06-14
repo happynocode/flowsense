@@ -603,18 +603,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         
         // 跳转到landing page (GitHub Pages 兼容)
-        // 使用更可靠的跳转方法
-        console.log('🔍 Logout redirect debug:', {
-          hostname: window.location.hostname,
-          isGitHubPages: window.location.hostname.includes('github.io'),
-          currentUrl: window.location.href
-        });
+        // 使用最直接的方法：检查当前URL并构建正确的跳转路径
+        const currentUrl = window.location.href;
+        console.log('🔍 Current URL:', currentUrl);
         
-        if (window.location.hostname.includes('github.io')) {
-          console.log('✅ Detected GitHub Pages, redirecting to /digest-flow-daily/');
-          window.location.href = '/digest-flow-daily/';
+        if (currentUrl.includes('happynocode.github.io/digest-flow-daily')) {
+          const targetUrl = 'https://happynocode.github.io/digest-flow-daily/';
+          console.log('✅ GitHub Pages detected, redirecting to:', targetUrl);
+          window.location.href = targetUrl;
+        } else if (currentUrl.includes('github.io')) {
+          // 通用GitHub Pages处理
+          const targetUrl = window.location.origin + '/digest-flow-daily/';
+          console.log('✅ Generic GitHub Pages, redirecting to:', targetUrl);
+          window.location.href = targetUrl;
         } else {
-          console.log('✅ Not GitHub Pages, redirecting to /');
+          console.log('✅ Not GitHub Pages, redirecting to root');
           window.location.href = '/';
         }
       }
