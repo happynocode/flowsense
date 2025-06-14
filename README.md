@@ -2,7 +2,7 @@
 
 **A modern, intelligent content aggregation and digest generation platform built with React and Supabase.**
 
-[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge&logo=githubpages)](https://ruofei29.github.io/digest-flow-daily/)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge&logo=githubpages)](https://happynocode.github.io/digest-flow-daily/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
@@ -76,7 +76,7 @@ graph TD
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/Ruofei29/digest-flow-daily.git
+   git clone https://github.com/happynocode/digest-flow-daily.git
    cd digest-flow-daily
    ```
 
@@ -200,9 +200,9 @@ This project is licensed under the MIT License.
 
 ## 📞 Support
 
-- 🐛 Issues: [GitHub Issues](https://github.com/Ruofei29/digest-flow-daily/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/Ruofei29/digest-flow-daily/discussions)
+- 🐛 Issues: [GitHub Issues](https://github.com/happynocode/digest-flow-daily/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/happynocode/digest-flow-daily/discussions)
 
 ---
 
-**Made with ❤️ by [Ruofei29](https://github.com/Ruofei29)**
+**Made with ❤️ by [nocode](https://github.com/happynocode)**
