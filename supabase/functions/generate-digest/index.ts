@@ -183,11 +183,11 @@ async function generateDigestFromSummaries(
           .update({ 
             status: 'failed',
             result: { message: 'No summaries found for the specified time range' },
-            updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString()
           })
           .eq('id', taskId)
       }
-      
+
       return { success: false, message: 'No summaries found for the specified time range' }
     }
 

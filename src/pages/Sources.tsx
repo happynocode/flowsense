@@ -11,10 +11,7 @@ import { useSubscription } from '../hooks/useSubscription';
 import { Navigate } from 'react-router-dom';
 import LoadingIndicator from '../components/common/LoadingIndicator';
 import SourceForm from '../components/sources/SourceForm';
-import AutoDigestSettings from '../components/sources/AutoDigestSettings';
-import AutoDigestSettingsDemo from '../components/sources/AutoDigestSettingsDemo';
-import ProcessingControlPanel from '../components/sources/ProcessingControlPanel';
-import SubscriptionStatus from '../components/subscription/SubscriptionStatus';
+import CombinedControlPanel from '../components/sources/CombinedControlPanel';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -561,90 +558,93 @@ const Sources = () => {
   return (
     <div className="min-h-screen bg-gradient-hero">
       <div className="container mx-auto px-4 py-8">
-        {/* Subscription Status */}
-        <SubscriptionStatus className="mb-8" />
-        
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">内容信息源</h1>
-            <p className="text-gray-600 mt-2">
-              管理您的博客、播客和新闻源
-            </p>
-            {/* Debug Info */}
-            <div className="mt-2 text-xs text-gray-500 bg-gray-100 rounded p-2">
-              📊 当前显示: {sourcesArray.length} 个信息源 | 
-              订阅类型: {isPremium ? '高级版' : '免费版'} | 
-              限制: {sources.length}/{limits.maxSources} | 
-              状态: {loading ? '加载中' : '已加载'}
+        {/* Left-Right Layout */}
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Left Panel - Control Panel */}
+          <div className="lg:w-1/3 xl:w-1/4">
+            <div className="sticky top-8">
+              <CombinedControlPanel
+                sourcesArray={sourcesArray}
+                globalProcessing={globalProcessing}
+                onProcessToday={() => handleProcessDirectly('today')}
+                onProcessWeek={() => handleProcessDirectly('week')}
+                onClearContent={() => setShowClearDialog(true)}
+              />
             </div>
           </div>
-          <div className="flex gap-3">
-            {canAddSource(sources.length) ? (
-              <button onClick={() => setShowForm(true)} className="btn-primary">
-                <Plus className="h-4 w-4" />
-                添加信息源
-              </button>
-            ) : (
-              <div className="relative group">
-                <button 
-                  onClick={() => {
-                    toast({
-                      title: "升级到高级版",
-                      description: `免费用户最多可添加 ${limits.maxSources} 个信息源。升级到高级版可添加 20 个信息源。`,
-                      action: (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => window.location.href = '/subscription'}
-                          className="ml-2"
-                        >
-                          <Crown className="w-4 h-4 mr-1" />
-                          升级
-                        </Button>
-                      ),
-                    });
-                  }}
-                  className="btn-primary opacity-50 cursor-not-allowed"
-                  disabled
-                >
-                  <Lock className="h-4 w-4" />
-                  添加信息源 ({sources.length}/{limits.maxSources})
-                </button>
-                <div className="absolute -top-2 -right-2">
-                  <Crown className="w-5 h-5 text-yellow-500" />
+
+          {/* Right Panel - Main Content */}
+          <div className="lg:w-2/3 xl:w-3/4">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8">
+              <div className="mb-4 sm:mb-0">
+                <h1 className="text-3xl font-bold text-gray-800">内容信息源</h1>
+                <p className="text-gray-600 mt-2">
+                  管理您的博客、播客和新闻源
+                </p>
+                {/* Debug Info */}
+                <div className="mt-2 text-xs text-gray-500 bg-gray-100 rounded p-2">
+                  📊 当前显示: {sourcesArray.length} 个信息源 | 
+                  订阅类型: {isPremium ? '高级版' : '免费版'} | 
+                  限制: {sources.length}/{limits.maxSources} | 
+                  状态: {loading ? '加载中' : '已加载'}
                 </div>
               </div>
-            )}
-            
-            {/* 🔧 调试重置按钮 */}
-            {globalProcessing && (
-              <button
-                onClick={() => {
-                  console.log('🔧 Resetting global processing state');
-                  setGlobalProcessing(false);
-                  setCurrentTask(null);
-                  setTaskProgress(null);
-                  setIsPollingTask(false);
-                }}
-                className="btn-outline text-red-600 border-red-300 hover:bg-red-50 hover:border-red-500"
-              >
-                🔧 重置状态
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Control Panel - Processing & Auto Digest */}
-        <div className="mb-6">
-          <ProcessingControlPanel
-            sourcesArray={sourcesArray}
-            globalProcessing={globalProcessing}
-            onProcessToday={() => handleProcessDirectly('today')}
-            onProcessWeek={() => handleProcessDirectly('week')}
-            onClearContent={() => setShowClearDialog(true)}
-          />
-        </div>
+              <div className="flex flex-wrap gap-3">
+                {canAddSource(sources.length) ? (
+                  <button onClick={() => setShowForm(true)} className="btn-primary">
+                    <Plus className="h-4 w-4" />
+                    添加信息源
+                  </button>
+                ) : (
+                  <div className="relative group">
+                    <button 
+                      onClick={() => {
+                        toast({
+                          title: "升级到高级版",
+                          description: `免费用户最多可添加 ${limits.maxSources} 个信息源。升级到高级版可添加 20 个信息源。`,
+                          action: (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => window.location.href = '/subscription'}
+                              className="ml-2"
+                            >
+                              <Crown className="w-4 h-4 mr-1" />
+                              升级
+                            </Button>
+                          ),
+                        });
+                      }}
+                      className="btn-primary opacity-50 cursor-not-allowed"
+                      disabled
+                    >
+                      <Lock className="h-4 w-4" />
+                      添加信息源 ({sources.length}/{limits.maxSources})
+                    </button>
+                    <div className="absolute -top-2 -right-2">
+                      <Crown className="w-5 h-5 text-yellow-500" />
+                    </div>
+                  </div>
+                )}
+                
+                {/* 🔧 调试重置按钮 */}
+                {globalProcessing && (
+                  <button
+                    onClick={() => {
+                      console.log('🔧 Resetting global processing state');
+                      setGlobalProcessing(false);
+                      setCurrentTask(null);
+                      setTaskProgress(null);
+                      setIsPollingTask(false);
+                    }}
+                    className="btn-outline text-red-600 border-red-300 hover:bg-red-50 hover:border-red-500"
+                  >
+                    🔧 重置状态
+                  </button>
+                )}
+              </div>
+            </div>
 
         {/* 📊 任务进度显示 */}
         {globalProcessing && (
@@ -946,57 +946,59 @@ const Sources = () => {
           </div>
         )}
 
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>删除信息源</AlertDialogTitle>
-              <AlertDialogDescription>
-                您确定要删除 "{deleteDialog?.name}" 吗？此操作无法撤销。
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => deleteDialog && handleDelete(deleteDialog)}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                删除
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>删除信息源</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    您确定要删除 "{deleteDialog?.name}" 吗？此操作无法撤销。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteDialog && handleDelete(deleteDialog)}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    删除
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
-        {/* Clear Content Confirmation Dialog */}
-        <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Clear Scraped Content</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to clear all scraped content and summaries? 
-                This will remove all generated digests and content items but keep your sources intact. 
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleClearScrapedContent}
-                disabled={clearing}
-                className="bg-orange-600 hover:bg-orange-700"
-              >
-                {clearing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    正在清除...
-                  </>
-                ) : (
-                  '清除内容'
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+            {/* Clear Content Confirmation Dialog */}
+            <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear Scraped Content</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to clear all scraped content and summaries? 
+                    This will remove all generated digests and content items but keep your sources intact. 
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleClearScrapedContent}
+                    disabled={clearing}
+                    className="bg-orange-600 hover:bg-orange-700"
+                  >
+                    {clearing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        正在清除...
+                      </>
+                    ) : (
+                      '清除内容'
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
       </div>
     </div>
   );

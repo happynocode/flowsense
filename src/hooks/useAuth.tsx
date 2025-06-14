@@ -233,12 +233,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // 准备upsert数据
       const upsertData = {
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        name: supabaseUser.user_metadata?.full_name || 
-              supabaseUser.user_metadata?.name || 
-              supabaseUser.email?.split('@')[0] || 'User',
-        avatar_url: supabaseUser.user_metadata?.avatar_url || null,
+            id: supabaseUser.id,
+            email: supabaseUser.email || '',
+            name: supabaseUser.user_metadata?.full_name || 
+                  supabaseUser.user_metadata?.name || 
+                  supabaseUser.email?.split('@')[0] || 'User',
+            avatar_url: supabaseUser.user_metadata?.avatar_url || null,
         updated_at: new Date().toISOString(),
         // 包含 auto_digest 字段的默认值，防止查询失败
         auto_digest_enabled: false,
@@ -334,8 +334,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const { data, error } = await supabase
             .from('users')
             .insert(upsertData)
-            .select()
-            .single();
+          .select()
+          .single();
           
           result = { data, error };
         }
