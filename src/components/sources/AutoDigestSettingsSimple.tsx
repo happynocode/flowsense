@@ -7,17 +7,17 @@ import { useToast } from '../../hooks/use-toast';
 import { useSubscription } from '../../hooks/useSubscription';
 import { userApi } from '../../services/api';
 
-// 常用时区列表
+// Common timezone list
 const TIMEZONES = [
-  { value: 'UTC', label: 'UTC (协调世界时)', offset: '+00:00' },
-  { value: 'Asia/Shanghai', label: '中国标准时间 (CST)', offset: '+08:00' },
-  { value: 'America/New_York', label: '美国东部时间 (EST/EDT)', offset: '-05:00/-04:00' },
-  { value: 'America/Los_Angeles', label: '美国太平洋时间 (PST/PDT)', offset: '-08:00/-07:00' },
-  { value: 'Europe/London', label: '英国时间 (GMT/BST)', offset: '+00:00/+01:00' },
-  { value: 'Europe/Paris', label: '中欧时间 (CET/CEST)', offset: '+01:00/+02:00' },
-  { value: 'Asia/Tokyo', label: '日本标准时间 (JST)', offset: '+09:00' },
-  { value: 'Asia/Seoul', label: '韩国标准时间 (KST)', offset: '+09:00' },
-  { value: 'Australia/Sydney', label: '澳大利亚东部时间 (AEST/AEDT)', offset: '+10:00/+11:00' },
+  { value: 'UTC', label: 'UTC (Coordinated Universal Time)', offset: '+00:00' },
+  { value: 'Asia/Shanghai', label: 'China Standard Time (CST)', offset: '+08:00' },
+  { value: 'America/New_York', label: 'US Eastern Time (EST/EDT)', offset: '-05:00/-04:00' },
+  { value: 'America/Los_Angeles', label: 'US Pacific Time (PST/PDT)', offset: '-08:00/-07:00' },
+  { value: 'Europe/London', label: 'UK Time (GMT/BST)', offset: '+00:00/+01:00' },
+  { value: 'Europe/Paris', label: 'Central European Time (CET/CEST)', offset: '+01:00/+02:00' },
+  { value: 'Asia/Tokyo', label: 'Japan Standard Time (JST)', offset: '+09:00' },
+  { value: 'Asia/Seoul', label: 'Korea Standard Time (KST)', offset: '+09:00' },
+  { value: 'Australia/Sydney', label: 'Australia Eastern Time (AEST/AEDT)', offset: '+10:00/+11:00' },
 ];
 
 const AutoDigestSettingsSimple: React.FC = () => {
@@ -143,7 +143,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
       <div className="bg-white rounded-lg border border-indigo-200 shadow-sm">
         <div className="p-4 text-center">
           <div className="animate-spin h-6 w-6 border-2 border-indigo-600 border-t-transparent rounded-full mx-auto mb-2"></div>
-          <p className="text-sm text-gray-600">加载自动摘要设置...</p>
+          <p className="text-sm text-gray-600">Loading auto digest settings...</p>
         </div>
       </div>
     );
@@ -154,7 +154,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
       <div className="p-3">
         <h4 className="text-base font-semibold text-indigo-800 mb-3 flex items-center">
           <Clock className="h-4 w-4 mr-2" />
-          自动摘要
+          Auto Digest Settings
         </h4>
         
         <div className="space-y-3">
@@ -168,7 +168,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
                 variant="outline" 
                 className="mt-2"
               >
-                重试
+                Retry
               </Button>
             </div>
           )}
@@ -177,12 +177,12 @@ const AutoDigestSettingsSimple: React.FC = () => {
           <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex items-center">
               <Label htmlFor="auto-digest-enabled-simple" className="text-sm font-medium text-gray-900">
-                启用自动摘要
+                Enable Auto Digest
               </Label>
               {!canUseFeature('auto') && (
                 <div className="ml-2 flex items-center">
                   <Crown className="h-4 w-4 text-yellow-500" />
-                  <span className="text-xs text-gray-500 ml-1">高级版</span>
+                  <span className="text-xs text-gray-500 ml-1">Premium</span>
                 </div>
               )}
             </div>
@@ -229,12 +229,12 @@ const AutoDigestSettingsSimple: React.FC = () => {
           </div>
 
           {/* Time and Timezone Selection */}
-          <div className={`p-2 bg-gray-50 rounded-lg border border-gray-200 space-y-2 ${!canUseFeature('auto') ? 'opacity-50' : ''}`}>
+          <div className={`p-2 rounded-lg border border-gray-200 space-y-2 ${!canUseFeature('auto') ? 'bg-gray-100' : 'bg-gray-50'}`}>
             {/* Timezone Selection */}
             <div className="space-y-2">
               <Label htmlFor="digest-timezone" className="text-sm font-medium text-gray-900 flex items-center">
                 <Globe className="h-4 w-4 mr-2" />
-                时区
+                Timezone
                 {!canUseFeature('auto') && <Crown className="h-4 w-4 ml-2 text-yellow-500" />}
               </Label>
               <select
@@ -276,7 +276,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
             {/* Time Selection */}
             <div className="space-y-2">
               <Label htmlFor="digest-time-simple" className="text-sm font-medium text-gray-900 flex items-center">
-                执行时间
+                Execution Time
                 {!canUseFeature('auto') && <Crown className="h-4 w-4 ml-2 text-yellow-500" />}
               </Label>
               <Input
@@ -319,7 +319,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
                 disabled={saving}
                 className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
               >
-                {saving ? '保存中...' : '💾 保存设置'}
+                {saving ? 'Saving...' : '💾 Save Settings'}
               </Button>
             ) : (
               <Button 
@@ -341,7 +341,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
                   });
                 }}
                 disabled
-                className="w-full opacity-50 cursor-not-allowed bg-gray-400 hover:bg-gray-400 flex items-center justify-center"
+                className="w-full cursor-not-allowed bg-gray-400 hover:bg-gray-400 flex items-center justify-center"
               >
                 <Lock className="w-4 h-4 mr-2" />
                 💾 Save Settings

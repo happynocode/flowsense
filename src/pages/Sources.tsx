@@ -344,8 +344,6 @@ const Sources = () => {
       console.log('🎯 Direct processing result:', result);
       
       if (result.success) {
-        setProcessResults({ success: true, data: result.data });
-        
         toast({
           title: "🎉 Processing Complete!",
           description: `Successfully processed ${timeRangeText}'s content directly. Click to view your digest!`,
@@ -361,7 +359,6 @@ const Sources = () => {
           ),
         });
       } else {
-        setProcessResults({ success: false, error: result.error });
         toast({
           title: "❌ Processing Failed",
           description: result.error || "Failed to process content directly",
@@ -371,7 +368,6 @@ const Sources = () => {
     } catch (error) {
       console.error('🎯 ===== DIRECT PROCESSING ERROR =====');
       console.error('🎯 直接处理失败:', error);
-      setProcessResults({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
       toast({
         title: "❌ Processing Failed",
         description: "Failed to process content directly. Please try again.",

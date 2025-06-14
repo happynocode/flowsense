@@ -64,4 +64,38 @@
 - 更改摘要：优化 AI 摘要生成质量，确保生成专业英文内容
 - 原因：用户要求将 DeepSeek prompt 改为英文并优化摘要质量
 - 阻碍：无
+- 状态：成功
+
+[2024-12-19 当前时间]
+- 步骤：修复 Auto Digest Settings 界面中文文本和透明度问题
+- 修改：
+  - AutoDigestSettingsSimple.tsx: 翻译所有中文文本为英文
+    - "自动摘要" → "Auto Digest Settings"
+    - "启用自动摘要" → "Enable Auto Digest"
+    - "高级版" → "Premium"
+    - "时区" → "Timezone"
+    - "执行时间" → "Execution Time"
+    - "保存中..." → "Saving..."
+    - "💾 保存设置" → "💾 Save Settings"
+    - "重试" → "Retry"
+    - "加载自动摘要设置..." → "Loading auto digest settings..."
+  - 更新时区标签为英文（两个文件）
+  - 移除透明度设置 opacity-50，改为实心背景 bg-gray-100
+  - CombinedControlPanel.tsx: 翻译时区标签为英文
+- 更改摘要：完全英文化 Auto Digest Settings 界面，修复透明度问题
+- 原因：用户反馈界面仍有中文且存在透明颜色问题
+- 阻碍：无
+- 状态：成功
+
+[2024-12-19 当前时间]
+- 步骤：移除处理完成后的大型通知界面
+- 修改：
+  - src/pages/Sources.tsx: 在 handleProcessDirectly 函数中移除 setProcessResults 调用
+  - 移除成功处理时的 setProcessResults({ success: true, data: result.data })
+  - 移除失败处理时的 setProcessResults({ success: false, error: result.error })
+  - 移除异常处理时的 setProcessResults 调用
+  - 保留所有 Toast 通知，确保用户仍能收到处理反馈
+- 更改摘要：移除用户点击 Process Today/Week 后的大型处理完成通知界面
+- 原因：用户反馈不希望在处理完成后显示大型通知界面
+- 阻碍：无
 - 状态：待确认 

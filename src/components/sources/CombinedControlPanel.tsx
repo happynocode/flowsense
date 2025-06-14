@@ -31,14 +31,14 @@ import SubscriptionStatus from '../subscription/SubscriptionStatus';
 
 const TIMEZONES = [
   { value: 'UTC', label: 'UTC' },
-  { value: 'America/New_York', label: '美国东部时间 (EST/EDT)' },
-  { value: 'America/Los_Angeles', label: '美国太平洋时间 (PST/PDT)' },
-  { value: 'Europe/London', label: '英国时间 (GMT/BST)' },
-  { value: 'Europe/Paris', label: '欧洲中部时间 (CET/CEST)' },
-  { value: 'Asia/Tokyo', label: '日本时间 (JST)' },
-  { value: 'Asia/Shanghai', label: '中国时间 (CST)' },
-  { value: 'Asia/Hong_Kong', label: '香港时间 (HKT)' },
-  { value: 'Australia/Sydney', label: '澳大利亚东部时间 (AEST/AEDT)' },
+  { value: 'America/New_York', label: 'US Eastern Time (EST/EDT)' },
+  { value: 'America/Los_Angeles', label: 'US Pacific Time (PST/PDT)' },
+  { value: 'Europe/London', label: 'UK Time (GMT/BST)' },
+  { value: 'Europe/Paris', label: 'Central European Time (CET/CEST)' },
+  { value: 'Asia/Tokyo', label: 'Japan Time (JST)' },
+  { value: 'Asia/Shanghai', label: 'China Time (CST)' },
+  { value: 'Asia/Hong_Kong', label: 'Hong Kong Time (HKT)' },
+  { value: 'Australia/Sydney', label: 'Australia Eastern Time (AEST/AEDT)' },
 ];
 
 interface CombinedControlPanelProps {
