@@ -2,9 +2,19 @@
 
 // 获取基础路径
 const getBasePath = (): string => {
-  // 在开发环境中，basename通常为空或'/'
-  // 在GitHub Pages中，basename为'/digest-flow-daily'
-  return import.meta.env.DEV ? '' : '/digest-flow-daily';
+  // 检查是否在GitHub Pages环境中
+  const isGitHubPages = window.location.hostname.includes('github.io');
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  // 在GitHub Pages中使用子路径，在本地开发中不使用
+  if (isGitHubPages) {
+    return '/digest-flow-daily';
+  } else if (isLocalhost) {
+    return '';
+  } else {
+    // 其他生产环境，根据需要调整
+    return '/digest-flow-daily';
+  }
 };
 
 // 导航到指定路径

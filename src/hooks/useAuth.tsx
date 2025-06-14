@@ -603,7 +603,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         
         // 跳转到landing page (GitHub Pages 兼容)
-        navigateTo('/');
+        // 使用更可靠的跳转方法
+        console.log('🔍 Logout redirect debug:', {
+          hostname: window.location.hostname,
+          isGitHubPages: window.location.hostname.includes('github.io'),
+          currentUrl: window.location.href
+        });
+        
+        if (window.location.hostname.includes('github.io')) {
+          console.log('✅ Detected GitHub Pages, redirecting to /digest-flow-daily/');
+          window.location.href = '/digest-flow-daily/';
+        } else {
+          console.log('✅ Not GitHub Pages, redirecting to /');
+          window.location.href = '/';
+        }
       }
     } catch (error) {
       console.error('❌ Logout error:', error);
