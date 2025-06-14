@@ -174,9 +174,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('🏁 refreshUser 执行完成');
   };
 
+  // 指数退避重试函数
+  const retryWithBackoff = async (fn: () => Promise<any>, maxRetries: number = 3, baseDelay: number = 1000) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const result = await fn();
+        return result;
+      } catch (error: any) {
+        console.log(`🔄 [重试] 第 ${i + 1} 次尝试失败:`, error.message);
+        
+        // 如果是最后一次重试，直接抛出错误
+        if (i === maxRetries - 1) {
+          console.error(`❌ [重试] 达到最大重试次数 (${maxRetries})，停止重试`);
+          throw error;
+        }
+        
+        // 检查是否是可重试的错误类型
+        const isRetryableError = 
+          error.message?.includes('network') ||
+          error.message?.includes('timeout') ||
+          error.message?.includes('fetch') ||
+          error.code === 'NETWORK_ERROR' ||
+          error.status === 408 || // Request Timeout
+          error.status === 429 || // Too Many Requests
+          error.status === 502 || // Bad Gateway
+          error.status === 503 || // Service Unavailable
+          error.status === 504;   // Gateway Timeout
+        
+        if (!isRetryableError) {
+          console.log(`⚠️ [重试] 检测到不可重试错误，停止重试:`, error.code || error.status);
+          throw error;
+        }
+        
+        // 计算延迟时间（指数退避 + 随机抖动）
+        const delay = Math.min(baseDelay * Math.pow(2, i), 8000) + Math.random() * 1000;
+        console.log(`⏳ [重试] ${delay.toFixed(0)}ms 后进行第 ${i + 2} 次重试...`);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  };
+
   const syncUserToDatabase = async (supabaseUser: SupabaseUser) => {
     try {
       console.log('🔄 后台同步用户到数据库...');
+      console.log('🔍 [诊断] Supabase用户数据:', {
+        id: supabaseUser.id,
+        email: supabaseUser.email,
+        created_at: supabaseUser.created_at,
+        user_metadata: supabaseUser.user_metadata
+      });
       
       // 检查数据库操作是否可用
       if (!supabase.from) {
@@ -184,50 +231,170 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // 强制同步用户到数据库
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .upsert({
-            id: supabaseUser.id,
-            email: supabaseUser.email || '',
-            name: supabaseUser.user_metadata?.full_name || 
-                  supabaseUser.user_metadata?.name || 
-                  supabaseUser.email?.split('@')[0] || 'User',
-            avatar_url: supabaseUser.user_metadata?.avatar_url || null,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'id',
-            ignoreDuplicates: false
-          })
-          .select()
-          .single();
+      // 准备upsert数据
+      const upsertData = {
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        name: supabaseUser.user_metadata?.full_name || 
+              supabaseUser.user_metadata?.name || 
+              supabaseUser.email?.split('@')[0] || 'User',
+        avatar_url: supabaseUser.user_metadata?.avatar_url || null,
+        updated_at: new Date().toISOString(),
+        // 包含 auto_digest 字段的默认值，防止查询失败
+        auto_digest_enabled: false,
+        auto_digest_time: '09:00:00',
+        auto_digest_timezone: 'UTC',
+        last_auto_digest_run: null
+      };
+      
+      console.log('🔍 [诊断] 准备upsert的数据:', upsertData);
+      console.log('🔍 [诊断] 使用的Supabase客户端库版本: @supabase/supabase-js ^2.50.0');
+      
+      // 使用重试机制执行数据库同步
+      const result = await retryWithBackoff(async () => {
+        console.log('🔍 [诊断] 开始执行数据库同步操作...');
+        console.log('🔍 [诊断] 场景：可能是database reset后的重新登录');
+        
+        // 首先检查用户是否已存在于public.users表中
+        let existingUser = null;
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('id, email')
+            .eq('id', upsertData.id)
+            .maybeSingle(); // 使用maybeSingle()避免"no rows"错误
+          
+          if (!error) {
+            existingUser = data;
+          }
+          console.log('🔍 [诊断] 按ID查询现有用户结果:', existingUser);
+        } catch (idError) {
+          console.log('🔍 [诊断] 按ID查询失败，尝试按email查询:', idError);
+        }
+        
+        // 如果按ID没找到，再尝试按email查询（处理potential email冲突）
+        if (!existingUser) {
+          try {
+            const { data, error } = await supabase
+              .from('users')
+              .select('id, email')
+              .eq('email', upsertData.email)
+              .maybeSingle();
+            
+            if (!error && data) {
+              existingUser = data;
+              console.log('🔍 [诊断] 按email查询找到现有用户:', existingUser);
+              console.log('⚠️ [诊断] 检测到ID不匹配但email相同的情况 - 可能是database reset后的残留数据');
+            }
+          } catch (emailError) {
+            console.log('🔍 [诊断] 按email查询也失败:', emailError);
+          }
+        }
+        
+        let result;
+        if (existingUser) {
+          if (existingUser.id === upsertData.id) {
+            // 正常情况：用户已存在，执行更新
+            console.log('🔄 [诊断] 用户已存在，执行更新操作');
+            const { data, error } = await supabase
+              .from('users')
+              .update({
+                name: upsertData.name,
+                avatar_url: upsertData.avatar_url,
+                updated_at: upsertData.updated_at,
+                auto_digest_enabled: upsertData.auto_digest_enabled,
+                auto_digest_time: upsertData.auto_digest_time,
+                auto_digest_timezone: upsertData.auto_digest_timezone
+              })
+              .eq('id', upsertData.id)
+              .select()
+              .single();
+            
+            result = { data, error };
+          } else {
+            // 特殊情况：email相同但ID不同（database reset残留）
+            console.log('🔧 [诊断] 检测到database reset后的残留数据，先删除旧记录');
+            await supabase
+              .from('users')
+              .delete()
+              .eq('email', upsertData.email);
+            
+            console.log('➕ [诊断] 删除残留数据后，插入新用户记录');
+            const { data, error } = await supabase
+              .from('users')
+              .insert(upsertData)
+              .select()
+              .single();
+            
+            result = { data, error };
+          }
+        } else {
+          // 用户不存在，执行插入操作
+          console.log('➕ [诊断] 用户不存在，执行插入操作');
+          const { data, error } = await supabase
+            .from('users')
+            .insert(upsertData)
+            .select()
+            .single();
+          
+          result = { data, error };
+        }
+        
+        const { data, error } = result;
         
         if (error) {
           console.error('❌ 用户数据库同步失败:', error);
+          console.error('🔍 [诊断] 错误详情:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint
+          });
           
-          // If it's a policy error, try to create the user record manually
-          if (error.code === '42501' || error.message.includes('policy')) {
-            console.log('🔧 尝试使用服务角色创建用户记录...');
-            // This would need to be done via an edge function or trigger
-            // For now, log the issue
-            console.error('RLS策略阻止了用户创建，需要手动修复');
+          // 针对database reset后重新注册的特殊错误处理
+          if (error.code === '23505' && error.message.includes('users_email_key')) {
+            console.log('🔧 [诊断] 检测到email唯一约束冲突 - 尝试清理残留数据');
+            try {
+              // 删除可能的残留记录
+              await supabase
+                .from('users')
+                .delete()
+                .eq('email', upsertData.email);
+              
+              console.log('🔄 [诊断] 清理完成，重新尝试插入');
+              const { data: retryData, error: retryError } = await supabase
+                .from('users')
+                .insert(upsertData)
+                .select()
+                .single();
+              
+              if (!retryError) {
+                console.log('✅ [诊断] 清理后重新插入成功');
+                return retryData;
+              }
+            } catch (cleanupError) {
+              console.error('❌ [诊断] 清理残留数据失败:', cleanupError);
+            }
+          }
+          
+          // 详细分析其他错误类型
+          if (error.code === '42501') {
+            console.error('🔍 [诊断] 检测到权限不足错误 (42501) - 可能是RLS策略问题');
+          } else if (error.message.includes('conflict')) {
+            console.error('🔍 [诊断] 检测到其他冲突相关错误');
           }
           
           throw error;
         }
         
         console.log('✅ 用户数据库同步成功:', data);
-      } catch (dbError: any) {
-        if (dbError?.message?.includes("relation") || dbError?.code === '42P01') {
-          console.warn("🔧 users 表不存在，跳过同步");
-        } else {
-          console.error('❌ 数据库同步失败:', dbError);
-          throw dbError;
-        }
-      }
+        console.log('🔍 [诊断] 成功返回的数据:', data);
+        return data;
+      }, 3, 1000);
+      
     } catch (error) {
       console.warn('⚠️ 数据库同步异常（不影响用户体验）:', error);
+      console.error('🔍 [诊断] 最外层catch捕获的错误:', error);
       // 重新抛出错误，因为这可能导致后续API调用失败
       throw error;
     }

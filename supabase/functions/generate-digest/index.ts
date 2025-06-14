@@ -65,22 +65,25 @@ async function generateDigestFromSummaries(
   try {
     console.log(`📊 Generating digest for user ${userId} with timeRange: ${timeRange}`)
 
-    // Calculate date range
+    // Calculate date range - MUST match fetch-content logic exactly
     const now = new Date()
     let startDate: Date
     
     switch (timeRange) {
       case 'today':
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+      case 'day': // Treat legacy 'day' as 'today' - match fetch-content logic
+        startDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000) // 1 day - exact match
         break
       case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) // 7 days - exact match
         break
       default:
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        console.warn(`Unknown timeRange "${timeRange}", defaulting to 'week'`)
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) // default to 7 days - exact match
     }
 
     console.log(`📅 Date range: ${startDate.toISOString()} to ${now.toISOString()}`)
+    console.log(`📅 Human readable: ${startDate.toLocaleString()} to ${now.toLocaleString()}`)
 
     // Get user's sources
     const { data: userSources, error: sourcesError } = await supabaseClient
@@ -100,14 +103,17 @@ async function generateDigestFromSummaries(
     }
 
     const sourceIds = userSources.map(us => us.id)
-    console.log(`📋 Found ${sourceIds.length} sources for user`)
+    console.log(`📋 Found ${sourceIds.length} sources for user:`, sourceIds)
+    console.log(`📋 Source details:`, userSources.map(s => ({ id: s.id, name: s.name })))
 
-    // Base query for summaries
+    // Base query for summaries with flexible time filtering
+    // Get all summaries for user sources, filter by published_date on client side
     let summaryQuery = supabaseClient
       .from('summaries')
       .select(`
         id,
         summary_text,
+        created_at,
         content_item:content_items!inner (
           id,
           title,
@@ -118,27 +124,21 @@ async function generateDigestFromSummaries(
         )
       `)
       .in('content_item.source_id', sourceIds)
-      .gte('content_item.published_date', startDate.toISOString())
-      .lte('content_item.published_date', now.toISOString())
 
     // If it's a partial digest, only fetch content from successful jobs for this task
     if (partial) {
-      const { data: successfulJobs, error: jobsError } = await supabaseClient
-        .from('source_fetch_jobs')
-        .select('id')
-        .eq('task_id', taskId)
-        .eq('status', 'completed')
-
-      if (jobsError) {
-        throw new Error(`Failed to fetch successful jobs for partial digest: ${jobsError.message}`)
-      }
-      
-      const successfulJobIds = successfulJobs.map(j => j.id)
-      summaryQuery = summaryQuery.in('content_item.fetch_job_id', successfulJobIds)
+      // For partial digest, we still want to include all available summaries
+      // The "partial" flag mainly affects task status reporting, not content filtering
+      console.log(`🔄 Partial mode: Including all available summaries, not just current task`)
     }
 
     // Execute the query - Note: Supabase doesn't allow ordering by nested field directly in join queries
     // We'll order by the summary's created_at field instead, which is accessible
+    console.log(`🔍 Executing summary query with conditions:`)
+    console.log(`   - Source IDs: [${sourceIds.join(', ')}]`)
+    console.log(`   - Date range: ${startDate.toISOString()} to ${now.toISOString()}`)
+    console.log(`   - Partial mode: ${partial}`)
+    
     const { data: summaries, error: summariesError } = await summaryQuery.order('created_at', { ascending: false })
 
     if (summariesError) {
@@ -147,20 +147,51 @@ async function generateDigestFromSummaries(
       return { success: false, message: 'Failed to fetch summaries' }
     }
 
-    if (!summaries || summaries.length === 0) {
-      console.log('⚠️ No summaries found for the specified time range')
-      
-      // If no content, we still mark the task as complete.
-      await supabaseClient.from('processing_tasks').update({ 
-        status: finalStatus,
-        result: { message: 'No content found for the specified time range.' },
-        updated_at: new Date().toISOString()
-      }).eq('id', taskId)
-
-      return { success: false, message: 'No content found for the specified time range' }
+    console.log(`🔍 Query result: Found ${summaries?.length || 0} summaries`)
+    
+    // Filter summaries based on content_item published_date or summary created_at
+    let filteredSummaries = summaries
+    if (summaries && summaries.length > 0) {
+      filteredSummaries = summaries.filter(summary => {
+        const publishedDate = summary.content_item?.published_date ? new Date(summary.content_item.published_date) : null
+        // Only filter by published_date: from now backwards based on timeRange
+        const publishedInRange = publishedDate && publishedDate >= startDate && publishedDate <= now
+        
+        return publishedInRange
+      })
+      console.log(`🔍 After time filtering: ${filteredSummaries.length} summaries remain`)
+    }
+    
+    if (filteredSummaries && filteredSummaries.length > 0) {
+      console.log(`📊 Summary details:`)
+      filteredSummaries.slice(0, 3).forEach((s, i) => {
+        console.log(`   ${i+1}. ${s.content_item?.title} (${s.content_item?.published_date})`)
+      })
+      if (filteredSummaries.length > 3) {
+        console.log(`   ... and ${filteredSummaries.length - 3} more`)
+      }
     }
 
-    console.log(`📰 Found ${summaries.length} summaries to include in digest`)
+    if (!filteredSummaries || filteredSummaries.length === 0) {
+      console.log('⚠️ No summaries found for the specified time range')
+      console.log('❌ Marking task as failed due to no summaries found')
+      
+      // Update processing task status to failed
+      if (taskId) {
+        await supabaseClient
+          .from('processing_tasks')
+          .update({ 
+            status: 'failed',
+            result: { message: 'No summaries found for the specified time range' },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', taskId)
+      }
+      
+      return { success: false, message: 'No summaries found for the specified time range' }
+    }
+
+    console.log(`📰 Found ${filteredSummaries.length} summaries to include in digest`)
 
     // Generate unique identifier for this digest to prevent concurrent duplicates
     // Use user's timezone for display date
@@ -175,45 +206,42 @@ async function generateDigestFromSummaries(
     const generationDate = now.toISOString().split('T')[0] // Use UTC date for deduplication
     
     // Generate the digest content using AI first (before any DB operations)
-    const digestContent = await generateDigestContent(summaries, timeRange, userSources)
+    const digestContent = await generateDigestContent(filteredSummaries, timeRange, userSources)
 
-    // Use upsert to handle concurrency - this will either insert or update existing
-    const { data: upsertedDigest, error: upsertError } = await supabaseClient
+    // Insert new digest record (no longer using upsert since unique constraints were removed)
+    const { data: insertedDigest, error: insertError } = await supabaseClient
       .from('digests')
-      .upsert({
+      .insert({
         user_id: userId,
         title: digestTitle,
         content: digestContent,
         generation_date: generationDate,
         created_at: now.toISOString(),
         updated_at: now.toISOString()
-      }, {
-        onConflict: 'user_id,generation_date,title', // Corrected to match the current unique constraint
-        ignoreDuplicates: false // Always update with latest content
       })
       .select('id')
       .single()
 
-    if (upsertError || !upsertedDigest) {
-      console.error('❌ Failed to upsert digest:', upsertError)
-      return { success: false, message: 'Failed to create/update digest' }
+    if (insertError || !insertedDigest) {
+      console.error('❌ Failed to insert digest:', insertError)
+      return { success: false, message: 'Failed to create digest' }
     }
 
-    console.log(`✅ Successfully upserted digest with ID: ${upsertedDigest.id}`)
+    console.log(`✅ Successfully inserted digest with ID: ${insertedDigest.id}`)
 
     // Clear existing digest_items for this digest to refresh the list
     const { error: deleteItemsError } = await supabaseClient
       .from('digest_items')
       .delete()
-      .eq('digest_id', upsertedDigest.id)
+      .eq('digest_id', insertedDigest.id)
 
     if (deleteItemsError) {
       console.log('⚠️ Warning: Failed to clear existing digest items:', deleteItemsError)
     }
 
     // Create fresh digest_items to link summaries to the digest
-    const digestItems = summaries.map((summary, index) => ({
-      digest_id: upsertedDigest.id,
+    const digestItems = filteredSummaries.map((summary, index) => ({
+      digest_id: insertedDigest.id,
       summary_id: summary.id,
       order_position: index + 1
     }))
@@ -233,16 +261,16 @@ async function generateDigestFromSummaries(
     await supabaseClient.from('processing_tasks').update({ 
       status: finalStatus, 
       result: { 
-        digestId: upsertedDigest.id, 
-        message: `Digest generated with ${summaries.length} summaries.`
+        digestId: insertedDigest.id, 
+        message: `Digest generated with ${filteredSummaries.length} summaries.`
       },
       updated_at: new Date().toISOString()
     }).eq('id', taskId)
     
     return { 
       success: true, 
-      message: `Digest generated with ${summaries.length} summaries`, 
-      digestId: upsertedDigest.id 
+      message: `Digest generated with ${filteredSummaries.length} summaries`, 
+      digestId: insertedDigest.id 
     }
 
   } catch (error) {

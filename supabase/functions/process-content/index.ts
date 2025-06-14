@@ -91,7 +91,9 @@ async function processContentItem(
       .single()
 
     if (existingSummary) {
-      console.log('⏭️ Summary already exists for this content item, skipping duplicate processing')
+      console.log(`⏭️ Summary already exists for content item ${contentItemId} (summary ID: ${existingSummary.id})`)
+      console.log(`📄 Skipping duplicate processing for: "${contentItem.title}"`)
+      console.log(`🔗 URL: ${contentItem.content_url}`)
       // No longer triggers digest generation from here.
       return { success: true, message: 'Content already processed (duplicate skip)', taskId }
     }
@@ -146,11 +148,13 @@ async function processContentItem(
         .eq('id', contentItemId)
       
       console.log(`✅ Successfully processed content item: ${contentItemId}`)
+      console.log(`📝 Summary created and saved to database`)
       
       // REMOVED: No longer triggers digest generation. This is now handled by process-queue.
       
       return { success: true, message: 'Content processed and summarized', taskId }
     } else {
+      console.error(`❌ Summary generation failed for content item ${contentItemId}:`, summaryResult.error)
       await supabaseClient
         .from('content_items')
         .update({ 
@@ -317,6 +321,7 @@ async function generateAISummary(
 
     const summaryText = await callDeepSeekAPI(content, apiKey);
 
+    console.log(`💾 Inserting summary into database for content item ${contentItemId}`)
     const { error: insertError } = await supabaseClient
       .from('summaries')
       .insert({
@@ -326,10 +331,12 @@ async function generateAISummary(
       });
 
     if (insertError) {
-      console.error('❌ Failed to insert summary:', insertError);
-      return { success: false, error: 'Failed to save summary.' };
+      console.error('❌ Failed to insert summary into database:', insertError);
+      console.error('❌ Insert error details:', JSON.stringify(insertError, null, 2));
+      return { success: false, error: `Failed to save summary: ${insertError.message}` };
     }
 
+    console.log(`✅ Summary successfully inserted into database for content item ${contentItemId}`)
     return { success: true };
 
   } catch (error) {

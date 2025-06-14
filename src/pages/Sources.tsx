@@ -86,8 +86,8 @@ const Sources = () => {
       console.log('📡 Starting fetchSources...');
       setLoading(true);
       
-      // 传递用户ID到API调用，避免认证状态不同步问题
-      const response = await sourcesApi.getSources(1, 10, user?.id);
+      // 获取所有sources，使用默认的大limit
+      const response = await sourcesApi.getSources(1, undefined, user?.id);
       console.log('✅ Sources response:', response);
       setSources(response.data || []);
     } catch (error) {
@@ -627,16 +627,16 @@ const Sources = () => {
         </div>
 
         {/* Control Panel - Processing & Auto Digest */}
-        <div className="mb-8">
-          <div className="modern-card p-6 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
-            <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-8">
+        <div className="mb-6">
+          <div className="modern-card p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
+            <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6">
               {/* Processing Buttons Section */}
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-indigo-800 mb-4 flex items-center">
+                <h3 className="text-lg font-semibold text-indigo-800 mb-3 flex items-center">
                   <Zap className="h-5 w-5 mr-2" />
                   手动处理
                 </h3>
-                <div className="flex flex-wrap gap-3 mb-4">
+                <div className="flex flex-wrap gap-3 mb-3">
                   {sourcesArray.length > 0 && (
                     <>
                       <button 
@@ -725,7 +725,7 @@ const Sources = () => {
                     </div>
                   )}
                 </div>
-                <div className="text-xs text-gray-600 bg-white rounded-lg p-3 border border-indigo-100">
+                <div className="text-xs text-gray-600 bg-white rounded-lg p-2 border border-indigo-100">
                   <p className="mb-1"><strong>处理今日:</strong> 抓取并摘要今天发布的新内容</p>
                   <p className="mb-1"><strong>处理本周:</strong> 抓取并摘要过去7天的内容</p>
                   <p><strong>清除内容:</strong> 删除所有已抓取的内容和摘要（保留信息源配置）</p>
@@ -733,7 +733,7 @@ const Sources = () => {
               </div>
 
               {/* Auto Digest Settings Section */}
-              <div className="xl:w-80">
+              <div className="xl:w-72">
                 <AutoDigestSettingsSimple />
               </div>
             </div>

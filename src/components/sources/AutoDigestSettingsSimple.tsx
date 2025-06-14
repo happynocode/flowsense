@@ -151,13 +151,13 @@ const AutoDigestSettingsSimple: React.FC = () => {
 
   return (
     <div className="bg-white rounded-lg border border-indigo-200 shadow-sm">
-      <div className="p-4">
-        <h4 className="text-lg font-semibold text-indigo-800 mb-4 flex items-center">
-          <Clock className="h-5 w-5 mr-2" />
+      <div className="p-3">
+        <h4 className="text-base font-semibold text-indigo-800 mb-3 flex items-center">
+          <Clock className="h-4 w-4 mr-2" />
           自动摘要
         </h4>
         
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Error Display */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -174,7 +174,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
           )}
 
           {/* Enable/Disable Checkbox */}
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex items-center">
               <Label htmlFor="auto-digest-enabled-simple" className="text-sm font-medium text-gray-900">
                 启用自动摘要
@@ -229,7 +229,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
           </div>
 
           {/* Time and Timezone Selection */}
-          <div className={`p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3 ${!canUseFeature('auto') ? 'opacity-50' : ''}`}>
+          <div className={`p-2 bg-gray-50 rounded-lg border border-gray-200 space-y-2 ${!canUseFeature('auto') ? 'opacity-50' : ''}`}>
             {/* Timezone Selection */}
             <div className="space-y-2">
               <Label htmlFor="digest-timezone" className="text-sm font-medium text-gray-900 flex items-center">
@@ -263,7 +263,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
                   setSettings(prev => ({ ...prev, autoDigestTimezone: e.target.value }));
                 }}
                 disabled={!canUseFeature('auto')}
-                className={`w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${!canUseFeature('auto') ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                className={`w-full p-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${!canUseFeature('auto') ? 'cursor-not-allowed bg-gray-100' : ''}`}
               >
                 {TIMEZONES.map((tz) => (
                   <option key={tz.value} value={tz.value}>
@@ -312,7 +312,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {canUseFeature('auto') ? (
               <Button 
                 onClick={saveSettings}

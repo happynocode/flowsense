@@ -36,7 +36,7 @@ export const authApi = {
 };
 
 export const sourcesApi = {
-  getSources: async (page = 1, limit = 10, userId?: string): Promise<PaginatedResponse<ContentSource[]>> => {
+  getSources: async (page = 1, limit = 1000, userId?: string): Promise<PaginatedResponse<ContentSource[]>> => {
     let user;
     
     // 如果传入了 userId，直接使用；否则尝试获取当前用户
@@ -782,35 +782,47 @@ export const userApi = {
 
     console.log('🔍 Fetching auto digest settings for user:', user.id);
 
-    const { data, error } = await supabase
-      .from('users')
-      .select('auto_digest_enabled, auto_digest_time, auto_digest_timezone, last_auto_digest_run')
-      .eq('id', user.id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('auto_digest_enabled, auto_digest_time, auto_digest_timezone, last_auto_digest_run')
+        .eq('id', user.id)
+        .single();
 
-    if (error) {
-      console.error('❌ Database error in getAutoDigestSettings:', error);
-      // 如果是字段不存在的错误，返回默认值而不是抛出错误
-      if (error.message.includes('column') && error.message.includes('does not exist')) {
-        console.log('📋 Auto digest columns do not exist, returning defaults');
-        return {
-          autoDigestEnabled: false,
-          autoDigestTime: '09:00:00',
-          autoDigestTimezone: 'UTC',
-          lastAutoDigestRun: undefined
-        };
+      if (error) {
+        console.error('❌ Database error in getAutoDigestSettings:', error);
+        // 如果是字段不存在的错误，返回默认值而不是抛出错误
+        if (error.message.includes('column') && error.message.includes('does not exist')) {
+          console.log('📋 Auto digest columns do not exist, returning defaults');
+          return {
+            autoDigestEnabled: false,
+            autoDigestTime: '09:00:00',
+            autoDigestTimezone: 'UTC',
+            lastAutoDigestRun: undefined
+          };
+        }
+        throw error;
       }
-      throw error;
+
+      console.log('✅ Auto digest settings fetched:', data);
+
+      return {
+        autoDigestEnabled: data?.auto_digest_enabled || false,
+        autoDigestTime: data?.auto_digest_time || '09:00:00',
+        autoDigestTimezone: data?.auto_digest_timezone || 'UTC',
+        lastAutoDigestRun: data?.last_auto_digest_run
+      };
+    } catch (error) {
+      console.error('❌ Failed to fetch auto digest settings:', error);
+      // 如果任何错误发生，返回默认值
+      console.log('📋 Returning default settings due to error');
+      return {
+        autoDigestEnabled: false,
+        autoDigestTime: '09:00:00',
+        autoDigestTimezone: 'UTC',
+        lastAutoDigestRun: undefined
+      };
     }
-
-    console.log('✅ Auto digest settings fetched:', data);
-
-    return {
-      autoDigestEnabled: data?.auto_digest_enabled || false,
-      autoDigestTime: data?.auto_digest_time || '09:00:00',
-      autoDigestTimezone: data?.auto_digest_timezone || 'UTC',
-      lastAutoDigestRun: data?.last_auto_digest_run
-    };
   },
 
   updateAutoDigestSettings: async (settings: {
@@ -821,17 +833,29 @@ export const userApi = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { error } = await supabase
-      .from('users')
-      .update({
-        auto_digest_enabled: settings.autoDigestEnabled,
-        auto_digest_time: settings.autoDigestTime,
-        auto_digest_timezone: settings.autoDigestTimezone || 'UTC',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', user.id);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          auto_digest_enabled: settings.autoDigestEnabled,
+          auto_digest_time: settings.autoDigestTime,
+          auto_digest_timezone: settings.autoDigestTimezone || 'UTC',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
 
-    if (error) throw error;
+      if (error) {
+        // 如果字段不存在，先尝试添加字段
+        if (error.message.includes('column') && error.message.includes('does not exist')) {
+          console.log('📋 Auto digest columns do not exist, settings cannot be saved');
+          throw new Error('Auto digest feature is not available. Please contact support.');
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error('❌ Failed to update auto digest settings:', error);
+      throw error;
+    }
   },
 
   // 手动触发自动digest处理 (主要用于测试)

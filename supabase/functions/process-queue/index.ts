@@ -21,6 +21,7 @@ Deno.serve(async (req) => {
     }
 
     if (!itemsToProcess || itemsToProcess.length === 0) {
+      console.log('✅ No pending items to process - all content items may already be processed or no new content available')
       return new Response(JSON.stringify({ success: true, message: 'No pending items to process.' }), {
         headers: { 'Content-Type': 'application/json' },
       })

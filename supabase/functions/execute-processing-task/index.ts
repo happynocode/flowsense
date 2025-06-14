@@ -142,14 +142,30 @@ Deno.serve(async (req) => {
     }
 
     // The task is now considered "processing" because the fetch jobs have been queued.
-    // The new process-fetch-queue function will handle the next steps.
     await updateTaskStatus(supabaseClient, taskId, 'processing', { 
       message: `Successfully queued ${sources.length} sources for fetching.` 
     })
 
+    console.log(`🚀 Triggering process-fetch-queue to start processing jobs...`)
+    
+    // Immediately trigger the queue processor to start working on the jobs
+    try {
+      const { data: queueResult, error: queueError } = await supabaseClient.functions.invoke('process-fetch-queue', {
+        body: {}
+      });
+      
+      if (queueError) {
+        console.error('❌ Failed to trigger process-fetch-queue:', queueError);
+      } else {
+        console.log('✅ Successfully triggered process-fetch-queue:', queueResult);
+      }
+    } catch (error) {
+      console.error('❌ Error triggering process-fetch-queue:', error);
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `Successfully queued ${sources.length} sources for fetching for task ${taskId}.` 
+      message: `Successfully queued ${sources.length} sources for fetching for task ${taskId} and triggered processing.` 
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
