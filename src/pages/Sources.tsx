@@ -12,6 +12,7 @@ import { Navigate } from 'react-router-dom';
 import LoadingIndicator from '../components/common/LoadingIndicator';
 import SourceForm from '../components/sources/SourceForm';
 import CombinedControlPanel from '../components/sources/CombinedControlPanel';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -558,7 +559,7 @@ const Sources = () => {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Left Panel - Control Panel */}
           <div className="lg:w-1/3 xl:w-1/4">
-            <div className="sticky top-8">
+            <div className="sticky top-8 space-y-6">
               <CombinedControlPanel
                 sourcesArray={sourcesArray}
                 globalProcessing={globalProcessing}
@@ -576,7 +577,7 @@ const Sources = () => {
               <div className="mb-4 sm:mb-0">
                             <h1 className="text-3xl font-bold text-gray-800">Content Sources</h1>
             <p className="text-gray-600 mt-2">
-              Manage your blogs, podcasts, and news feeds
+              Add RSS feeds from your favorite blogs and news sites (currently only RSS feeds are supported)
             </p>
                 {/* Debug Info */}
                 <div className="mt-2 text-xs text-gray-500 bg-gray-100 rounded p-2">

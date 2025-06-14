@@ -12,6 +12,11 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateAutoDigestSettings: (settings: {
+    autoDigestEnabled: boolean;
+    autoDigestTime: string;
+    autoDigestTimezone: string;
+  }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -120,27 +125,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(baseUserData);
       console.log('✅ setUser 调用完成');
       
-      // 后台获取订阅信息
+      // 后台获取订阅信息和auto digest设置
       try {
-        const subscriptionInfo = await userApi.getUserSubscriptionInfo();
-        const userWithSubscription = {
+        console.log('🔄 获取用户完整信息（订阅 + auto digest）...');
+        
+        // 并行获取订阅信息和auto digest设置
+        const [subscriptionInfo, autoDigestSettings] = await Promise.all([
+          userApi.getUserSubscriptionInfo(),
+          userApi.getAutoDigestSettings().catch(err => {
+            console.warn('⚠️ 获取auto digest设置失败，使用默认值:', err);
+            return {
+              autoDigestEnabled: false,
+              autoDigestTime: '09:00:00',
+              autoDigestTimezone: 'UTC',
+              lastAutoDigestRun: undefined
+            };
+          })
+        ]);
+        
+        console.log('🔍 [DEBUG] 获取到的订阅信息:', subscriptionInfo);
+        console.log('🔍 [DEBUG] 获取到的auto digest设置:', autoDigestSettings);
+        console.log('🔍 [DEBUG] autoDigestSettings详细信息:');
+        console.log('  - autoDigestEnabled:', autoDigestSettings.autoDigestEnabled, typeof autoDigestSettings.autoDigestEnabled);
+        console.log('  - autoDigestTime:', autoDigestSettings.autoDigestTime, typeof autoDigestSettings.autoDigestTime);
+        console.log('  - autoDigestTimezone:', autoDigestSettings.autoDigestTimezone, typeof autoDigestSettings.autoDigestTimezone);
+        
+        const userWithFullInfo = {
           ...baseUserData,
+          // 订阅信息
           maxSources: subscriptionInfo.maxSources,
           canScheduleDigest: subscriptionInfo.canScheduleDigest,
           canProcessWeekly: subscriptionInfo.canProcessWeekly,
-          subscriptionTier: subscriptionInfo.subscriptionTier
+          subscriptionTier: subscriptionInfo.subscriptionTier,
+          // Auto digest设置
+          autoDigestEnabled: autoDigestSettings.autoDigestEnabled,
+          autoDigestTime: autoDigestSettings.autoDigestTime ? autoDigestSettings.autoDigestTime.substring(0, 5) : '09:00',
+          autoDigestTimezone: autoDigestSettings.autoDigestTimezone,
+          lastAutoDigestRun: autoDigestSettings.lastAutoDigestRun
         };
-        console.log('🔄 更新用户数据（包含订阅信息）:', userWithSubscription);
-        setUser(userWithSubscription);
+        
+        console.log('🔍 [DEBUG] 最终用户对象:', userWithFullInfo);
+        console.log('🔍 [DEBUG] 最终用户对象的auto digest字段:');
+        console.log('  - autoDigestEnabled:', userWithFullInfo.autoDigestEnabled, typeof userWithFullInfo.autoDigestEnabled);
+        console.log('  - autoDigestTime:', userWithFullInfo.autoDigestTime, typeof userWithFullInfo.autoDigestTime);
+        console.log('  - autoDigestTimezone:', userWithFullInfo.autoDigestTimezone, typeof userWithFullInfo.autoDigestTimezone);
+        
+        console.log('🔄 更新用户数据（包含订阅信息 + auto digest）:', userWithFullInfo);
+        setUser(userWithFullInfo);
+        
+        // 🔍 验证setUser是否成功
+        setTimeout(() => {
+          console.log('🔍 [DEBUG] setUser调用后验证 - 这将在下次渲染时显示实际的用户状态');
+        }, 100);
       } catch (subscriptionError) {
-        console.warn('⚠️ 获取订阅信息失败，使用默认值:', subscriptionError);
-        // 使用默认的免费用户限制
+        console.warn('⚠️ 获取用户信息失败，使用默认值:', subscriptionError);
+        // 使用默认的免费用户限制和auto digest设置
         const userWithDefaults = {
           ...baseUserData,
           maxSources: 3,
           canScheduleDigest: false,
           canProcessWeekly: false,
-          subscriptionTier: 'free' as const
+          subscriptionTier: 'free' as const,
+          autoDigestEnabled: false,
+          autoDigestTime: '09:00',
+          autoDigestTimezone: 'UTC',
+          lastAutoDigestRun: undefined
         };
         setUser(userWithDefaults);
       }
@@ -231,23 +280,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // 准备upsert数据
-      const upsertData = {
-            id: supabaseUser.id,
-            email: supabaseUser.email || '',
-            name: supabaseUser.user_metadata?.full_name || 
-                  supabaseUser.user_metadata?.name || 
-                  supabaseUser.email?.split('@')[0] || 'User',
-            avatar_url: supabaseUser.user_metadata?.avatar_url || null,
-        updated_at: new Date().toISOString(),
-        // 包含 auto_digest 字段的默认值，防止查询失败
+      // 准备基础用户数据（用于更新）
+      const baseUserData = {
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        name: supabaseUser.user_metadata?.full_name || 
+              supabaseUser.user_metadata?.name || 
+              supabaseUser.email?.split('@')[0] || 'User',
+        avatar_url: supabaseUser.user_metadata?.avatar_url || null,
+        updated_at: new Date().toISOString()
+      };
+      
+      // 准备新用户插入数据（包含auto digest默认值）
+      const newUserData = {
+        ...baseUserData,
+        // 🔧 只在新用户创建时设置auto digest默认值
         auto_digest_enabled: false,
         auto_digest_time: '09:00:00',
         auto_digest_timezone: 'UTC',
         last_auto_digest_run: null
       };
       
-      console.log('🔍 [诊断] 准备upsert的数据:', upsertData);
+      console.log('🔍 [诊断] 准备基础用户数据:', baseUserData);
+      console.log('🔍 [诊断] 准备新用户数据:', newUserData);
       console.log('🔍 [诊断] 使用的Supabase客户端库版本: @supabase/supabase-js ^2.50.0');
       
       // 使用重试机制执行数据库同步
@@ -261,7 +316,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const { data, error } = await supabase
             .from('users')
             .select('id, email')
-            .eq('id', upsertData.id)
+            .eq('id', baseUserData.id)
             .maybeSingle(); // 使用maybeSingle()避免"no rows"错误
           
           if (!error) {
@@ -277,9 +332,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const { data, error } = await supabase
               .from('users')
-              .select('id, email')
-              .eq('email', upsertData.email)
-              .maybeSingle();
+                          .select('id, email')
+            .eq('email', baseUserData.email)
+            .maybeSingle();
             
             if (!error && data) {
               existingUser = data;
@@ -293,20 +348,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         let result;
         if (existingUser) {
-          if (existingUser.id === upsertData.id) {
+          if (existingUser.id === baseUserData.id) {
             // 正常情况：用户已存在，执行更新
             console.log('🔄 [诊断] 用户已存在，执行更新操作');
+            console.log('🔧 [修复] 不覆盖auto digest设置，保留用户的真实设置');
             const { data, error } = await supabase
               .from('users')
               .update({
-                name: upsertData.name,
-                avatar_url: upsertData.avatar_url,
-                updated_at: upsertData.updated_at,
-                auto_digest_enabled: upsertData.auto_digest_enabled,
-                auto_digest_time: upsertData.auto_digest_time,
-                auto_digest_timezone: upsertData.auto_digest_timezone
+                name: baseUserData.name,
+                avatar_url: baseUserData.avatar_url,
+                updated_at: baseUserData.updated_at
+                // 🔧 移除auto digest字段，不覆盖用户已保存的设置
               })
-              .eq('id', upsertData.id)
+              .eq('id', baseUserData.id)
               .select()
               .single();
             
@@ -317,12 +371,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await supabase
               .from('users')
               .delete()
-              .eq('email', upsertData.email);
+              .eq('email', baseUserData.email);
             
             console.log('➕ [诊断] 删除残留数据后，插入新用户记录');
             const { data, error } = await supabase
               .from('users')
-              .insert(upsertData)
+              .insert(newUserData)
               .select()
               .single();
             
@@ -333,7 +387,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('➕ [诊断] 用户不存在，执行插入操作');
           const { data, error } = await supabase
             .from('users')
-            .insert(upsertData)
+            .insert(newUserData)
           .select()
           .single();
           
@@ -359,12 +413,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               await supabase
                 .from('users')
                 .delete()
-                .eq('email', upsertData.email);
+                .eq('email', baseUserData.email);
               
               console.log('🔄 [诊断] 清理完成，重新尝试插入');
               const { data: retryData, error: retryError } = await supabase
                 .from('users')
-                .insert(upsertData)
+                .insert(newUserData)
                 .select()
                 .single();
               
@@ -493,17 +547,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: "欢迎回到 Neural Hub！",
         });
         
-        // 🎯 登录成功后，直接设置用户状态，避免额外的 refreshUser 调用
-        console.log('🔄 登录成功，直接设置用户状态...');
-        const authUserData = {
-          id: data.user.id,
-          name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
-          email: data.user.email || '',
-          avatar: data.user.user_metadata?.avatar_url || '',
-          createdAt: data.user.created_at || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        setUser(authUserData);
+        // 🔧 登录成功后，调用refreshUser获取完整用户信息（包括auto digest设置）
+        console.log('🔄 登录成功，获取完整用户信息...');
+        try {
+          await refreshUser();
+          console.log('✅ 登录后用户信息获取完成');
+        } catch (refreshError) {
+          console.warn('⚠️ 登录后获取用户信息失败，设置基础用户数据:', refreshError);
+          // 如果refreshUser失败，至少设置基础用户数据
+          const authUserData = {
+            id: data.user.id,
+            name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
+            email: data.user.email || '',
+            avatar: data.user.user_metadata?.avatar_url || '',
+            createdAt: data.user.created_at || new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          setUser(authUserData);
+        }
         
         // 后台同步数据库
         syncUserToDatabase(data.user).catch(error => {
@@ -550,6 +611,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "An error occurred while logging out. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  // 🔧 更新auto digest设置并同步到用户状态
+  const updateAutoDigestSettings = async (settings: {
+    autoDigestEnabled: boolean;
+    autoDigestTime: string;
+    autoDigestTimezone: string;
+  }) => {
+    if (!user) throw new Error('User not authenticated');
+    
+    console.log('💾 更新auto digest设置:', settings);
+    
+    try {
+      // 调用API更新数据库
+      await userApi.updateAutoDigestSettings({
+        autoDigestEnabled: settings.autoDigestEnabled,
+        autoDigestTime: settings.autoDigestTime + ':00', // 添加秒数
+        autoDigestTimezone: settings.autoDigestTimezone
+      });
+      
+      // 立即更新本地用户状态
+      const updatedUser = {
+        ...user,
+        autoDigestEnabled: settings.autoDigestEnabled,
+        autoDigestTime: settings.autoDigestTime,
+        autoDigestTimezone: settings.autoDigestTimezone
+      };
+      
+      console.log('✅ 本地用户状态已更新:', updatedUser);
+      setUser(updatedUser);
+      
+    } catch (error) {
+      console.error('❌ 更新auto digest设置失败:', error);
+      throw error;
     }
   };
 
@@ -629,16 +725,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🔄 认证状态变化:', event, session?.user?.email || 'no user');
       
       if (event === 'SIGNED_IN' && session) {
-        console.log('✅ 用户已登录，设置用户数据');
-        const authUserData = {
-          id: session.user.id,
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-          email: session.user.email || '',
-          avatar: session.user.user_metadata?.avatar_url || '',
-          createdAt: session.user.created_at || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        setUser(authUserData);
+        console.log('✅ 用户已登录，获取完整用户信息');
+        try {
+          // 🔧 调用refreshUser获取完整用户信息（包括auto digest设置）
+          await refreshUser();
+          console.log('✅ 认证状态变化后用户信息获取完成');
+        } catch (refreshError) {
+          console.warn('⚠️ 认证状态变化后获取用户信息失败，设置基础用户数据:', refreshError);
+          // 如果refreshUser失败，至少设置基础用户数据
+          const authUserData = {
+            id: session.user.id,
+            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+            email: session.user.email || '',
+            avatar: session.user.user_metadata?.avatar_url || '',
+            createdAt: session.user.created_at || new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          setUser(authUserData);
+        }
         setLoading(false);
       } else if (event === 'SIGNED_OUT') {
         console.log('👋 用户已登出');
@@ -646,16 +750,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
         localStorage.removeItem('sb-auth-token');
       } else if (event === 'TOKEN_REFRESHED' && session) {
-        console.log('🔄 Token 已刷新，更新用户数据');
-        const authUserData = {
-          id: session.user.id,
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-          email: session.user.email || '',
-          avatar: session.user.user_metadata?.avatar_url || '',
-          createdAt: session.user.created_at || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        setUser(authUserData);
+        console.log('🔄 Token 已刷新，获取完整用户数据');
+        try {
+          // 🔧 Token刷新时也获取完整用户信息
+          await refreshUser();
+          console.log('✅ Token刷新后用户信息获取完成');
+        } catch (refreshError) {
+          console.warn('⚠️ Token刷新后获取用户信息失败:', refreshError);
+          // 如果失败，保持当前用户状态不变
+        }
       }
     });
 
@@ -680,6 +783,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     logout,
     refreshUser,
+    updateAutoDigestSettings,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

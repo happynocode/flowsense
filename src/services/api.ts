@@ -804,11 +804,17 @@ export const userApi = {
     console.log('🔍 Fetching auto digest settings for user:', user.id);
 
     try {
+      // 🔧 增强查询：同时获取用户基础信息用于调试
       const { data, error } = await supabase
         .from('users')
-        .select('auto_digest_enabled, auto_digest_time, auto_digest_timezone, last_auto_digest_run')
+        .select('auto_digest_enabled, auto_digest_time, auto_digest_timezone, last_auto_digest_run, created_at, updated_at, email')
         .eq('id', user.id)
         .single();
+
+      console.log('🔍 Database query result:');
+      console.log('  - Error:', error);
+      console.log('  - Data:', data);
+      console.log('  - Raw auto_digest_enabled:', data?.auto_digest_enabled, typeof data?.auto_digest_enabled);
 
       if (error) {
         console.error('❌ Database error in getAutoDigestSettings:', error);
@@ -825,24 +831,45 @@ export const userApi = {
         throw error;
       }
 
-      console.log('✅ Auto digest settings fetched:', data);
-
-      return {
+      // 🔧 数据完整性检查和详细日志
+      const currentSettings = {
         autoDigestEnabled: data?.auto_digest_enabled || false,
         autoDigestTime: data?.auto_digest_time || '09:00:00',
         autoDigestTimezone: data?.auto_digest_timezone || 'UTC',
         lastAutoDigestRun: data?.last_auto_digest_run
       };
+
+      console.log('✅ Auto digest settings processed:', {
+        settings: currentSettings,
+        userInfo: {
+          email: data?.email,
+          created_at: data?.created_at,
+          updated_at: data?.updated_at
+        }
+      });
+
+      // 🔧 检测可能的数据重置问题
+      if (data?.auto_digest_enabled === false && 
+          data?.auto_digest_time === '09:00:00' && 
+          data?.auto_digest_timezone === 'UTC' &&
+          !data?.last_auto_digest_run) {
+        console.warn('⚠️ Detected potential settings reset - all values are defaults. User might have experienced the bug.');
+        console.warn('⚠️ User last updated at:', data?.updated_at);
+      }
+
+      // 🔧 特别检查enabled字段
+      if (data?.auto_digest_enabled === true) {
+        console.log('✅ User has auto digest ENABLED in database');
+      } else {
+        console.log('❌ User has auto digest DISABLED in database (or null/undefined)');
+        console.log('❌ Exact value:', data?.auto_digest_enabled, 'Type:', typeof data?.auto_digest_enabled);
+      }
+
+      return currentSettings;
     } catch (error) {
       console.error('❌ Failed to fetch auto digest settings:', error);
-      // 如果任何错误发生，返回默认值
-      console.log('📋 Returning default settings due to error');
-      return {
-        autoDigestEnabled: false,
-        autoDigestTime: '09:00:00',
-        autoDigestTimezone: 'UTC',
-        lastAutoDigestRun: undefined
-      };
+      // 🔧 不要返回虚假的默认值，让错误传播到组件处理
+      throw error;
     }
   },
 
@@ -854,18 +881,34 @@ export const userApi = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
+    console.log('💾 Updating auto digest settings for user:', user.id, 'Settings:', settings);
+
     try {
+      // 🔧 先查询当前设置用于对比
+      const { data: currentData } = await supabase
+        .from('users')
+        .select('auto_digest_enabled, auto_digest_time, auto_digest_timezone, updated_at')
+        .eq('id', user.id)
+        .single();
+
+      console.log('📋 Current settings before update:', currentData);
+
+      const updatePayload = {
+        auto_digest_enabled: settings.autoDigestEnabled,
+        auto_digest_time: settings.autoDigestTime,
+        auto_digest_timezone: settings.autoDigestTimezone || 'UTC',
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('📤 Updating with payload:', updatePayload);
+
       const { error } = await supabase
         .from('users')
-        .update({
-          auto_digest_enabled: settings.autoDigestEnabled,
-          auto_digest_time: settings.autoDigestTime,
-          auto_digest_timezone: settings.autoDigestTimezone || 'UTC',
-          updated_at: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq('id', user.id);
 
       if (error) {
+        console.error('❌ Database update error:', error);
         // 如果字段不存在，先尝试添加字段
         if (error.message.includes('column') && error.message.includes('does not exist')) {
           console.log('📋 Auto digest columns do not exist, settings cannot be saved');
@@ -873,6 +916,21 @@ export const userApi = {
         }
         throw error;
       }
+
+      // 🔧 验证更新是否成功
+      const { data: verifyData } = await supabase
+        .from('users')
+        .select('auto_digest_enabled, auto_digest_time, auto_digest_timezone, updated_at')
+        .eq('id', user.id)
+        .single();
+
+      console.log('✅ Settings updated successfully. Verification:', verifyData);
+
+      // 🔧 检查更新是否真的生效
+      if (verifyData?.auto_digest_enabled !== settings.autoDigestEnabled) {
+        console.error('⚠️ WARNING: Update verification failed! Expected enabled:', settings.autoDigestEnabled, 'Got:', verifyData?.auto_digest_enabled);
+      }
+
     } catch (error) {
       console.error('❌ Failed to update auto digest settings:', error);
       throw error;
