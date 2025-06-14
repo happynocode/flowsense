@@ -46,7 +46,7 @@ serve(async (req) => {
 
     const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
 
-    // 解析请求体
+    // Parse request body
     let requestBody
     try {
       requestBody = await req.json()

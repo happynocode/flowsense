@@ -346,7 +346,28 @@ async function generateAISummary(
 }
 
 async function callDeepSeekAPI(content: string, apiKey: string): Promise<string> {
-  const prompt = `Please provide a concise summary of the following article content. The summary should be in English, clear, objective, and capture the main points and key information. Do not include any personal opinions or analysis. Focus on the essential facts and insights. The summary should be between 100 and 300 words. Here is the article content:\n\n${content}`;
+  const prompt = `Please create a comprehensive summary of the following article content. Follow these requirements:
+
+LANGUAGE: Write entirely in English
+LENGTH: 150-400 words
+STRUCTURE: Use clear paragraphs with logical flow
+TONE: Professional, objective, and informative
+
+CONTENT REQUIREMENTS:
+- Capture the main thesis and key arguments
+- Include important facts, statistics, and findings
+- Highlight actionable insights or implications
+- Maintain the original context and nuance
+- Avoid personal opinions or editorial commentary
+
+FORMAT:
+- Start with the core message in 1-2 sentences
+- Follow with supporting details and evidence
+- End with implications or conclusions if relevant
+- Use clear, concise language suitable for business professionals
+
+Article content:
+${content}`;
   
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -357,7 +378,10 @@ async function callDeepSeekAPI(content: string, apiKey: string): Promise<string>
     body: JSON.stringify({
       model: "deepseek-chat",
       messages: [
-        { "role": "system", "content": "You are a helpful assistant that summarizes articles in clear, professional English." },
+        { 
+          "role": "system", 
+          "content": "You are an expert content analyst specializing in creating high-quality English summaries for business professionals. Your summaries are known for being comprehensive yet concise, capturing essential information while maintaining readability and professional tone. Always write in clear, professional English regardless of the source language." 
+        },
         { "role": "user", "content": prompt }
       ],
     }),
