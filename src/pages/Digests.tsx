@@ -187,6 +187,34 @@ const Digests = () => {
     return digest.summaries.reduce((total, summary) => total + summary.readingTime, 0);
   };
 
+  // 生成基于用户时区的digest标题
+  const generateDigestTitle = (digest: Digest, userTimezone: string) => {
+    const digestDate = new Date(digest.date);
+    
+    // 判断是否为weekly digest（通过原标题或其他方式）
+    const isWeekly = digest.title.toLowerCase().includes('weekly');
+    
+    if (isWeekly) {
+      // Weekly digest: "Weekly Digest - M/D/YYYY"
+      const formattedDate = digestDate.toLocaleDateString('en-US', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: userTimezone
+      });
+      return `Weekly Digest - ${formattedDate}`;
+    } else {
+      // Daily digest: "Daily Digest - M/D/YYYY"
+      const formattedDate = digestDate.toLocaleDateString('en-US', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: userTimezone
+      });
+      return `Daily Digest - ${formattedDate}`;
+    }
+  };
+
   if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -298,7 +326,7 @@ const Digests = () => {
                           {formatDate(digest.date, userTimezone)}
                         </span>
                       </div>
-                      <CardTitle className="text-xl mb-2 break-words">{digest.title}</CardTitle>
+                      <CardTitle className="text-xl mb-2 break-words">{generateDigestTitle(digest, userTimezone)}</CardTitle>
                       <div className="flex items-center space-x-4 text-sm text-gray-600">
                         <div className="flex items-center space-x-1">
                           <FileText className="h-4 w-4" />

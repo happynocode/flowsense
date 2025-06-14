@@ -93,6 +93,34 @@ const DigestDetail = () => {
     });
   };
 
+  // 生成基于用户时区的digest标题
+  const generateDigestTitle = (digest: Digest, userTimezone: string) => {
+    const digestDate = new Date(digest.date);
+    
+    // 判断是否为weekly digest（通过原标题或其他方式）
+    const isWeekly = digest.title.toLowerCase().includes('weekly');
+    
+    if (isWeekly) {
+      // Weekly digest: "Weekly Digest - M/D/YYYY"
+      const formattedDate = digestDate.toLocaleDateString('en-US', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: userTimezone
+      });
+      return `Weekly Digest - ${formattedDate}`;
+    } else {
+      // Daily digest: "Daily Digest - M/D/YYYY"
+      const formattedDate = digestDate.toLocaleDateString('en-US', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: userTimezone
+      });
+      return `Daily Digest - ${formattedDate}`;
+    }
+  };
+
   const getTotalReadingTime = (digest: Digest) => {
     return digest.summaries.reduce((total, summary) => total + summary.readingTime, 0);
   };
@@ -194,7 +222,7 @@ const DigestDetail = () => {
               </div>
               
               <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                {digest.title}
+                {generateDigestTitle(digest, userTimezone)}
               </h1>
               
               <div className="flex items-center space-x-6 text-sm text-gray-600">
@@ -309,7 +337,7 @@ const DigestDetail = () => {
               <div className="max-w-md mx-auto">
                 <AudioPlayer
                   audioUrl={digest.audioUrl}
-                  title={digest.title}
+                  title={generateDigestTitle(digest, userTimezone)}
                 />
               </div>
             ) : (
