@@ -131,7 +131,7 @@ const Digests = () => {
       console.error('Failed to clear digests:', error);
       toast({
         title: "❌ Clear Failed",
-        description: "清除digests时发生错误，请重试。",
+        description: "An error occurred while clearing digests. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -148,13 +148,13 @@ const Digests = () => {
       setDigests(prev => (prev || []).filter(d => d.id !== digest.id));
       toast({
         title: "✅ Digest Deleted Successfully",
-        description: `"${digest.title}" 已被删除。`,
+        description: `"${digest.title}" has been deleted.`,
       });
     } catch (error) {
       console.error('Failed to delete digest:', error);
       toast({
         title: "❌ Delete Failed",
-        description: "删除digest时发生错误，请重试。",
+        description: "An error occurred while deleting the digest. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -448,13 +448,13 @@ const Digests = () => {
         <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Digest</AlertDialogTitle>
+              <AlertDialogTitle>Delete Digest</AlertDialogTitle>
               <AlertDialogDescription>
-                您确定要删除 "{deleteDialog?.title}" 吗？此操作无法撤销。
+                Are you sure you want to delete "{deleteDialog?.title}"? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => deleteDialog && handleDeleteDigest(deleteDialog)}
                 disabled={deleting}
@@ -463,15 +463,15 @@ const Digests = () => {
                 {deleting ? (
                   <>
                     <LoadingIndicator size="sm" />
-                    <span className="ml-2">删除中...</span>
+                    <span className="ml-2">Deleting...</span>
                   </>
                 ) : (
-                  '删除'
+                  'Delete'
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>
-                     </AlertDialogContent>
-         </AlertDialog>
+          </AlertDialogContent>
+        </AlertDialog>
                     </div>
         </div>
       </div>

@@ -174,7 +174,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
           )}
 
           {/* Enable/Disable Checkbox */}
-          <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-gray-300">
             <div className="flex items-center">
               <Label htmlFor="auto-digest-enabled-simple" className="text-sm font-medium text-gray-900">
                 Enable Auto Digest
@@ -204,7 +204,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
                   id="auto-digest-enabled-simple"
                   checked={false}
                   disabled
-                  className="h-4 w-4 opacity-50 cursor-not-allowed border-gray-300 rounded"
+                  className="h-4 w-4 cursor-not-allowed border-gray-400 bg-gray-200 text-gray-500 rounded"
                   onClick={() => {
                     toast({
                       title: "Upgrade to Premium",
@@ -229,7 +229,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
           </div>
 
           {/* Time and Timezone Selection */}
-          <div className={`p-2 rounded-lg border border-gray-200 space-y-2 ${!canUseFeature('auto') ? 'bg-gray-100' : 'bg-gray-50'}`}>
+          <div className={`p-2 rounded-lg border border-gray-200 space-y-2 ${!canUseFeature('auto') ? 'bg-gray-200' : 'bg-white'}`}>
             {/* Timezone Selection */}
             <div className="space-y-2">
               <Label htmlFor="digest-timezone" className="text-sm font-medium text-gray-900 flex items-center">
@@ -263,7 +263,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
                   setSettings(prev => ({ ...prev, autoDigestTimezone: e.target.value }));
                 }}
                 disabled={!canUseFeature('auto')}
-                className={`w-full p-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${!canUseFeature('auto') ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                className={`w-full p-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${!canUseFeature('auto') ? 'cursor-not-allowed bg-gray-200 text-gray-600' : 'bg-white'}`}
               >
                 {TIMEZONES.map((tz) => (
                   <option key={tz.value} value={tz.value}>
@@ -306,7 +306,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
                   setSettings(prev => ({ ...prev, autoDigestTime: e.target.value }));
                 }}
                 disabled={!canUseFeature('auto')}
-                className={`w-full ${!canUseFeature('auto') ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                className={`w-full ${!canUseFeature('auto') ? 'cursor-not-allowed bg-gray-200 text-gray-600' : 'bg-white'}`}
               />
             </div>
           </div>

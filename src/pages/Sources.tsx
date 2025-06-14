@@ -398,7 +398,7 @@ const Sources = () => {
       console.error('Failed to clear scraped content:', error);
       toast({
         title: "❌ Clear Failed",
-        description: "清除内容时发生错误，请重试。",
+        description: "An error occurred while clearing content. Please try again.",
         variant: "destructive",
       });
     } finally {

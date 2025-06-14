@@ -198,7 +198,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                     disabled
                     size="default"
                     variant="outline"
-                    className="opacity-60 cursor-not-allowed bg-gray-50 border-gray-300 text-gray-500 py-3 relative"
+                    className="cursor-not-allowed bg-gray-200 border-gray-400 text-gray-600 py-3 relative"
                   >
                     <Lock className="h-4 w-4 mr-2" />
                     Process This Week
@@ -207,7 +207,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                 )}
               </>
             ) : (
-              <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div className="text-sm text-gray-700 bg-white rounded-lg p-3 border border-gray-300">
                 Add sources to start processing content
               </div>
             )}
@@ -257,7 +257,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
           </div>
 
           {/* Enable/Disable Toggle */}
-          <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200 mb-2">
+          <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-gray-300 mb-2">
             <Label htmlFor="auto-digest-enabled" className="text-sm font-medium text-gray-900">
               Auto Digest Enabled
             </Label>
@@ -277,7 +277,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                   type="checkbox"
                   checked={false}
                   disabled
-                  className="h-4 w-4 opacity-50 cursor-not-allowed border-gray-300 rounded"
+                                      className="h-4 w-4 cursor-not-allowed border-gray-400 bg-gray-200 text-gray-500 rounded"
                   onClick={() => {
                     toast({
                       title: "Upgrade to Premium",
@@ -303,7 +303,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
 
           {/* Expandable Settings */}
           {showAutoSettings && (
-            <div className={`space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-200 ${!canUseFeature('auto') ? 'opacity-50' : ''}`}>
+            <div className={`space-y-3 p-3 rounded-lg border border-gray-200 ${!canUseFeature('auto') ? 'bg-gray-200' : 'bg-white'}`}>
               {/* Error Display */}
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-2">
@@ -339,7 +339,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                     setAutoSettings(prev => ({ ...prev, autoDigestTimezone: e.target.value }));
                   }}
                   disabled={!canUseFeature('auto')}
-                  className={`w-full p-1.5 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${!canUseFeature('auto') ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                  className={`w-full p-1.5 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${!canUseFeature('auto') ? 'cursor-not-allowed bg-gray-200 text-gray-600' : 'bg-white'}`}
                 >
                   {TIMEZONES.map((tz) => (
                     <option key={tz.value} value={tz.value}>
@@ -369,7 +369,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                     setAutoSettings(prev => ({ ...prev, autoDigestTime: e.target.value }));
                   }}
                   disabled={!canUseFeature('auto')}
-                  className={`w-full h-8 text-xs ${!canUseFeature('auto') ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                  className={`w-full h-8 text-xs ${!canUseFeature('auto') ? 'cursor-not-allowed bg-gray-200 text-gray-600' : 'bg-white'}`}
                 />
               </div>
 
@@ -404,7 +404,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                   }}
                   disabled
                   size="sm"
-                  className="w-full h-8 text-xs opacity-50 cursor-not-allowed bg-gray-400 hover:bg-gray-400 flex items-center justify-center"
+                  className="w-full h-8 text-xs cursor-not-allowed bg-gray-300 hover:bg-gray-300 text-gray-600 flex items-center justify-center"
                 >
                   <Lock className="w-3 h-3 mr-1" />
                   💾 Save Settings

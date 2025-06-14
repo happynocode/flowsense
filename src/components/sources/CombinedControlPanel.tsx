@@ -227,7 +227,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                       disabled
                       size="sm"
                       variant="outline"
-                      className="opacity-50 w-full justify-start"
+                      className="bg-gray-100 border-gray-300 text-gray-500 w-full justify-start cursor-not-allowed"
                     >
                       <Lock className="h-4 w-4 mr-2" />
                       Process This Week's Content (Premium)
@@ -235,7 +235,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                   )}
                 </>
               ) : (
-                                  <p className="text-sm text-gray-500 italic p-2 bg-gray-50 rounded">
+                                  <p className="text-sm text-gray-600 italic p-2 bg-white border border-gray-200 rounded">
                   Please add sources first before processing
                 </p>
               )}
@@ -259,10 +259,10 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
       </Card>
 
       {/* 高级功能设置 */}
-      <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
-        <CardHeader className="pb-3">
+      <Card className="bg-white border-purple-300 shadow-sm">
+        <CardHeader className="pb-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-t-lg">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-purple-800 flex items-center">
+            <CardTitle className="text-lg font-semibold text-purple-900 flex items-center">
               <Crown className="h-5 w-5 mr-2" />
               Premium Features
             </CardTitle>
@@ -270,7 +270,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
               variant="outline"
               size="sm"
               onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-              className="border-purple-300 text-purple-600 hover:bg-purple-50 hover:border-purple-400"
+              className="border-purple-400 text-purple-700 hover:bg-purple-100 hover:border-purple-500 bg-white"
             >
               {showAdvancedSettings ? (
                 <ChevronUp className="h-4 w-4" />
@@ -350,12 +350,12 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                             ),
                           });
                         }}
-                        className="relative inline-flex h-8 w-14 items-center rounded-full bg-gray-200 opacity-50 cursor-not-allowed"
+                        className="relative inline-flex h-8 w-14 items-center rounded-full bg-gray-300 cursor-not-allowed"
                         disabled
                       >
                         <span className="sr-only">Enable auto digest (Premium required)</span>
-                        <span className="inline-block h-6 w-6 transform rounded-full bg-white shadow-lg translate-x-1" />
-                        <Lock className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                        <span className="inline-block h-6 w-6 transform rounded-full bg-gray-100 shadow-lg translate-x-1" />
+                        <Lock className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-3 w-3 text-gray-500" />
                       </button>
                     </div>
                   )}
@@ -363,14 +363,14 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
 
                 {/* 时间和时区设置 */}
                 {autoSettings.autoDigestEnabled && isPremium && (
-                  <div className="space-y-3 p-3 bg-white rounded-lg border border-purple-100">
+                  <div className="space-y-3 p-4 bg-gray-50 rounded-lg border-2 border-purple-200 shadow-sm">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-gray-900">Run Time</Label>
-                      <Input
+                                              <Input
                         type="time"
                         value={autoSettings.autoDigestTime}
                         onChange={(e) => setAutoSettings(prev => ({ ...prev, autoDigestTime: e.target.value }))}
-                        className="w-full"
+                        className="w-full bg-white border-gray-300 text-gray-900"
                       />
                     </div>
                     
@@ -380,7 +380,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                         value={autoSettings.autoDigestTimezone}
                         onValueChange={(value) => setAutoSettings(prev => ({ ...prev, autoDigestTimezone: value }))}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="bg-white border-gray-300 text-gray-900">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -394,7 +394,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                     </div>
 
                     {autoSettings.lastAutoDigestRun && (
-                      <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                      <div className="text-xs text-gray-600 bg-white border border-gray-200 p-2 rounded">
                         Last Run: {formatLastRun(autoSettings.lastAutoDigestRun)}
                       </div>
                     )}

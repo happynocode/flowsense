@@ -98,4 +98,56 @@
 - 更改摘要：移除用户点击 Process Today/Week 后的大型处理完成通知界面
 - 原因：用户反馈不希望在处理完成后显示大型通知界面
 - 阻碍：无
-- 状态：待确认 
+- 状态：待确认
+
+[2025-01-14 15:45:00]
+- 步骤：修复警告弹出框和时区设置透明度问题
+- 修改：
+  - src/components/ui/alert-dialog.tsx - 将 AlertDialog overlay 背景从 bg-black/80 改为 bg-black/40
+  - src/components/sources/CombinedControlPanel.tsx - 移除 opacity-50 类，改用实心背景色
+  - src/components/sources/AutoDigestSettingsSimple.tsx - 移除透明背景，改用实心背景色
+  - src/components/sources/ProcessingControlPanel.tsx - 移除 opacity-50 类，改用实心背景色
+- 更改摘要：修复了用户反映的警告弹出框太暗和时区设置透明度问题，提高了界面可见性和可访问性
+- 原因：用户反馈界面透明度导致可见性差
+- 阻碍：无
+- 用户确认状态：用户反馈仍然透明
+
+[2025-01-14 16:00:00]
+- 步骤：进一步修复透明度和对比度问题
+- 修改：
+  - src/components/ui/select.tsx - 移除 Select 组件的 disabled:opacity-50 和 data-[disabled]:opacity-50，改用实心背景色
+  - src/components/sources/AutoDigestSettingsSimple.tsx - 将 bg-gray-50 改为 bg-white，提高对比度
+  - src/components/sources/ProcessingControlPanel.tsx - 将多个 bg-gray-50 和 bg-gray-100 改为 bg-white，提高对比度
+  - src/components/sources/CombinedControlPanel.tsx - 将 bg-gray-50 改为 bg-white，添加边框提高可见性
+- 更改摘要：全面修复了 Select 组件和各种浅色背景导致的透明度和对比度问题
+- 原因：用户反馈修复后仍然透明，需要更全面的修复
+- 阻碍：无
+- 用户确认状态：待确认
+
+[2025-01-14 16:15:00]
+- 步骤：修复中文文本和进一步优化透明度问题
+- 修改：
+  - src/pages/Digests.tsx - 将删除确认对话框的所有中文文本翻译为英文
+  - src/pages/Sources.tsx - 将错误消息中的中文翻译为英文
+  - src/components/sources/CombinedControlPanel.tsx - 重新设计 Premium Features 卡片背景，使用更深的颜色和更好的对比度
+  - 时区设置区域改用 bg-gray-50 背景和更粗的边框
+  - Select 和 Input 组件添加明确的背景色和边框色
+- 更改摘要：完全移除界面中的中文文本，并进一步优化 Premium Features 界面的可见性
+- 原因：用户反馈仍有中文且透明度问题未完全解决
+- 阻碍：无
+- 用户确认状态：待确认
+
+[2025-01-14 16:30:00]
+- 步骤：修复时区下拉菜单的透明度问题
+- 修改：
+  - src/components/ui/select.tsx - 修复 SelectContent 组件，将 bg-popover 改为明确的 bg-white，边框改为 border-2 border-gray-300
+  - 增强阴影效果从 shadow-md 改为 shadow-lg
+  - 修复 SelectItem 组件，将 focus:bg-accent 改为 focus:bg-gray-100，添加 hover:bg-gray-50
+  - 确保所有文字颜色为 text-gray-900，提供最佳对比度
+- 更改摘要：彻底修复时区下拉菜单的透明度问题，使用明确的白色背景和深色边框
+- 原因：用户反馈时区下拉菜单仍然透明
+- 阻碍：无
+- 用户确认状态：待确认
+
+# 最终审查 (由 REVIEW 模式填充)
+[待完成] 
