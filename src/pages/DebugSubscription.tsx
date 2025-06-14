@@ -44,8 +44,8 @@ const DebugSubscription = () => {
     } catch (error) {
       console.error('Failed to fetch status:', error);
       toast({
-        title: "获取状态失败",
-        description: "无法获取当前订阅状态",
+        title: "Failed to Fetch Status",
+        description: "Unable to get current subscription status",
         variant: "destructive",
       });
     } finally {
@@ -78,13 +78,13 @@ const DebugSubscription = () => {
         await fetchCurrentStatus();
 
         toast({
-          title: "✅ 同步成功",
-          description: "用户权限已更新为高级版",
+          title: "✅ Sync Successful",
+          description: "User permissions have been updated to premium",
         });
       } else {
         toast({
-          title: "无法同步",
-          description: "订阅状态不是active，无法更新为高级版",
+          title: "Cannot Sync",
+          description: "Subscription status is not active, cannot update to premium",
           variant: "destructive",
         });
       }
@@ -92,8 +92,8 @@ const DebugSubscription = () => {
     } catch (error) {
       console.error('Manual sync failed:', error);
       toast({
-        title: "同步失败",
-        description: "无法更新用户权限",
+        title: "Sync Failed",
+        description: "Unable to update user permissions",
         variant: "destructive",
       });
     } finally {
@@ -108,13 +108,13 @@ const DebugSubscription = () => {
   }, [user]);
 
   if (!user) {
-    return <div>请先登录</div>;
+    return <div>Please login first</div>;
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">订阅状态调试</h1>
+        <h1 className="text-3xl font-bold mb-8">Subscription Status Debug</h1>
 
         {/* Current Status */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
@@ -122,18 +122,18 @@ const DebugSubscription = () => {
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <CheckCircle className="w-5 h-5 mr-2 text-green-500" />
-              订阅信息
+              Subscription Info
             </h2>
             {subscriptionData ? (
               <div className="space-y-2 text-sm">
-                <p><strong>状态:</strong> <span className={`px-2 py-1 rounded text-xs ${subscriptionData.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{subscriptionData.status}</span></p>
-                <p><strong>计划:</strong> {subscriptionData.plan_type}</p>
-                <p><strong>订阅ID:</strong> {subscriptionData.stripe_subscription_id}</p>
-                <p><strong>到期时间:</strong> {new Date(subscriptionData.current_period_end).toLocaleString()}</p>
-                <p><strong>取消标记:</strong> {subscriptionData.cancel_at_period_end ? '是' : '否'}</p>
+                <p><strong>Status:</strong> <span className={`px-2 py-1 rounded text-xs ${subscriptionData.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{subscriptionData.status}</span></p>
+                <p><strong>Plan:</strong> {subscriptionData.plan_type}</p>
+                <p><strong>Subscription ID:</strong> {subscriptionData.stripe_subscription_id}</p>
+                <p><strong>Expires:</strong> {new Date(subscriptionData.current_period_end).toLocaleString()}</p>
+                <p><strong>Cancel at Period End:</strong> {subscriptionData.cancel_at_period_end ? 'Yes' : 'No'}</p>
               </div>
             ) : (
-              <p className="text-gray-500">无订阅记录</p>
+              <p className="text-gray-500">No subscription record</p>
             )}
           </div>
 
@@ -141,24 +141,24 @@ const DebugSubscription = () => {
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <AlertCircle className="w-5 h-5 mr-2 text-blue-500" />
-              用户权限
+              User Permissions
             </h2>
             {userData ? (
               <div className="space-y-2 text-sm">
-                <p><strong>订阅层级:</strong> <span className={`px-2 py-1 rounded text-xs ${userData.subscription_tier === 'premium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>{userData.subscription_tier}</span></p>
-                <p><strong>最大信息源:</strong> {userData.max_sources}</p>
-                <p><strong>可定时摘要:</strong> {userData.can_schedule_digest ? '是' : '否'}</p>
-                <p><strong>可处理本周:</strong> {userData.can_process_weekly ? '是' : '否'}</p>
+                <p><strong>Subscription Tier:</strong> <span className={`px-2 py-1 rounded text-xs ${userData.subscription_tier === 'premium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>{userData.subscription_tier}</span></p>
+                <p><strong>Max Sources:</strong> {userData.max_sources}</p>
+                <p><strong>Can Schedule Digest:</strong> {userData.can_schedule_digest ? 'Yes' : 'No'}</p>
+                <p><strong>Can Process Weekly:</strong> {userData.can_process_weekly ? 'Yes' : 'No'}</p>
               </div>
             ) : (
-              <p className="text-gray-500">无用户数据</p>
+              <p className="text-gray-500">No user data</p>
             )}
           </div>
         </div>
 
         {/* Actions */}
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">操作</h2>
+          <h2 className="text-xl font-semibold mb-4">Actions</h2>
           <div className="flex gap-4">
             <Button 
               onClick={fetchCurrentStatus}
@@ -166,7 +166,7 @@ const DebugSubscription = () => {
               variant="outline"
             >
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-              刷新状态
+              Refresh Status
             </Button>
 
             <Button 
@@ -175,14 +175,14 @@ const DebugSubscription = () => {
               className="btn-primary"
             >
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              手动同步为高级版
+              Manual Sync to Premium
             </Button>
           </div>
 
           {subscriptionData && subscriptionData.status === 'active' && userData && userData.subscription_tier !== 'premium' && (
             <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-yellow-800 text-sm">
-                <strong>检测到问题:</strong> 您有活跃的订阅，但用户权限还未更新为高级版。请点击"手动同步为高级版"按钮。
+                <strong>Issue Detected:</strong> You have an active subscription but user permissions have not been updated to premium. Please click "Manual Sync to Premium" button.
               </p>
             </div>
           )}
@@ -190,7 +190,7 @@ const DebugSubscription = () => {
           {subscriptionData && subscriptionData.status === 'active' && userData && userData.subscription_tier === 'premium' && (
             <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
               <p className="text-green-800 text-sm">
-                <strong>状态正常:</strong> 您的订阅和用户权限都已正确配置。
+                <strong>Status Normal:</strong> Your subscription and user permissions are correctly configured.
               </p>
             </div>
           )}
@@ -199,7 +199,7 @@ const DebugSubscription = () => {
         {/* User ID for manual SQL updates */}
         <div className="mt-6 bg-gray-50 rounded-lg p-4">
           <p className="text-sm text-gray-600">
-            <strong>用户ID (用于手动SQL更新):</strong> <code className="bg-gray-200 px-2 py-1 rounded">{user.id}</code>
+            <strong>User ID (for manual SQL updates):</strong> <code className="bg-gray-200 px-2 py-1 rounded">{user.id}</code>
           </p>
         </div>
       </div>

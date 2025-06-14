@@ -104,8 +104,8 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
   const saveAutoSettings = async () => {
     if (!canUseFeature('auto')) {
       toast({
-        title: "升级到高级版",
-        description: "自动摘要功能仅限高级版用户使用。",
+        title: "Upgrade to Premium",
+        description: "Automatic digest feature is only available for premium users.",
         action: (
           <Button 
             variant="outline" 
@@ -114,7 +114,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
             className="ml-2"
           >
             <Crown className="w-4 h-4 mr-1" />
-            升级
+            Upgrade
           </Button>
         ),
       });
@@ -131,17 +131,17 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
       };
       await userApi.updateAutoDigestSettings(settingsToSave);
       toast({
-        title: "✅ 设置已保存",
+        title: "✅ Settings Saved",
         description: autoSettings.autoDigestEnabled 
-          ? `自动摘要将在每日 ${autoSettings.autoDigestTime} 运行` 
-          : "自动摘要已禁用。",
+          ? `Automatic digest will run daily at ${autoSettings.autoDigestTime}` 
+          : "Automatic digest is disabled.",
       });
     } catch (err) {
       console.error('Failed to save auto digest settings:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(`Failed to save settings: ${errorMessage}`);
       toast({
-        title: "❌ 保存失败",
+        title: "❌ Save Failed",
         description: errorMessage,
         variant: "destructive",
       });
@@ -151,7 +151,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
   };
 
   const formatLastRun = (dateString?: string) => {
-    if (!dateString) return '从未运行';
+    if (!dateString) return 'Never run';
     return new Date(dateString).toLocaleString();
   };
 
@@ -209,8 +209,8 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                     <Button
                       onClick={() => {
                         toast({
-                          title: "升级到高级版",
-                          description: "免费用户只能处理今日内容。升级到高级版可处理整周内容。",
+                          title: "Upgrade to Premium",
+                          description: "Free users can only process today's content. Upgrade to Premium to process weekly content.",
                           action: (
                             <Button 
                               variant="outline" 
@@ -219,7 +219,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                               className="ml-2"
                             >
                               <Crown className="w-4 h-4 mr-1" />
-                              升级
+                              Upgrade
                             </Button>
                           ),
                         });
@@ -230,13 +230,13 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                       className="opacity-50 w-full justify-start"
                     >
                       <Lock className="h-4 w-4 mr-2" />
-                      处理本周内容 (高级版)
+                      Process This Week's Content (Premium)
                     </Button>
                   )}
                 </>
               ) : (
-                <p className="text-sm text-gray-500 italic p-2 bg-gray-50 rounded">
-                  请先添加信息源再进行处理
+                                  <p className="text-sm text-gray-500 italic p-2 bg-gray-50 rounded">
+                  Please add sources first before processing
                 </p>
               )}
             </div>
@@ -244,7 +244,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
 
           {/* 清理内容按钮 */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">内容管理</Label>
+            <Label className="text-sm font-medium text-gray-700">Content Management</Label>
             <Button
               onClick={onClearContent}
               variant="outline"
@@ -252,7 +252,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
               className="border-orange-300 text-orange-600 hover:bg-orange-50 w-full justify-start"
             >
               <Eraser className="h-4 w-4 mr-2" />
-              清理已抓取内容
+              Clear Fetched Content
             </Button>
           </div>
         </CardContent>
@@ -264,7 +264,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-semibold text-purple-800 flex items-center">
               <Crown className="h-5 w-5 mr-2" />
-              高级版功能
+              Premium Features
             </CardTitle>
             <Button
               variant="outline"
@@ -286,54 +286,86 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
             {loading ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                <span className="text-sm text-gray-600">加载设置中...</span>
+                <span className="text-sm text-gray-600">Loading settings...</span>
               </div>
             ) : (
               <>
-                {/* 自动摘要开关 */}
-                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-100">
-                  <div className="space-y-1">
-                    <Label className="text-sm font-medium text-gray-900 flex items-center">
-                      <Clock className="h-4 w-4 mr-1" />
-                      自动每日摘要
-                      {!isPremium && <Lock className="h-3 w-3 ml-1 text-gray-400" />}
-                    </Label>
-                    <p className="text-xs text-gray-600">
-                      每日自动处理今日内容并生成摘要
+                {/* Auto Daily Digest Toggle */}
+                <div className="flex items-center justify-between p-4 bg-white rounded-lg border-2 border-purple-100 hover:border-purple-200 transition-colors">
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-5 w-5 text-purple-600" />
+                      <Label className="text-base font-semibold text-gray-900">
+                        Auto Daily Digest
+                      </Label>
+                      {!isPremium && (
+                        <div className="flex items-center space-x-1">
+                          <Lock className="h-4 w-4 text-amber-500" />
+                          <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-medium">
+                            Premium
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Automatically process today's content and generate digest daily
                     </p>
                   </div>
-                  <Switch
-                    checked={autoSettings.autoDigestEnabled}
-                    onCheckedChange={(checked) => {
-                      if (!isPremium && checked) {
-                        toast({
-                          title: "升级到高级版",
-                          description: "自动摘要功能仅限高级版用户使用。",
-                          action: (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => window.location.href = '/subscription'}
-                              className="ml-2"
-                            >
-                              <Crown className="w-4 h-4 mr-1" />
-                              升级
-                            </Button>
-                          ),
-                        });
-                        return;
-                      }
-                      setAutoSettings(prev => ({ ...prev, autoDigestEnabled: checked }));
-                    }}
-                    disabled={!isPremium}
-                  />
+                  
+                  {isPremium ? (
+                    <div className="ml-4">
+                      <button
+                        onClick={() => setAutoSettings(prev => ({ ...prev, autoDigestEnabled: !prev.autoDigestEnabled }))}
+                        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                          autoSettings.autoDigestEnabled 
+                            ? 'bg-purple-600' 
+                            : 'bg-gray-200'
+                        }`}
+                      >
+                        <span className="sr-only">Enable auto digest</span>
+                        <span
+                          className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform ${
+                            autoSettings.autoDigestEnabled ? 'translate-x-7' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="ml-4">
+                      <button
+                        onClick={() => {
+                          toast({
+                            title: "Upgrade to Premium",
+                            description: "Automatic digest feature is only available for premium users.",
+                            action: (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => window.location.href = '/subscription'}
+                                className="ml-2"
+                              >
+                                <Crown className="w-4 h-4 mr-1" />
+                                Upgrade
+                              </Button>
+                            ),
+                          });
+                        }}
+                        className="relative inline-flex h-8 w-14 items-center rounded-full bg-gray-200 opacity-50 cursor-not-allowed"
+                        disabled
+                      >
+                        <span className="sr-only">Enable auto digest (Premium required)</span>
+                        <span className="inline-block h-6 w-6 transform rounded-full bg-white shadow-lg translate-x-1" />
+                        <Lock className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* 时间和时区设置 */}
                 {autoSettings.autoDigestEnabled && isPremium && (
                   <div className="space-y-3 p-3 bg-white rounded-lg border border-purple-100">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-900">运行时间</Label>
+                      <Label className="text-sm font-medium text-gray-900">Run Time</Label>
                       <Input
                         type="time"
                         value={autoSettings.autoDigestTime}
@@ -343,7 +375,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                     </div>
                     
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-900">时区</Label>
+                      <Label className="text-sm font-medium text-gray-900">Timezone</Label>
                       <Select
                         value={autoSettings.autoDigestTimezone}
                         onValueChange={(value) => setAutoSettings(prev => ({ ...prev, autoDigestTimezone: value }))}
@@ -363,7 +395,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
 
                     {autoSettings.lastAutoDigestRun && (
                       <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                        上次运行: {formatLastRun(autoSettings.lastAutoDigestRun)}
+                        Last Run: {formatLastRun(autoSettings.lastAutoDigestRun)}
                       </div>
                     )}
                   </div>
@@ -379,12 +411,12 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                     {saving ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        保存中...
+                        Saving...
                       </>
                     ) : (
                       <>
                         <Settings2 className="h-4 w-4 mr-2" />
-                        保存设置
+                        Save Settings
                       </>
                     )}
                   </Button>
@@ -394,7 +426,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                   <div className="p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
                     <div className="flex items-center text-sm text-yellow-800 mb-2">
                       <Crown className="h-4 w-4 mr-2" />
-                      升级到高级版解锁自动摘要功能
+                      Upgrade to Premium to unlock automatic digest features
                     </div>
                     <Button 
                       size="sm"
@@ -402,7 +434,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                       className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
                     >
                       <Crown className="w-4 h-4 mr-2" />
-                      立即升级
+                      Upgrade to Premium
                     </Button>
                   </div>
                 )}

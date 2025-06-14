@@ -420,15 +420,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let errorMessage = error.message;
         
         if (error.message.includes('User already registered')) {
-          errorMessage = '该邮箱已被注册，请尝试登录或使用其他邮箱。';
+          errorMessage = 'This email is already registered. Please try logging in or use a different email.';
         } else if (error.message.includes('Invalid email')) {
-          errorMessage = '邮箱格式不正确，请检查后重试。';
+          errorMessage = 'Invalid email format. Please check and try again.';
         } else if (error.message.includes('Password should be at least')) {
-          errorMessage = '密码至少需要6个字符。';
+          errorMessage = 'Password must be at least 6 characters long.';
         }
         
         toast({
-          title: "注册失败",
+          title: "Registration Failed",
           description: errorMessage,
           variant: "destructive",
         });
@@ -439,15 +439,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (data.user && !data.session) {
         toast({
-          title: "注册成功",
-          description: "请检查您的邮箱并点击确认链接来激活账户。",
+          title: "Registration Successful",
+          description: "Please check your email and click the confirmation link to activate your account.",
         });
       } else if (data.session) {
-        // 如果注册后直接有 session，说明邮箱确认被禁用，用户已登录
-        console.log('✅ 注册后直接登录成功');
+        // If there's a session directly after registration, email confirmation is disabled and user is logged in
+        console.log('✅ Registration and login successful');
         toast({
-          title: "注册成功",
-          description: "欢迎加入 Neural Hub！",
+          title: "Registration Successful",
+          description: "Welcome to Neural Hub!",
         });
       }
     } catch (error: any) {
@@ -527,7 +527,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('❌ 登出错误:', error);
         toast({
-          title: "登出失败",
+          title: "Logout Failed",
           description: error.message,
           variant: "destructive",
         });
@@ -536,15 +536,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // 清理 localStorage
         localStorage.removeItem('sb-auth-token');
         toast({
-          title: "已成功登出",
-          description: "您已安全退出账户。",
+          title: "Successfully Logged Out",
+          description: "You have been safely logged out.",
         });
+        
+        // 跳转到landing page
+        window.location.href = '/';
       }
     } catch (error) {
       console.error('❌ Logout error:', error);
       toast({
-        title: "登出失败",
-        description: "退出时发生错误，请重试。",
+        title: "Logout Failed",
+        description: "An error occurred while logging out. Please try again.",
         variant: "destructive",
       });
     }

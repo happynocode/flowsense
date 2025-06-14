@@ -207,8 +207,8 @@ const AutoDigestSettingsSimple: React.FC = () => {
                   className="h-4 w-4 opacity-50 cursor-not-allowed border-gray-300 rounded"
                   onClick={() => {
                     toast({
-                      title: "升级到高级版",
-                      description: "自动摘要功能仅限高级版用户使用。",
+                      title: "Upgrade to Premium",
+                      description: "Automatic digest feature is only available for premium users.",
                       action: (
                         <Button 
                           variant="outline" 
@@ -217,7 +217,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
                           className="ml-2"
                         >
                           <Crown className="w-4 h-4 mr-1" />
-                          升级
+                          Upgrade
                         </Button>
                       ),
                     });
@@ -243,8 +243,8 @@ const AutoDigestSettingsSimple: React.FC = () => {
                 onChange={(e) => {
                   if (!canUseFeature('auto')) {
                     toast({
-                      title: "升级到高级版",
-                      description: "自动摘要功能仅限高级版用户使用。",
+                      title: "Upgrade to Premium",
+                      description: "Automatic digest feature is only available for premium users.",
                       action: (
                         <Button 
                           variant="outline" 
@@ -253,7 +253,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
                           className="ml-2"
                         >
                           <Crown className="w-4 h-4 mr-1" />
-                          升级
+                          Upgrade
                         </Button>
                       ),
                     });
@@ -286,8 +286,8 @@ const AutoDigestSettingsSimple: React.FC = () => {
                 onChange={(e) => {
                   if (!canUseFeature('auto')) {
                     toast({
-                      title: "升级到高级版",
-                      description: "自动摘要功能仅限高级版用户使用。",
+                      title: "Upgrade to Premium",
+                      description: "Automatic digest feature is only available for premium users.",
                       action: (
                         <Button 
                           variant="outline" 
@@ -296,7 +296,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
                           className="ml-2"
                         >
                           <Crown className="w-4 h-4 mr-1" />
-                          升级
+                          Upgrade
                         </Button>
                       ),
                     });
@@ -325,8 +325,8 @@ const AutoDigestSettingsSimple: React.FC = () => {
               <Button 
                 onClick={() => {
                   toast({
-                    title: "升级到高级版",
-                    description: "自动摘要功能仅限高级版用户使用。",
+                    title: "Upgrade to Premium",
+                    description: "Automatic digest feature is only available for premium users.",
                     action: (
                       <Button 
                         variant="outline" 
@@ -335,7 +335,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
                         className="ml-2"
                       >
                         <Crown className="w-4 h-4 mr-1" />
-                        升级
+                        Upgrade
                       </Button>
                     ),
                   });
@@ -344,7 +344,7 @@ const AutoDigestSettingsSimple: React.FC = () => {
                 className="w-full opacity-50 cursor-not-allowed bg-gray-400 hover:bg-gray-400 flex items-center justify-center"
               >
                 <Lock className="w-4 h-4 mr-2" />
-                💾 保存设置
+                💾 Save Settings
                 <Crown className="w-4 h-4 ml-2 text-yellow-500" />
               </Button>
             )}

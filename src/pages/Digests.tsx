@@ -124,13 +124,13 @@ const Digests = () => {
       await digestsApi.clearAllDigests(user?.id);
       setDigests([]);
       toast({
-        title: "✅ Digests清除成功",
-        description: "所有摘要和内容数据已清除，Sources保留。",
+        title: "✅ Digests Cleared Successfully",
+        description: "All digests and content data have been cleared. Sources are preserved.",
       });
     } catch (error) {
       console.error('Failed to clear digests:', error);
       toast({
-        title: "❌ 清除失败",
+        title: "❌ Clear Failed",
         description: "清除digests时发生错误，请重试。",
         variant: "destructive",
       });
@@ -147,13 +147,13 @@ const Digests = () => {
       await digestsApi.deleteDigest(digest.id);
       setDigests(prev => (prev || []).filter(d => d.id !== digest.id));
       toast({
-        title: "✅ Digest删除成功",
+        title: "✅ Digest Deleted Successfully",
         description: `"${digest.title}" 已被删除。`,
       });
     } catch (error) {
       console.error('Failed to delete digest:', error);
       toast({
-        title: "❌ 删除失败",
+        title: "❌ Delete Failed",
         description: "删除digest时发生错误，请重试。",
         variant: "destructive",
       });
@@ -240,18 +240,18 @@ const Digests = () => {
               {/* Stats */}
               {digestsArray.length > 0 && (
                 <div className="bg-white rounded-lg border p-4">
-                  <h3 className="font-medium text-gray-900 mb-3">统计信息</h3>
+                  <h3 className="font-medium text-gray-900 mb-3">Statistics</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">总摘要数:</span>
+                                              <span className="text-gray-600">Total Digests:</span>
                       <span className="font-medium">{digestsArray.length}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">搜索结果:</span>
+                                              <span className="text-gray-600">Search Results:</span>
                       <span className="font-medium">{filteredDigests.length}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">未读数量:</span>
+                                              <span className="text-gray-600">Unread Count:</span>
                       <span className="font-medium text-blue-600">
                         {digestsArray.filter(d => !d.isRead).length}
                       </span>
@@ -448,7 +448,7 @@ const Digests = () => {
         <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>删除摘要</AlertDialogTitle>
+                              <AlertDialogTitle>Delete Digest</AlertDialogTitle>
               <AlertDialogDescription>
                 您确定要删除 "{deleteDialog?.title}" 吗？此操作无法撤销。
               </AlertDialogDescription>

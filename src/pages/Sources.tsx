@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCircle, Sparkles, Zap, Eraser, Crown, Lock } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, Mic, FileText, Loader2, CheckCircle, AlertCircle, Sparkles, Zap, Eraser, Crown, Lock, Calendar } from 'lucide-react';
 import { sourcesApi, userApi } from '../services/api';
 import { ContentSource } from '../types';
 import { useToast } from '../hooks/use-toast';
@@ -253,7 +253,7 @@ const Sources = () => {
     setTaskProgress(null);
 
     try {
-      const timeRangeText = timeRange === 'today' ? '今天' : '过去一周';
+      const timeRangeText = timeRange === 'today' ? 'today' : 'this week';
       console.log(`🚀 启动异步处理任务 (${timeRangeText})...`);
       console.log('🔴 About to call sourcesApi.startProcessingTask...');
       
@@ -330,7 +330,7 @@ const Sources = () => {
     setTaskProgress(null);
 
     try {
-      const timeRangeText = timeRange === 'today' ? '今天' : '过去一周';
+      const timeRangeText = timeRange === 'today' ? 'today' : 'this week';
       console.log(`🎯 启动直接处理 (${timeRangeText})...`);
       
       toast({
@@ -395,13 +395,13 @@ const Sources = () => {
       setProcessResults(null);
       
       toast({
-        title: "✅ 内容清除成功",
-        description: "所有已抓取的内容和摘要已清除，Sources保留。",
+        title: "✅ Content Cleared Successfully",
+        description: "All fetched content and digests have been cleared. Sources are preserved.",
       });
     } catch (error) {
       console.error('Failed to clear scraped content:', error);
       toast({
-        title: "❌ 清除失败",
+        title: "❌ Clear Failed",
         description: "清除内容时发生错误，请重试。",
         variant: "destructive",
       });
@@ -584,10 +584,10 @@ const Sources = () => {
             </p>
                 {/* Debug Info */}
                 <div className="mt-2 text-xs text-gray-500 bg-gray-100 rounded p-2">
-                  📊 当前显示: {sourcesArray.length} 个信息源 | 
-                  订阅类型: {isPremium ? '高级版' : '免费版'} | 
-                  限制: {sources.length}/{limits.maxSources} | 
-                  状态: {loading ? '加载中' : '已加载'}
+                  📊 Currently showing: {sourcesArray.length} sources | 
+                  Subscription: {isPremium ? 'Premium' : 'Free'} | 
+                  Limit: {sources.length}/{limits.maxSources} | 
+                  Status: {loading ? 'Loading' : 'Loaded'}
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -601,8 +601,8 @@ const Sources = () => {
                     <button 
                       onClick={() => {
                         toast({
-                          title: "升级到高级版",
-                          description: `免费用户最多可添加 ${limits.maxSources} 个信息源。升级到高级版可添加 20 个信息源。`,
+                          title: "Upgrade to Premium",
+                          description: `Free users can add up to ${limits.maxSources} sources. Upgrade to Premium to add 20 sources.`,
                           action: (
                             <Button 
                               variant="outline" 
@@ -611,7 +611,7 @@ const Sources = () => {
                               className="ml-2"
                             >
                               <Crown className="w-4 h-4 mr-1" />
-                              升级
+                              Upgrade
                             </Button>
                           ),
                         });
@@ -620,7 +620,7 @@ const Sources = () => {
                       disabled
                     >
                       <Lock className="h-4 w-4" />
-                      添加信息源 ({sources.length}/{limits.maxSources})
+                      Add Source ({sources.length}/{limits.maxSources})
                     </button>
                     <div className="absolute -top-2 -right-2">
                       <Crown className="w-5 h-5 text-yellow-500" />
@@ -870,13 +870,13 @@ const Sources = () => {
             <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
               <Plus className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">还没有信息源</h3>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">No Sources Yet</h3>
             <p className="text-gray-600 mb-6 max-w-md mx-auto">
-              添加您喜爱的博客、播客和新闻网站，开始生成个性化内容摘要。
+              Add your favorite blogs, podcasts, and news sites to start generating personalized content digests.
             </p>
             <button onClick={() => setShowForm(true)} className="btn-primary">
               <Plus className="w-4 h-4" />
-              添加第一个信息源
+                              Add Your First Source
             </button>
           </div>
         ) : (
@@ -888,7 +888,7 @@ const Sources = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
                       {getTypeIcon(source.type)}
-                      <h3 className="text-lg font-semibold text-gray-800 truncate">{source.name}</h3>
+                      <h3 className="text-lg font-semibold text-gray-800 truncate max-w-[200px]" title={source.name}>{source.name}</h3>
                     </div>
                     <div className="flex items-center gap-1">
                       <button
@@ -896,7 +896,7 @@ const Sources = () => {
                         className={`w-2 h-2 rounded-full ${
                           source.isActive ? 'bg-green-500' : 'bg-gray-300'
                         }`}
-                        title={source.isActive ? '活跃' : '不活跃'}
+                        title={source.isActive ? 'Active' : 'Inactive'}
                       />
                     </div>
                   </div>
@@ -914,16 +914,16 @@ const Sources = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="badge-secondary">
-                        {source.type === 'podcast' ? '播客' : source.type === 'blog' ? '博客' : '网站'}
+                        {source.type === 'podcast' ? 'Podcast' : source.type === 'blog' ? 'Blog' : 'Website'}
                       </span>
                       <span className={source.isActive ? 'badge-success' : 'badge-secondary'}>
-                        {source.isActive ? '活跃' : '未激活'}
+                        {source.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </div>
                   </div>
 
                   <div className="text-xs text-gray-500">
-                    最后抓取: {formatDate(source.lastScraped)}
+                                          Last Scraped: {formatDate(source.lastScraped)}
                   </div>
 
                   <div className="flex justify-end gap-2">
@@ -950,18 +950,18 @@ const Sources = () => {
             <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>删除信息源</AlertDialogTitle>
+                  <AlertDialogTitle>Delete Source</AlertDialogTitle>
                   <AlertDialogDescription>
-                    您确定要删除 "{deleteDialog?.name}" 吗？此操作无法撤销。
+                    Are you sure you want to delete "{deleteDialog?.name}"? This action cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => deleteDialog && handleDelete(deleteDialog)}
                     className="bg-red-600 hover:bg-red-700"
                   >
-                    删除
+                    Delete
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -979,7 +979,7 @@ const Sources = () => {
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleClearScrapedContent}
                     disabled={clearing}
@@ -988,10 +988,10 @@ const Sources = () => {
                     {clearing ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        正在清除...
+                        Clearing...
                       </>
                     ) : (
-                      '清除内容'
+                      'Clear Content'
                     )}
                   </AlertDialogAction>
                 </AlertDialogFooter>

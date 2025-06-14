@@ -40,7 +40,7 @@ const Header = () => {
                   isActive('/sources') ? 'nav-item-active' : ''
                 }`}
               >
-                信息源
+                Sources
               </Link>
               <Link
                 to="/digests"
@@ -48,7 +48,7 @@ const Header = () => {
                   isActive('/digests') ? 'nav-item-active' : ''
                 }`}
               >
-                摘要
+                Digests
               </Link>
               <Link
                 to="/subscription"
@@ -56,7 +56,7 @@ const Header = () => {
                   isActive('/subscription') ? 'nav-item-active' : ''
                 }`}
               >
-                订阅
+                Subscription
               </Link>
             </nav>
           )}
@@ -85,29 +85,16 @@ const Header = () => {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-gray-200" />
-                  <DropdownMenuItem asChild className="text-gray-700 hover:text-gray-800 hover:bg-gray-50 cursor-pointer">
-                    <Link to="/profile" className="flex items-center">
-                      <User className="mr-2 h-4 w-4" />
-                      用户资料
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="text-gray-700 hover:text-gray-800 hover:bg-gray-50 cursor-pointer">
-                    <Link to="/subscription" className="flex items-center">
-                      <Settings className="mr-2 h-4 w-4" />
-                      订阅设置
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-gray-200" />
                   <DropdownMenuItem onClick={logout} className="text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
-                    退出登录
+                    Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Link to="/login">
                 <button className="btn-primary">
-                  登录
+                  Sign In
                 </button>
               </Link>
             )}

@@ -20,14 +20,14 @@ import {
 
 const TIMEZONES = [
   { value: 'UTC', label: 'UTC' },
-  { value: 'America/New_York', label: '美国东部时间 (EST/EDT)' },
-  { value: 'America/Los_Angeles', label: '美国太平洋时间 (PST/PDT)' },
-  { value: 'Europe/London', label: '英国时间 (GMT/BST)' },
-  { value: 'Europe/Paris', label: '欧洲中部时间 (CET/CEST)' },
-  { value: 'Asia/Tokyo', label: '日本时间 (JST)' },
-  { value: 'Asia/Shanghai', label: '中国时间 (CST)' },
-  { value: 'Asia/Hong_Kong', label: '香港时间 (HKT)' },
-  { value: 'Australia/Sydney', label: '澳大利亚东部时间 (AEST/AEDT)' },
+  { value: 'America/New_York', label: 'America/New_York' },
+  { value: 'America/Los_Angeles', label: 'America/Los_Angeles' },
+  { value: 'Europe/London', label: 'Europe/London' },
+  { value: 'Europe/Paris', label: 'Europe/Paris' },
+  { value: 'Asia/Tokyo', label: 'Asia/Tokyo' },
+  { value: 'Asia/Shanghai', label: 'Asia/Shanghai' },
+  { value: 'Asia/Hong_Kong', label: 'Asia/Hong_Kong' },
+  { value: 'Australia/Sydney', label: 'Australia/Sydney' },
 ];
 
 interface ProcessingControlPanelProps {
@@ -90,8 +90,8 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
   const saveAutoSettings = async () => {
     if (!canUseFeature('auto')) {
       toast({
-        title: "升级到高级版",
-        description: "自动摘要功能仅限高级版用户使用。",
+        title: "Upgrade to Premium",
+        description: "Automatic digest feature is only available for premium users.",
         action: (
           <Button 
             variant="outline" 
@@ -100,7 +100,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
             className="ml-2"
           >
             <Crown className="w-4 h-4 mr-1" />
-            升级
+            Upgrade
           </Button>
         ),
       });
@@ -112,15 +112,15 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
       setError(null);
       await userApi.updateAutoDigestSettings(autoSettings);
       toast({
-        title: "✅ 设置已保存",
-        description: "自动摘要设置已成功更新。",
+        title: "✅ Settings Saved",
+        description: "Automatic digest settings have been successfully updated.",
       });
     } catch (err) {
       console.error('Failed to save auto digest settings:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(`Failed to save settings: ${errorMessage}`);
       toast({
-        title: "❌ 保存失败",
+        title: "❌ Save Failed",
         description: errorMessage,
         variant: "destructive",
       });
@@ -133,34 +133,34 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
     <div className="bg-white rounded-lg border border-indigo-200 shadow-sm">
       <div className="p-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-indigo-800 flex items-center">
             <Zap className="h-5 w-5 mr-2" />
-            内容处理控制
+            Content Processing Control
           </h3>
         </div>
 
         {/* Manual Processing Buttons */}
-        <div className="mb-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">手动处理</h4>
-          <div className="flex flex-wrap gap-2 mb-2">
+        <div className="mb-6">
+          <h4 className="text-sm font-medium text-gray-700 mb-3">Manual Processing</h4>
+          <div className="flex flex-col gap-3 mb-2">
             {sourcesArray.length > 0 ? (
               <>
                 <Button
                   onClick={onProcessToday}
                   disabled={globalProcessing}
-                  size="sm"
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  size="default"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center py-3"
                 >
                   {globalProcessing ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                      处理中...
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Processing...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="h-4 w-4 mr-1" />
-                      处理今日
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Process Today's Content
                     </>
                   )}
                 </Button>
@@ -169,19 +169,19 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                   <Button
                     onClick={onProcessWeek}
                     disabled={globalProcessing}
-                    size="sm"
+                    size="default"
                     variant="outline"
-                    className="border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+                    className="border-indigo-300 text-indigo-600 hover:bg-indigo-50 shadow-sm hover:shadow-md transition-all duration-200 py-3"
                   >
-                    <Sparkles className="h-4 w-4 mr-1" />
-                    处理本周
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Process This Week's Content
                   </Button>
                 ) : (
                   <Button
                     onClick={() => {
                       toast({
-                        title: "升级到高级版",
-                        description: "免费用户只能处理今日内容。升级到高级版可处理整周内容。",
+                        title: "Upgrade to Premium",
+                        description: "Free users can only process today's content. Upgrade to Premium to process weekly content.",
                         action: (
                           <Button 
                             variant="outline" 
@@ -190,51 +190,55 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                             className="ml-2"
                           >
                             <Crown className="w-4 h-4 mr-1" />
-                            升级
+                            Upgrade
                           </Button>
                         ),
                       });
                     }}
                     disabled
-                    size="sm"
+                    size="default"
                     variant="outline"
-                    className="opacity-50 cursor-not-allowed"
+                    className="opacity-60 cursor-not-allowed bg-gray-50 border-gray-300 text-gray-500 py-3 relative"
                   >
-                    <Lock className="h-4 w-4 mr-1" />
-                    处理本周
-                    <Crown className="w-4 h-4 ml-1 text-yellow-500" />
+                    <Lock className="h-4 w-4 mr-2" />
+                    Process This Week
+                    <Crown className="w-4 h-4 ml-2 text-yellow-500" />
                   </Button>
                 )}
-                
-                <Button
-                  onClick={onClearContent}
-                  disabled={globalProcessing}
-                  size="sm"
-                  variant="outline"
-                  className="border-orange-300 text-orange-600 hover:bg-orange-50"
-                >
-                  <Eraser className="h-4 w-4 mr-1" />
-                  清除内容
-                </Button>
               </>
             ) : (
               <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 border border-gray-200">
-                添加信息源后即可开始处理内容
+                Add sources to start processing content
               </div>
             )}
+          </div>
+
+          {/* Content Management Section */}
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <h4 className="text-sm font-medium text-gray-700 mb-3">Content Management</h4>
+            <Button
+              onClick={onClearContent}
+              disabled={globalProcessing}
+              size="default"
+              variant="outline"
+              className="w-full border-orange-300 text-orange-600 hover:bg-orange-50 shadow-sm hover:shadow-md transition-all duration-200 py-3"
+            >
+              <Eraser className="h-4 w-4 mr-2" />
+              Clear Fetched Content
+            </Button>
           </div>
         </div>
 
         {/* Auto Digest Settings */}
-        <div className="border-t border-gray-200 pt-4">
-          <div className="flex items-center justify-between mb-2">
+        <div className="border-t border-gray-200 pt-6">
+          <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-medium text-gray-700 flex items-center">
               <Clock className="h-4 w-4 mr-2" />
-              自动摘要
+              Auto Digest Settings
               {!canUseFeature('auto') && (
                 <div className="ml-2 flex items-center">
                   <Crown className="h-4 w-4 text-yellow-500" />
-                  <span className="text-xs text-gray-500 ml-1">高级版</span>
+                  <span className="text-xs text-gray-500 ml-1">Premium</span>
                 </div>
               )}
             </h4>
@@ -255,7 +259,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
           {/* Enable/Disable Toggle */}
           <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200 mb-2">
             <Label htmlFor="auto-digest-enabled" className="text-sm font-medium text-gray-900">
-              启用自动摘要
+              Auto Digest Enabled
             </Label>
             {canUseFeature('auto') ? (
               <input
@@ -276,8 +280,8 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                   className="h-4 w-4 opacity-50 cursor-not-allowed border-gray-300 rounded"
                   onClick={() => {
                     toast({
-                      title: "升级到高级版",
-                      description: "自动摘要功能仅限高级版用户使用。",
+                      title: "Upgrade to Premium",
+                      description: "Automatic digest feature is only available for premium users.",
                       action: (
                         <Button 
                           variant="outline" 
@@ -286,7 +290,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                           className="ml-2"
                         >
                           <Crown className="w-4 h-4 mr-1" />
-                          升级
+                          Upgrade
                         </Button>
                       ),
                     });
@@ -310,7 +314,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                     variant="outline" 
                     className="mt-1 h-6 text-xs"
                   >
-                    重试
+                    Retry
                   </Button>
                 </div>
               )}
@@ -319,7 +323,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
               <div className="space-y-1">
                 <Label htmlFor="digest-timezone" className="text-xs font-medium text-gray-900 flex items-center">
                   <Globe className="h-3 w-3 mr-1" />
-                  时区
+                  Timezone
                 </Label>
                 <select
                   id="digest-timezone"
@@ -327,8 +331,8 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                   onChange={(e) => {
                     if (!canUseFeature('auto')) {
                       toast({
-                        title: "升级到高级版",
-                        description: "自动摘要功能仅限高级版用户使用。",
+                        title: "Upgrade to Premium",
+                        description: "Automatic digest feature is only available for premium users.",
                       });
                       return;
                     }
@@ -348,7 +352,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
               {/* Time Selection */}
               <div className="space-y-1">
                 <Label htmlFor="digest-time" className="text-xs font-medium text-gray-900">
-                  执行时间
+                  Execution Time
                 </Label>
                 <Input
                   id="digest-time"
@@ -357,8 +361,8 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                   onChange={(e) => {
                     if (!canUseFeature('auto')) {
                       toast({
-                        title: "升级到高级版",
-                        description: "自动摘要功能仅限高级版用户使用。",
+                        title: "Upgrade to Premium",
+                        description: "Automatic digest feature is only available for premium users.",
                       });
                       return;
                     }
@@ -377,14 +381,14 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                   size="sm"
                   className="w-full h-8 text-xs bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
                 >
-                  {saving ? '保存中...' : '💾 保存设置'}
+                  {saving ? 'Saving...' : '💾 Save Settings'}
                 </Button>
               ) : (
                 <Button 
                   onClick={() => {
                     toast({
-                      title: "升级到高级版",
-                      description: "自动摘要功能仅限高级版用户使用。",
+                      title: "Upgrade to Premium",
+                      description: "Automatic digest feature is only available for premium users.",
                       action: (
                         <Button 
                           variant="outline" 
@@ -393,7 +397,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                           className="ml-2"
                         >
                           <Crown className="w-4 h-4 mr-1" />
-                          升级
+                          Upgrade
                         </Button>
                       ),
                     });
@@ -403,7 +407,7 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
                   className="w-full h-8 text-xs opacity-50 cursor-not-allowed bg-gray-400 hover:bg-gray-400 flex items-center justify-center"
                 >
                   <Lock className="w-3 h-3 mr-1" />
-                  💾 保存设置
+                  💾 Save Settings
                   <Crown className="w-3 h-3 ml-1 text-yellow-500" />
                 </Button>
               )}
@@ -413,9 +417,9 @@ const ProcessingControlPanel: React.FC<ProcessingControlPanelProps> = ({
 
         {/* Help Text */}
         <div className="text-xs text-gray-600 bg-indigo-50 rounded-lg p-2 border border-indigo-100 mt-3">
-          <p className="mb-1"><strong>处理今日:</strong> 抓取并摘要今天发布的新内容</p>
-          <p className="mb-1"><strong>处理本周:</strong> 抓取并摘要过去7天的内容</p>
-          <p><strong>自动摘要:</strong> 每天定时自动处理今日内容并生成摘要</p>
+          <p className="mb-1"><strong>Process Today:</strong> Fetch and summarize new content published today</p>
+          <p className="mb-1"><strong>Process This Week:</strong> Fetch and summarize content from the past 7 days</p>
+          <p><strong>Auto Digest:</strong> Automatically process today's content and generate summaries daily</p>
         </div>
       </div>
     </div>

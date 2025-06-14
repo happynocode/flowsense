@@ -61,8 +61,8 @@ const Subscription = () => {
   const handlePlanSelect = async (plan: SubscriptionPlan) => {
     if (isPremium) {
       toast({
-        title: "您已是高级用户",
-        description: "您已经拥有活跃的订阅。",
+        title: "Already Premium User",
+        description: "You already have an active subscription.",
       });
       return;
     }
@@ -83,8 +83,8 @@ const Subscription = () => {
     } catch (error) {
       console.error('Failed to create checkout session:', error);
       toast({
-        title: "支付启动失败",
-        description: error instanceof Error ? error.message : "创建支付会话时发生错误",
+        title: "Payment Failed to Start",
+        description: error instanceof Error ? error.message : "Error occurred while creating payment session",
         variant: "destructive",
       });
     } finally {
@@ -100,8 +100,8 @@ const Subscription = () => {
     } catch (error) {
       console.error('Failed to create portal session:', error);
       toast({
-        title: "无法打开计费管理",
-        description: error instanceof Error ? error.message : "创建客户门户会话时发生错误",
+        title: "Unable to Open Billing Management",
+        description: error instanceof Error ? error.message : "Error occurred while creating customer portal session",
         variant: "destructive",
       });
     } finally {
@@ -114,7 +114,7 @@ const Subscription = () => {
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-indigo-600" />
-          <p className="text-gray-600">加载中...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
@@ -135,18 +135,18 @@ const Subscription = () => {
         </div>
 
         {/* Pricing Plans */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-16">
+        <div className="flex justify-center mb-16">
           {SUBSCRIPTION_PLANS.map((plan) => (
             <div
               key={plan.id}
-              className={`modern-card-elevated p-8 text-center relative ${
+              className={`modern-card-elevated p-8 text-center relative max-w-md w-full ${
                 plan.isPopular ? 'ring-2 ring-indigo-500' : ''
               }`}
             >
               {/* Popular Badge */}
               {plan.isPopular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="badge-accent px-4 py-2">最受欢迎</span>
+                  <span className="badge-accent px-4 py-2">Most Popular</span>
                 </div>
               )}
 
@@ -156,7 +156,7 @@ const Subscription = () => {
               {/* Price */}
               <div className="mb-6">
                 <span className="text-5xl font-bold text-gray-800">${plan.price}</span>
-                <span className="text-gray-600">/月</span>
+                <span className="text-gray-600">/month</span>
               </div>
 
               {/* Features */}
@@ -176,7 +176,7 @@ const Subscription = () => {
                   className="w-full mb-4 opacity-50 cursor-not-allowed"
                 >
                   <Crown className="w-4 h-4 mr-2" />
-                  已订阅
+                  Subscribed
                 </Button>
               ) : (
                 <Button
@@ -187,19 +187,19 @@ const Subscription = () => {
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      处理中...
+                      Processing...
                     </>
                   ) : (
                     <>
                       <CreditCard className="w-4 h-4 mr-2" />
-                      开始7天免费试用
+                      Start 7-Day Free Trial
                     </>
                   )}
                 </Button>
               )}
               
               <p className="text-sm text-gray-500">
-                7天免费试用，随后 ${plan.price}/月
+                7-day free trial, then ${plan.price}/month
               </p>
             </div>
           ))}
@@ -208,19 +208,19 @@ const Subscription = () => {
         {/* Security and Trust */}
         <div className="max-w-2xl mx-auto text-center">
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">安全保障</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Security & Trust</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
               <div className="flex items-center justify-center space-x-2">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>SSL加密传输</span>
+                <span>SSL Encrypted</span>
               </div>
               <div className="flex items-center justify-center space-x-2">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Stripe安全支付</span>
+                <span>Stripe Secure Payment</span>
               </div>
               <div className="flex items-center justify-center space-x-2">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>随时取消订阅</span>
+                <span>Cancel Anytime</span>
               </div>
             </div>
           </div>
@@ -231,7 +231,7 @@ const Subscription = () => {
           <Link to="/sources">
             <Button variant="outline">
               <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
-              返回信息源管理
+              Back to Sources
             </Button>
           </Link>
         </div>

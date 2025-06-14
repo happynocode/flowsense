@@ -52,11 +52,9 @@ const Login = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="glass-card p-8">
-          <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-full flex items-center justify-center glow-purple">
-            <Brain className="w-8 h-8 text-starlight" />
-          </div>
-          <p className="text-center text-lunar-grey">正在初始化神经接口...</p>
+        <div className="glass-card p-4">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mx-auto mb-2" />
+          <p className="text-center text-gray-600">Initializing neural interface...</p>
         </div>
       </div>
     );
@@ -72,8 +70,8 @@ const Login = () => {
     e.preventDefault();
     if (!signInForm.email || !signInForm.password) {
       toast({
-        title: "请填写完整信息",
-        description: "邮箱和密码都是必填项。",
+        title: "Please fill in all fields",
+        description: "Email and password are required.",
         variant: "destructive",
       });
       return;
@@ -97,8 +95,8 @@ const Login = () => {
     e.preventDefault();
     if (!signUpForm.name || !signUpForm.email || !signUpForm.password || !signUpForm.confirmPassword) {
       toast({
-        title: "请填写完整信息",
-        description: "所有字段都是必填项。",
+        title: "Please fill in all fields",
+        description: "All fields are required.",
         variant: "destructive",
       });
       return;
@@ -106,8 +104,8 @@ const Login = () => {
 
     if (signUpForm.password !== signUpForm.confirmPassword) {
       toast({
-        title: "密码不匹配",
-        description: "请确保两次输入的密码相同。",
+        title: "Passwords don't match",
+        description: "Please make sure both passwords are the same.",
         variant: "destructive",
       });
       return;
@@ -115,8 +113,8 @@ const Login = () => {
 
     if (signUpForm.password.length < 6) {
       toast({
-        title: "密码太短",
-        description: "密码至少需要6个字符。",
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
         variant: "destructive",
       });
       return;
@@ -144,63 +142,62 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-cosmic-purple/10 via-transparent to-electric-blue/10"></div>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-hero">
       
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <div className="mx-auto w-20 h-20 bg-cosmic-gradient rounded-2xl flex items-center justify-center mb-6 glow-purple">
-            <Brain className="w-10 h-10 text-starlight" />
+          <div className="mx-auto w-20 h-20 bg-gradient-primary rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+            <Brain className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-4xl font-space-grotesk font-bold mb-2">
-            <span className="text-cosmic-gradient">Neural</span>{" "}
-            <span className="text-starlight">Hub</span>
+            <span className="text-gradient-primary">Neural</span>{" "}
+            <span className="text-gray-800">Hub</span>
           </h1>
-          <p className="text-lunar-grey">连接您的个性化内容摘要</p>
+          <p className="text-gray-600">Connect to your personalized content digest</p>
         </div>
 
-        {/* Supabase 配置警告 */}
+        {/* Supabase Configuration Warning */}
         {showSupabaseWarning && (
-          <Alert className="mb-6 border-nebula-pink/50 bg-nebula-pink/10">
-            <AlertCircle className="h-4 w-4 text-nebula-pink" />
-            <AlertDescription className="text-starlight">
-              <strong>配置提醒：</strong> 需要配置 Supabase 环境变量才能使用登录功能。
-              请检查 .env 文件中的 VITE_SUPABASE_URL 和 VITE_SUPABASE_ANON_KEY。
+          <Alert className="mb-6 border-amber-200 bg-amber-50">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              <strong>Configuration Required:</strong> Supabase environment variables need to be configured for login functionality.
+              Please check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.
             </AlertDescription>
           </Alert>
         )}
 
-        <Card className="glass-card border-0">
+        <Card className="bg-white border shadow-lg">
           <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl text-starlight">欢迎使用</CardTitle>
-            <CardDescription className="text-lunar-grey">
-              登录或注册以访问您的个性化每日摘要
+            <CardTitle className="text-2xl text-gray-800">Welcome</CardTitle>
+            <CardDescription className="text-gray-600">
+              Sign in or register to access your personalized daily digest
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 bg-midnight/60">
-                <TabsTrigger value="signin" className="text-starlight data-[state=active]:bg-cosmic-gradient">
-                  登录
+              <TabsList className="grid w-full grid-cols-2 bg-gray-100">
+                <TabsTrigger value="signin" className="text-gray-700 data-[state=active]:bg-gradient-primary data-[state=active]:text-white">
+                  Sign In
                 </TabsTrigger>
-                <TabsTrigger value="signup" className="text-starlight data-[state=active]:bg-cosmic-gradient">
-                  注册
+                <TabsTrigger value="signup" className="text-gray-700 data-[state=active]:bg-gradient-primary data-[state=active]:text-white">
+                  Register
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-email" className="text-starlight">邮箱</Label>
+                    <Label htmlFor="signin-email" className="text-gray-700">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-lunar-grey" />
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         id="signin-email"
                         type="email"
                         placeholder="your@email.com"
                         value={signInForm.email}
                         onChange={(e) => setSignInForm(prev => ({ ...prev, email: e.target.value }))}
-                        className="pl-10 input-futuristic"
+                        className="pl-10 border-gray-300 focus:border-primary-500 focus:ring-primary-500"
                         required
                         disabled={showSupabaseWarning}
                       />
@@ -208,16 +205,16 @@ const Login = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password" className="text-starlight">密码</Label>
+                    <Label htmlFor="signin-password" className="text-gray-700">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-lunar-grey" />
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         id="signin-password"
                         type="password"
                         placeholder="••••••••"
                         value={signInForm.password}
                         onChange={(e) => setSignInForm(prev => ({ ...prev, password: e.target.value }))}
-                        className="pl-10 input-futuristic"
+                        className="pl-10 border-gray-300 focus:border-primary-500 focus:ring-primary-500"
                         required
                         disabled={showSupabaseWarning}
                       />
@@ -226,18 +223,18 @@ const Login = () => {
 
                   <Button 
                     type="submit" 
-                    className="btn-cosmic w-full h-12 text-base"
+                    className="btn-primary w-full h-12 text-base"
                     disabled={isSubmitting || showSupabaseWarning}
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-starlight border-t-transparent mr-2" />
-                        登录中...
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                        Signing in...
                       </>
                     ) : (
                       <>
                         <Brain className="w-4 h-4 mr-2" />
-                        连接神经接口
+                        Connect Neural Interface
                       </>
                     )}
                   </Button>
@@ -247,16 +244,16 @@ const Login = () => {
               <TabsContent value="signup">
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name" className="text-starlight">姓名</Label>
+                    <Label htmlFor="signup-name" className="text-gray-700">Name</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-lunar-grey" />
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         id="signup-name"
                         type="text"
-                        placeholder="您的姓名"
+                        placeholder="Your name"
                         value={signUpForm.name}
                         onChange={(e) => setSignUpForm(prev => ({ ...prev, name: e.target.value }))}
-                        className="pl-10 input-futuristic"
+                        className="pl-10 border-gray-300 focus:border-primary-500 focus:ring-primary-500"
                         required
                         disabled={showSupabaseWarning}
                       />
@@ -264,16 +261,16 @@ const Login = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="text-starlight">邮箱</Label>
+                    <Label htmlFor="signup-email" className="text-gray-700">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-lunar-grey" />
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         id="signup-email"
                         type="email"
                         placeholder="your@email.com"
                         value={signUpForm.email}
                         onChange={(e) => setSignUpForm(prev => ({ ...prev, email: e.target.value }))}
-                        className="pl-10 input-futuristic"
+                        className="pl-10 border-gray-300 focus:border-primary-500 focus:ring-primary-500"
                         required
                         disabled={showSupabaseWarning}
                       />
@@ -281,16 +278,16 @@ const Login = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-starlight">密码</Label>
+                    <Label htmlFor="signup-password" className="text-gray-700">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-lunar-grey" />
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         id="signup-password"
                         type="password"
-                        placeholder="至少6个字符"
+                        placeholder="At least 6 characters"
                         value={signUpForm.password}
                         onChange={(e) => setSignUpForm(prev => ({ ...prev, password: e.target.value }))}
-                        className="pl-10 input-futuristic"
+                        className="pl-10 border-gray-300 focus:border-primary-500 focus:ring-primary-500"
                         required
                         disabled={showSupabaseWarning}
                       />
@@ -298,16 +295,16 @@ const Login = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-confirm-password" className="text-starlight">确认密码</Label>
+                    <Label htmlFor="signup-confirm-password" className="text-gray-700">Confirm Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-lunar-grey" />
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         id="signup-confirm-password"
                         type="password"
-                        placeholder="再次输入密码"
+                        placeholder="Re-enter password"
                         value={signUpForm.confirmPassword}
                         onChange={(e) => setSignUpForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                        className="pl-10 input-futuristic"
+                        className="pl-10 border-gray-300 focus:border-primary-500 focus:ring-primary-500"
                         required
                         disabled={showSupabaseWarning}
                       />
@@ -316,18 +313,18 @@ const Login = () => {
 
                   <Button 
                     type="submit" 
-                    className="btn-cosmic w-full h-12 text-base"
+                    className="btn-primary w-full h-12 text-base"
                     disabled={isSubmitting || showSupabaseWarning}
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-starlight border-t-transparent mr-2" />
-                        注册中...
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                        Registering...
                       </>
                     ) : (
                       <>
                         <Brain className="w-4 h-4 mr-2" />
-                        创建神经接口
+                        Create Neural Interface
                       </>
                     )}
                   </Button>
@@ -335,28 +332,28 @@ const Login = () => {
               </TabsContent>
             </Tabs>
             
-            <div className="text-xs text-lunar-grey text-center leading-relaxed mt-6">
-              注册即表示您同意我们的服务条款和隐私政策
+            <div className="text-xs text-gray-500 text-center leading-relaxed mt-6">
+              By registering, you agree to our Terms of Service and Privacy Policy
             </div>
           </CardContent>
         </Card>
 
         <div className="mt-8">
           <div className="grid grid-cols-3 gap-6 text-center">
-            <div className="glass-card p-4">
-              <Zap className="w-6 h-6 text-electric-blue mx-auto mb-2" />
-              <div className="text-xs text-starlight font-medium">闪电般快速</div>
-              <div className="text-xs text-lunar-grey">秒级获取洞察</div>
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <Zap className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+              <div className="text-xs text-gray-800 font-medium">Lightning Fast</div>
+              <div className="text-xs text-gray-500">Get insights in seconds</div>
             </div>
-            <div className="glass-card p-4">
-              <Shield className="w-6 h-6 text-astral-teal mx-auto mb-2" />
-              <div className="text-xs text-starlight font-medium">始终安全</div>
-              <div className="text-xs text-lunar-grey">数据保持私密</div>
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <Shield className="w-6 h-6 text-green-500 mx-auto mb-2" />
+              <div className="text-xs text-gray-800 font-medium">Always Secure</div>
+              <div className="text-xs text-gray-500">Your data stays private</div>
             </div>
-            <div className="glass-card p-4">
-              <Globe className="w-6 h-6 text-cosmic-purple mx-auto mb-2" />
-              <div className="text-xs text-starlight font-medium">随处可用</div>
-              <div className="text-xs text-lunar-grey">任何设备访问</div>
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <Globe className="w-6 h-6 text-purple-500 mx-auto mb-2" />
+              <div className="text-xs text-gray-800 font-medium">Available Anywhere</div>
+              <div className="text-xs text-gray-500">Access from any device</div>
             </div>
           </div>
         </div>

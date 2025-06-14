@@ -25,97 +25,107 @@ const SubscriptionStatus: React.FC<SubscriptionStatusProps> = ({
   }
 
   return (
-    <div className={`rounded-lg p-4 border ${className} ${
+    <div className={`rounded-xl border-2 shadow-lg ${className} ${
       isPremium 
-        ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200'
-        : 'bg-gradient-to-r from-gray-50 to-blue-50 border-gray-200'
+        ? 'bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 border-yellow-300'
+        : 'bg-gradient-to-br from-white via-blue-50 to-indigo-50 border-indigo-200'
     }`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          {isPremium ? (
-            <div className="flex items-center space-x-2">
-              <Crown className="h-6 w-6 text-yellow-600" />
-              <div>
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300">
-                  高级版用户
-                </Badge>
-                <p className="text-sm text-gray-600 mt-1">
-                  享受所有高级功能
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <Shield className="h-6 w-6 text-gray-500" />
-              <div>
-                <Badge variant="outline" className="border-gray-300 text-gray-700">
-                  免费用户
-                </Badge>
-                <p className="text-sm text-gray-600 mt-1">
-                  {limits.maxSources} 个信息源，仅限今日处理
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Feature Summary */}
-        <div className="text-right">
-          <div className="space-y-1 text-sm">
-            <div className="flex items-center justify-end space-x-2">
-              <span className="text-gray-600">信息源:</span>
-              <span className="font-medium">{limits.maxSources}</span>
-            </div>
-            <div className="flex items-center justify-end space-x-2">
-              <span className="text-gray-600">自动摘要:</span>
-              <span className={`font-medium ${limits.canScheduleDigest ? 'text-green-600' : 'text-gray-400'}`}>
-                {limits.canScheduleDigest ? '✓' : '✗'}
-              </span>
-            </div>
-            <div className="flex items-center justify-end space-x-2">
-              <span className="text-gray-600">本周处理:</span>
-              <span className={`font-medium ${limits.canProcessWeekly ? 'text-green-600' : 'text-gray-400'}`}>
-                {limits.canProcessWeekly ? '✓' : '✗'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Upgrade Button */}
+      <div className="p-5">
+        {/* Upgrade Button - Made more prominent for free users */}
         {isFree && showUpgradePrompt && (
-          <div className="ml-4">
+          <div className="mb-4 p-1 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-xl">
             <Button 
               onClick={() => window.location.href = '/subscription'}
-              className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
-              size="sm"
+              className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 py-3 text-base"
+              size="lg"
             >
-              <Crown className="w-4 h-4 mr-2" />
-              升级到高级版
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <Crown className="w-5 h-5 mr-2" />
+              🚀 Upgrade to Premium Now!
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </div>
         )}
-      </div>
 
-      {/* Premium Benefits Preview */}
-      {isFree && showUpgradePrompt && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="flex items-center space-x-2">
-              <Zap className="h-4 w-4 text-yellow-500" />
-              <span className="text-gray-600">20个信息源</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Crown className="h-4 w-4 text-yellow-500" />
-              <span className="text-gray-600">自动定时摘要</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Shield className="h-4 w-4 text-yellow-500" />
-              <span className="text-gray-600">本周内容处理</span>
-            </div>
+        {/* Main Status Row */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            {isPremium ? (
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-yellow-100 rounded-full">
+                  <Crown className="h-6 w-6 text-yellow-600" />
+                </div>
+                <div>
+                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300 font-semibold px-3 py-1">
+                    Premium User
+                  </Badge>
+                  <p className="text-sm text-gray-600 mt-1 font-medium">
+                    Enjoy all premium features
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-gray-100 rounded-full">
+                  <Shield className="h-6 w-6 text-gray-500" />
+                </div>
+                <div>
+                  <Badge variant="outline" className="border-gray-400 text-gray-700 font-semibold px-3 py-1">
+                    Free User
+                  </Badge>
+                  <p className="text-sm text-gray-600 mt-1 font-medium">
+                    {limits.maxSources} sources, today's processing only
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        {/* Feature Summary Grid */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white/80 rounded-lg p-4 text-center border border-indigo-200/50 shadow-sm">
+            <div className="text-2xl font-bold text-indigo-600 mb-1">{limits.maxSources}</div>
+            <div className="text-xs text-gray-600 font-semibold">Sources</div>
+          </div>
+          <div className="bg-white/80 rounded-lg p-4 text-center border border-indigo-200/50 shadow-sm">
+            <div className={`text-2xl font-bold mb-1 ${limits.canScheduleDigest ? 'text-green-600' : 'text-red-400'}`}>
+              {limits.canScheduleDigest ? '✓' : '✗'}
+            </div>
+            <div className="text-xs text-gray-600 font-semibold">Auto Digest</div>
+          </div>
+          <div className="bg-white/80 rounded-lg p-4 text-center border border-indigo-200/50 shadow-sm">
+            <div className={`text-2xl font-bold mb-1 ${limits.canProcessWeekly ? 'text-green-600' : 'text-red-400'}`}>
+              {limits.canProcessWeekly ? '✓' : '✗'}
+            </div>
+            <div className="text-xs text-gray-600 font-semibold">Weekly Processing</div>
+          </div>
+        </div>
+
+        {/* Premium Benefits Preview */}
+        {isFree && showUpgradePrompt && (
+          <div className="mt-5 p-4 bg-gradient-to-r from-yellow-100 via-orange-100 to-red-100 border-2 border-orange-300 rounded-xl shadow-sm">
+            <h4 className="text-sm font-bold text-orange-800 mb-3 text-center">✨ Unlock Premium Features ✨</h4>
+            <div className="grid grid-cols-2 gap-3 text-sm font-medium">
+              <div className="flex items-center text-orange-700 bg-white/60 rounded-lg p-2 border border-orange-200">
+                <Crown className="w-4 h-4 mr-2 text-yellow-600" />
+                20 Sources
+              </div>
+              <div className="flex items-center text-orange-700 bg-white/60 rounded-lg p-2 border border-orange-200">
+                <Crown className="w-4 h-4 mr-2 text-yellow-600" />
+                Auto Daily Digest
+              </div>
+              <div className="flex items-center text-orange-700 bg-white/60 rounded-lg p-2 border border-orange-200">
+                <Crown className="w-4 h-4 mr-2 text-yellow-600" />
+                Weekly Processing
+              </div>
+              <div className="flex items-center text-orange-700 bg-white/60 rounded-lg p-2 border border-orange-200">
+                <Crown className="w-4 h-4 mr-2 text-yellow-600" />
+                Custom Schedule
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

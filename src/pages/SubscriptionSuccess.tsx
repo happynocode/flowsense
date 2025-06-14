@@ -130,8 +130,8 @@ const SubscriptionSuccess = () => {
       setSuccess(true);
       
       toast({
-        title: "🎉 订阅成功！",
-        description: "您的高级版订阅已激活，现在可以享受所有高级功能。",
+        title: "🎉 Subscription Successful!",
+        description: "Your premium subscription has been activated. You can now enjoy all premium features.",
       });
       
     } catch (error) {
@@ -139,8 +139,8 @@ const SubscriptionSuccess = () => {
       // 即使出错也要显示成功页面，避免卡住
       setSuccess(true);
       toast({
-        title: "订阅激活中",
-        description: "您的订阅正在处理中，请稍后刷新页面查看状态。",
+        title: "Subscription Activating",
+        description: "Your subscription is being processed. Please refresh the page later to check status.",
         variant: "destructive",
       });
     } finally {
@@ -159,8 +159,8 @@ const SubscriptionSuccess = () => {
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-indigo-600" />
-          <h2 className="text-2xl font-semibold text-gray-800 mb-2">检查订阅状态...</h2>
-          <p className="text-gray-600">正在验证您的订阅信息</p>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">Checking Subscription Status...</h2>
+          <p className="text-gray-600">Verifying your subscription information</p>
         </div>
       </div>
     );
@@ -176,8 +176,8 @@ const SubscriptionSuccess = () => {
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-indigo-600" />
-          <h2 className="text-2xl font-semibold text-gray-800 mb-2">正在激活您的订阅...</h2>
-          <p className="text-gray-600">请稍候，我们正在处理您的订阅信息</p>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">Activating Your Subscription...</h2>
+          <p className="text-gray-600">Please wait, we are processing your subscription information</p>
         </div>
       </div>
     );
@@ -194,19 +194,18 @@ const SubscriptionSuccess = () => {
 
           {/* Success Message */}
           <h1 className="text-4xl md:text-5xl font-space-grotesk font-bold mb-6 text-gray-800">
-            🎉 订阅成功！
+            🎉 Subscription Successful!
           </h1>
           
           <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-            恭喜您！您的高级版订阅已成功激活。现在您可以享受所有高级功能，包括无限信息源、
-            自动摘要和本周内容处理。
+            Congratulations! Your premium subscription has been successfully activated. You can now enjoy all premium features, including unlimited content sources, automatic digests, and weekly content processing.
           </p>
 
           {/* Premium Features */}
           <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
             <div className="flex items-center justify-center mb-6">
               <Crown className="w-8 h-8 text-yellow-600 mr-3" />
-              <h2 className="text-2xl font-semibold text-gray-800">您现在拥有的功能</h2>
+              <h2 className="text-2xl font-semibold text-gray-800">Features You Now Have</h2>
             </div>
             
             <div className="grid md:grid-cols-2 gap-6 text-left">
@@ -214,16 +213,16 @@ const SubscriptionSuccess = () => {
                 <div className="flex items-start">
                   <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-gray-800">20个信息源</h3>
-                    <p className="text-sm text-gray-600">添加更多您关注的内容源</p>
+                    <h3 className="font-semibold text-gray-800">20 Content Sources</h3>
+                    <p className="text-sm text-gray-600">Add more content sources you follow</p>
                   </div>
                 </div>
                 
                 <div className="flex items-start">
                   <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-gray-800">自动定时摘要</h3>
-                    <p className="text-sm text-gray-600">设置自动发送时间</p>
+                    <h3 className="font-semibold text-gray-800">Automatic Scheduled Digests</h3>
+                    <p className="text-sm text-gray-600">Set automatic delivery time</p>
                   </div>
                 </div>
               </div>
@@ -232,16 +231,16 @@ const SubscriptionSuccess = () => {
                 <div className="flex items-start">
                   <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-gray-800">本周内容处理</h3>
-                    <p className="text-sm text-gray-600">处理过去7天的内容</p>
+                    <h3 className="font-semibold text-gray-800">Weekly Content Processing</h3>
+                    <p className="text-sm text-gray-600">Process content from the past 7 days</p>
                   </div>
                 </div>
                 
                 <div className="flex items-start">
                   <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-gray-800">7天免费试用</h3>
-                    <p className="text-sm text-gray-600">试用期内随时可以取消</p>
+                    <h3 className="font-semibold text-gray-800">7-Day Free Trial</h3>
+                    <p className="text-sm text-gray-600">Cancel anytime during trial period</p>
                   </div>
                 </div>
               </div>
@@ -253,14 +252,14 @@ const SubscriptionSuccess = () => {
             <Link to="/sources">
               <Button className="btn-primary">
                 <Crown className="w-4 h-4 mr-2" />
-                开始管理信息源
+                Start Managing Sources
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
             
             <Link to="/subscription">
               <Button variant="outline">
-                查看订阅详情
+                View Subscription Details
               </Button>
             </Link>
           </div>
@@ -268,8 +267,7 @@ const SubscriptionSuccess = () => {
           {/* Trial Info */}
           <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-sm text-blue-800">
-              <strong>提醒：</strong> 您的7天免费试用已开始。如果您在试用期内取消订阅，将不会产生任何费用。
-              您可以在订阅管理页面随时查看或取消订阅。
+              <strong>Reminder:</strong> Your 7-day free trial has started. If you cancel your subscription during the trial period, you will not be charged any fees. You can view or cancel your subscription at any time on the subscription management page.
             </p>
           </div>
         </div>
