@@ -633,6 +633,27 @@ export const digestsApi = {
       console.error('❌ 清除digests数据失败:', error);
       throw error;
     }
+  },
+
+  // 🗑️ 删除单个digest
+  deleteDigest: async (id: string): Promise<void> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    console.log('🗑️ 删除digest:', id);
+
+    const { error } = await supabase
+      .from('digests')
+      .delete()
+      .eq('id', parseInt(id))
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('❌ 删除digest失败:', error);
+      throw error;
+    }
+
+    console.log('✅ Digest删除成功');
   }
 };
 

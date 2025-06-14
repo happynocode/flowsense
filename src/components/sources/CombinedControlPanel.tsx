@@ -267,9 +267,10 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
               高级版功能
             </CardTitle>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+              className="border-purple-300 text-purple-600 hover:bg-purple-50 hover:border-purple-400"
             >
               {showAdvancedSettings ? (
                 <ChevronUp className="h-4 w-4" />

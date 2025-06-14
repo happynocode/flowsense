@@ -32,6 +32,8 @@ const Digests = () => {
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [userTimezone, setUserTimezone] = useState('UTC');
+  const [deleteDialog, setDeleteDialog] = useState<Digest | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -138,6 +140,29 @@ const Digests = () => {
     }
   };
 
+  // 🗑️ 删除单个digest功能
+  const handleDeleteDigest = async (digest: Digest) => {
+    setDeleting(true);
+    try {
+      await digestsApi.deleteDigest(digest.id);
+      setDigests(prev => (prev || []).filter(d => d.id !== digest.id));
+      toast({
+        title: "✅ Digest删除成功",
+        description: `"${digest.title}" 已被删除。`,
+      });
+    } catch (error) {
+      console.error('Failed to delete digest:', error);
+      toast({
+        title: "❌ 删除失败",
+        description: "删除digest时发生错误，请重试。",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteDialog(null);
+    }
+  };
+
   // Ensure digests is always an array before filtering
   const digestsArray = digests || [];
   const filteredDigests = digestsArray.filter(digest =>
@@ -172,41 +197,73 @@ const Digests = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Digests</h1>
-              <p className="text-gray-600">
-                Stay up to date with summaries from your content sources
-              </p>
-            </div>
-            {digestsArray.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => setShowClearDialog(true)}
-                className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Clear Digests
-              </Button>
-            )}
-          </div>
-        </div>
+      <div className="container mx-auto px-4 py-8">
+        {/* Left-Right Layout */}
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Left Panel - Search & Controls */}
+          <div className="lg:w-1/3 xl:w-1/4">
+            <div className="sticky top-8 space-y-6">
+              {/* Header */}
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Digests</h1>
+                <p className="text-gray-600">
+                  Stay up to date with summaries from your content sources
+                </p>
+              </div>
 
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search digests..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search digests..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              {/* Controls */}
+              {digestsArray.length > 0 && (
+                <div className="bg-white rounded-lg border p-4">
+                  <h3 className="font-medium text-gray-900 mb-3">管理操作</h3>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowClearDialog(true)}
+                    className="w-full text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    清除所有摘要
+                  </Button>
+                </div>
+              )}
+
+              {/* Stats */}
+              {digestsArray.length > 0 && (
+                <div className="bg-white rounded-lg border p-4">
+                  <h3 className="font-medium text-gray-900 mb-3">统计信息</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">总摘要数:</span>
+                      <span className="font-medium">{digestsArray.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">搜索结果:</span>
+                      <span className="font-medium">{filteredDigests.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">未读数量:</span>
+                      <span className="font-medium text-blue-600">
+                        {digestsArray.filter(d => !d.isRead).length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+
+          {/* Right Panel - Digests List */}
+          <div className="lg:w-2/3 xl:w-3/4">
 
         {/* Empty State */}
         {digestsArray.length === 0 ? (
@@ -259,11 +316,21 @@ const Digests = () => {
                         )}
                       </div>
                     </div>
-                    {!digest.isRead && (
-                      <Badge className="bg-blue-100 text-blue-800">
-                        New
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {!digest.isRead && (
+                        <Badge className="bg-blue-100 text-blue-800">
+                          New
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteDialog(digest)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 
@@ -376,6 +443,37 @@ const Digests = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Delete Single Digest Confirmation Dialog */}
+        <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>删除摘要</AlertDialogTitle>
+              <AlertDialogDescription>
+                您确定要删除 "{deleteDialog?.title}" 吗？此操作无法撤销。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteDialog && handleDeleteDigest(deleteDialog)}
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {deleting ? (
+                  <>
+                    <LoadingIndicator size="sm" />
+                    <span className="ml-2">删除中...</span>
+                  </>
+                ) : (
+                  '删除'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+                     </AlertDialogContent>
+         </AlertDialog>
+                    </div>
+        </div>
       </div>
     </div>
   );
