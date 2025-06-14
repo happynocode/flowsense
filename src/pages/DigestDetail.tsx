@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { ArrowLeft, Clock, ExternalLink, Calendar, Play, FileText, ChevronDown, ChevronRight } from 'lucide-react';
-import { digestsApi } from '../services/api';
+import { digestsApi, userApi } from '../services/api';
 import { Digest } from '../types';
 import { useToast } from '../hooks/use-toast';
 import { useAuth } from '../hooks/useAuth';
@@ -20,6 +20,7 @@ const DigestDetail = () => {
   const [digest, setDigest] = useState<Digest | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
+  const [userTimezone, setUserTimezone] = useState('UTC');
   const { toast } = useToast();
 
   const defaultTab = searchParams.get('tab') === 'audio' ? 'audio' : 'reading';
@@ -29,11 +30,22 @@ const DigestDetail = () => {
     if (user && !authLoading && id) {
       console.log('✅ User authenticated, fetching digest...');
       fetchDigest(id);
+      loadUserTimezone();
     } else if (!authLoading && !user) {
       console.log('❌ User not authenticated');
       setLoading(false);
     }
   }, [user, authLoading, id]);
+
+  const loadUserTimezone = async () => {
+    try {
+      const settings = await userApi.getAutoDigestSettings();
+      setUserTimezone(settings.autoDigestTimezone || 'UTC');
+    } catch (error) {
+      console.error('Failed to load user timezone:', error);
+      setUserTimezone('UTC');
+    }
+  };
 
   // Redirect to login if not authenticated and auth loading is complete
   if (!authLoading && !user) {
@@ -63,12 +75,13 @@ const DigestDetail = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string, userTimezone: string = 'UTC') => {
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: userTimezone
     });
   };
 
@@ -173,7 +186,7 @@ const DigestDetail = () => {
               <div className="flex items-center space-x-2 mb-2">
                 <Calendar className="h-4 w-4 text-gray-500" />
                 <span className="text-sm text-gray-600">
-                  {formatDate(digest.date)}
+                  {formatDate(digest.date, userTimezone)}
                 </span>
                 {!digest.isRead && (
                   <Badge className="bg-blue-100 text-blue-800">New</Badge>

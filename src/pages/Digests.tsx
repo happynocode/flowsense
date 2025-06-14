@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { FileText, Play, Clock, Search, Calendar, Trash2 } from 'lucide-react';
-import { digestsApi } from '../services/api';
+import { digestsApi, userApi } from '../services/api';
 import { Digest } from '../types';
 import { useToast } from '../hooks/use-toast';
 import { useAuth } from '../hooks/useAuth';
@@ -31,6 +31,7 @@ const Digests = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [userTimezone, setUserTimezone] = useState('UTC');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -38,11 +39,23 @@ const Digests = () => {
     if (user && !authLoading) {
       console.log('✅ User authenticated, fetching digests...');
       fetchDigests(1);
+      loadUserTimezone();
     } else if (!authLoading && !user) {
       console.log('❌ User not authenticated');
       setLoading(false);
     }
   }, [user, authLoading]);
+
+  const loadUserTimezone = async () => {
+    try {
+      const settings = await userApi.getAutoDigestSettings();
+      setUserTimezone(settings.autoDigestTimezone || 'UTC');
+    } catch (error) {
+      console.error('Failed to load user timezone:', error);
+      // 使用默认时区
+      setUserTimezone('UTC');
+    }
+  };
 
   // Redirect to login if not authenticated and auth loading is complete
   if (!authLoading && !user) {
@@ -135,12 +148,13 @@ const Digests = () => {
     )
   );
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string, userTimezone: string = 'UTC') => {
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: userTimezone
     });
   };
 
@@ -220,14 +234,14 @@ const Digests = () => {
               <Card key={digest.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-2">
                         <Calendar className="h-4 w-4 text-gray-500" />
                         <span className="text-sm text-gray-600">
-                          {formatDate(digest.date)}
+                          {formatDate(digest.date, userTimezone)}
                         </span>
                       </div>
-                      <CardTitle className="text-xl mb-2">{digest.title}</CardTitle>
+                      <CardTitle className="text-xl mb-2 break-words">{digest.title}</CardTitle>
                       <div className="flex items-center space-x-4 text-sm text-gray-600">
                         <div className="flex items-center space-x-1">
                           <FileText className="h-4 w-4" />
