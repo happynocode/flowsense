@@ -13,7 +13,7 @@ import LoadingIndicator from '../components/common/LoadingIndicator';
 import SourceForm from '../components/sources/SourceForm';
 import AutoDigestSettings from '../components/sources/AutoDigestSettings';
 import AutoDigestSettingsDemo from '../components/sources/AutoDigestSettingsDemo';
-import AutoDigestSettingsSimple from '../components/sources/AutoDigestSettingsSimple';
+import ProcessingControlPanel from '../components/sources/ProcessingControlPanel';
 import SubscriptionStatus from '../components/subscription/SubscriptionStatus';
 import {
   AlertDialog,
@@ -628,116 +628,13 @@ const Sources = () => {
 
         {/* Control Panel - Processing & Auto Digest */}
         <div className="mb-6">
-          <div className="modern-card p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
-            <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6">
-              {/* Processing Buttons Section */}
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-indigo-800 mb-3 flex items-center">
-                  <Zap className="h-5 w-5 mr-2" />
-                  手动处理
-                </h3>
-                <div className="flex flex-wrap gap-3 mb-3">
-                  {sourcesArray.length > 0 && (
-                    <>
-                      <button 
-                        onClick={() => handleProcessDirectly('today')}
-                        disabled={globalProcessing}
-                        className="btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {globalProcessing ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            处理中...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4" />
-                            处理今日
-                          </>
-                        )}
-                      </button>
-                      
-                      {canUseFeature('weekly') ? (
-                        <button 
-                          onClick={() => {
-                            console.log('🎯 Process Week button clicked! (Direct mode)');
-                            console.log('🎯 Button state - disabled:', globalProcessing);
-                            handleProcessDirectly('week');
-                          }}
-                          disabled={globalProcessing}
-                          className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {globalProcessing ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              处理中...
-                            </>
-                          ) : (
-                            <>
-                              <Zap className="h-4 w-4" />
-                              处理本周
-                            </>
-                          )}
-                        </button>
-                      ) : (
-                        <div className="relative">
-                          <button 
-                            onClick={() => {
-                              toast({
-                                title: "升级到高级版",
-                                description: "免费用户只能处理今日内容。升级到高级版可处理整周内容。",
-                                action: (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={() => window.location.href = '/subscription'}
-                                    className="ml-2"
-                                  >
-                                    <Crown className="w-4 h-4 mr-1" />
-                                    升级
-                                  </Button>
-                                ),
-                              });
-                            }}
-                            disabled
-                            className="btn-primary opacity-50 cursor-not-allowed relative"
-                          >
-                            <Lock className="h-4 w-4" />
-                            处理本周
-                            <Crown className="w-4 h-4 ml-1 text-yellow-500" />
-                          </button>
-                        </div>
-                      )}
-                      
-                      <button
-                        onClick={() => setShowClearDialog(true)}
-                        disabled={globalProcessing}
-                        className="btn-outline text-orange-600 border-orange-300 hover:bg-orange-50 hover:border-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Eraser className="h-4 w-4" />
-                        清除内容
-                      </button>
-                    </>
-                  )}
-                  {sourcesArray.length === 0 && (
-                    <div className="text-sm text-gray-600 bg-white rounded-lg p-4 border border-gray-200">
-                      添加信息源后即可开始处理内容
-                    </div>
-                  )}
-                </div>
-                <div className="text-xs text-gray-600 bg-white rounded-lg p-2 border border-indigo-100">
-                  <p className="mb-1"><strong>处理今日:</strong> 抓取并摘要今天发布的新内容</p>
-                  <p className="mb-1"><strong>处理本周:</strong> 抓取并摘要过去7天的内容</p>
-                  <p><strong>清除内容:</strong> 删除所有已抓取的内容和摘要（保留信息源配置）</p>
-                </div>
-              </div>
-
-              {/* Auto Digest Settings Section */}
-              <div className="xl:w-72">
-                <AutoDigestSettingsSimple />
-              </div>
-            </div>
-          </div>
+          <ProcessingControlPanel
+            sourcesArray={sourcesArray}
+            globalProcessing={globalProcessing}
+            onProcessToday={() => handleProcessDirectly('today')}
+            onProcessWeek={() => handleProcessDirectly('week')}
+            onClearContent={() => setShowClearDialog(true)}
+          />
         </div>
 
         {/* 📊 任务进度显示 */}
