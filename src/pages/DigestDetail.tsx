@@ -93,6 +93,12 @@ const DigestDetail = () => {
     });
   };
 
+  // 截断文本函数
+  const truncateText = (text: string, maxLength: number = 60) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + '...';
+  };
+
   // 生成基于用户时区的digest标题
   const generateDigestTitle = (digest: Digest, userTimezone: string) => {
     // 使用digest创建时间，转换为用户时区的当天日期
@@ -295,7 +301,7 @@ const DigestDetail = () => {
                       {sourceGroup.summaries.map((summary, summaryIndex) => (
                         <div key={summary.id} className="border-b last:border-b-0 p-6">
                           <div className="flex items-start justify-between mb-4">
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0 pr-4">
                               <div className="flex items-center space-x-3 mb-3">
                                 <span className="text-sm text-gray-600">
                                   {formatPublishedDate(summary.publishedAt)}
@@ -305,7 +311,7 @@ const DigestDetail = () => {
                                 </span>
                               </div>
                               <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                                {summary.title}
+                                {truncateText(summary.title, 50)}
                               </h3>
                             </div>
                             <a

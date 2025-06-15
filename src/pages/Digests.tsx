@@ -187,6 +187,8 @@ const Digests = () => {
     return digest.summaries.reduce((total, summary) => total + summary.readingTime, 0);
   };
 
+
+
   // 生成基于用户时区的digest标题
   const generateDigestTitle = (digest: Digest, userTimezone: string) => {
     // 使用digest创建时间，转换为用户时区的当天日期
@@ -363,15 +365,15 @@ const Digests = () => {
                   </div>
                 </CardHeader>
                 
-                <CardContent>
+                <CardContent className="p-6">
                   {/* Summary Preview */}
                   <div className="mb-4">
                     <div className="grid gap-2">
                       {digest.summaries.slice(0, 3).map((summary) => (
                         <div key={summary.id} className="flex items-center space-x-2 text-sm">
-                          <div className="w-2 h-2 bg-blue-600 rounded-full" />
-                          <span className="font-medium text-gray-900">{summary.sourceName}:</span>
-                          <span className="text-gray-600 truncate">{summary.title}</span>
+                          <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0" />
+                          <span className="font-medium text-gray-900 flex-shrink-0 w-32 truncate">{summary.sourceName}:</span>
+                          <span className="text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis max-w-32 sm:max-w-48 md:max-w-64 lg:max-w-96 xl:max-w-[32rem]">{summary.title}</span>
                         </div>
                       ))}
                       {digest.summaries.length > 3 && (
