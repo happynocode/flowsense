@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
 
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
 
-    console.log('⚙️ Starting completion check for source fetch jobs...');
+    console.log('⚙️ Starting comprehensive completion check for tasks (fetch + processing phases)...');
 
     // 1. 获取所有处于'processing'状态的任务
     const { data: pendingTasks, error: tasksError } = await supabaseClient
@@ -42,7 +42,11 @@ Deno.serve(async (req) => {
       console.log('✅ No pending tasks to check');
       return new Response(JSON.stringify({ 
         success: true,
-        message: 'No pending tasks to check' 
+        message: 'No pending tasks to check',
+        totalTasks: 0,
+        completedTasks: 0,
+        errors: 0,
+        phase_status: 'no_pending_tasks'
       }), {
         headers: { 'Content-Type': 'application/json' }
       });
@@ -58,26 +62,28 @@ Deno.serve(async (req) => {
       try {
         console.log(`🔍 Checking task ${task.id}...`);
         
-        const { data: jobStatus, error: jobError } = await supabaseClient
-          .from('source_fetch_jobs')
-          .select('status')
-          .eq('task_id', task.id);
+        // Use comprehensive completion status check instead of simple fetch job check
+        const { data: completionStatus, error: statusError } = await supabaseClient
+          .rpc('get_task_completion_status', { p_task_id: task.id });
 
-        if (jobError) {
-          console.error(`❌ Error fetching job statuses for task ${task.id}:`, jobError.message);
+        if (statusError || !completionStatus || completionStatus.length === 0) {
+          console.error(`❌ Error fetching completion status for task ${task.id}:`, statusError?.message);
           errorCount++;
           continue;
         }
 
-        const totalJobs = jobStatus.length;
-        const finishedJobs = jobStatus.filter(s => s.status === 'completed' || s.status === 'failed').length;
-        const failedJobs = jobStatus.filter(s => s.status === 'failed').length;
+        const status = completionStatus[0];
+        console.log(`📊 Task ${task.id} Status:`, {
+          fetch: `${status.fetch_jobs_completed}/${status.fetch_jobs_total} completed, ${status.fetch_jobs_failed} failed`,
+          processing: `${status.content_items_processed}/${status.content_items_total} processed, ${status.content_items_failed} failed`,
+          fetchComplete: status.is_fetch_complete,
+          processingComplete: status.is_processing_complete,
+          overallStatus: status.overall_status
+        });
 
-        console.log(`📊 Task ${task.id}: ${finishedJobs}/${totalJobs} jobs finished, ${failedJobs} failed`);
-
-        // 如果所有作业都已完成（成功或失败）
-        if (totalJobs > 0 && finishedJobs === totalJobs) {
-          const isPartial = failedJobs > 0;
+        // Only trigger digest generation when BOTH fetch AND processing are complete
+        if (status.is_fetch_complete && status.is_processing_complete && status.overall_status === 'complete') {
+          const isPartial = status.fetch_jobs_failed > 0 || status.content_items_failed > 0;
           
           console.log(`✅ Task ${task.id} is complete (partial: ${isPartial}). Triggering digest generation...`);
           
@@ -129,19 +135,34 @@ Deno.serve(async (req) => {
               processedCount++;
             }
             
-          } catch (invokeException) {
+                      } catch (invokeException) {
             console.error(`❌ Exception during generate-digest invocation for task ${task.id}:`, invokeException);
             
-            // 处理调用异常
+            // Enhanced error handling with completion status context
             try {
+              const errorDetails = {
+                error: `Digest generation exception: ${invokeException.message}`,
+                type: 'invocation_exception',
+                completion_context: {
+                  fetch_phase: {
+                    total: status.fetch_jobs_total,
+                    completed: status.fetch_jobs_completed,
+                    failed: status.fetch_jobs_failed
+                  },
+                  processing_phase: {
+                    total: status.content_items_total,
+                    processed: status.content_items_processed,
+                    failed: status.content_items_failed
+                  },
+                  overall_status: status.overall_status
+                }
+              };
+              
               const { error: updateError } = await supabaseClient
                 .from('processing_tasks')
                 .update({ 
                   status: 'failed', 
-                  result: { 
-                    error: `Digest generation exception: ${invokeException.message}`,
-                    type: 'invocation_exception'
-                  } 
+                  result: errorDetails
                 })
                 .eq('id', task.id);
                 
@@ -156,7 +177,17 @@ Deno.serve(async (req) => {
           }
           
         } else {
-          console.log(`⏳ Task ${task.id} still has ${totalJobs - finishedJobs} pending jobs`);
+          // Calculate remaining work for detailed logging
+          const remainingFetch = status.fetch_jobs_total - (status.fetch_jobs_completed + status.fetch_jobs_failed);
+          const remainingProcessing = status.content_items_total - (status.content_items_processed + status.content_items_failed);
+          
+          if (!status.is_fetch_complete) {
+            console.log(`⏳ Task ${task.id} still has ${remainingFetch} pending fetch jobs`);
+          } else if (!status.is_processing_complete) {
+            console.log(`⏳ Task ${task.id} fetch complete, but still has ${remainingProcessing} content items to process`);
+          } else {
+            console.log(`⏳ Task ${task.id} status: ${status.overall_status}`);
+          }
         }
         
       } catch (taskError) {
@@ -170,10 +201,10 @@ Deno.serve(async (req) => {
       totalTasks: pendingTasks.length,
       processedTasks: processedCount,
       errors: errorCount,
-      message: `Checked ${pendingTasks.length} tasks: ${processedCount} processed, ${errorCount} errors`
+      message: `Comprehensive completion check: ${pendingTasks.length} tasks analyzed (fetch + processing phases), ${processedCount} ready for digest generation, ${errorCount} errors`
     };
 
-    console.log(`📋 Completion check summary:`, summary);
+    console.log(`📋 Comprehensive completion check summary:`, summary);
 
     return new Response(JSON.stringify(summary), {
       headers: { 'Content-Type': 'application/json' },
