@@ -594,11 +594,11 @@ const Sources = () => {
           <div className="lg:w-2/3 xl:w-3/4">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8">
-              <div className="mb-4 sm:mb-0">
-                            <h1 className="text-3xl font-bold text-gray-800">Content Sources</h1>
-            <p className="text-gray-600 mt-2">
-              Add RSS feeds from your favorite blogs and news sites (currently only RSS feeds are supported)
-            </p>
+              <div className="mb-4 sm:mb-0 flex-1">
+                <h1 className="text-3xl font-bold text-gray-800">Content Sources</h1>
+                <p className="text-gray-600 mt-2">
+                  Add RSS feeds from your favorite blogs and news sites (currently only RSS feeds are supported)
+                </p>
                 {/* Debug Info */}
                 <div className="mt-2 text-xs text-gray-500 bg-gray-100 rounded p-2">
                   📊 Currently showing: {sourcesArray.length} sources | 
@@ -607,17 +607,7 @@ const Sources = () => {
                   Status: {loading ? 'Loading' : 'Loaded'}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-3">
-                {/* 刷新用户数据按钮 */}
-                <button 
-                  onClick={handleRefreshUserData}
-                  className="btn-outline text-blue-600 border-blue-300 hover:bg-blue-50 hover:border-blue-500"
-                  title="Refresh subscription status"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh Status
-                </button>
-                
+              <div className="flex justify-end">
                 {canAddSource(sources.length) ? (
                   <button onClick={() => setShowForm(true)} className="btn-primary">
                     <Plus className="h-4 w-4" />
@@ -665,7 +655,7 @@ const Sources = () => {
                       setTaskProgress(null);
                       setIsPollingTask(false);
                     }}
-                    className="btn-outline text-red-600 border-red-300 hover:bg-red-50 hover:border-red-500"
+                    className="btn-outline text-red-600 border-red-300 hover:bg-red-50 hover:border-red-500 ml-3"
                   >
                     🔧 重置状态
                   </button>

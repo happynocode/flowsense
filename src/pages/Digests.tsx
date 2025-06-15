@@ -10,7 +10,7 @@ import { Digest } from '../types';
 import { useToast } from '../hooks/use-toast';
 import { useAuth } from '../hooks/useAuth';
 import LoadingIndicator from '../components/common/LoadingIndicator';
-import {
+import { 
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -25,7 +25,6 @@ const Digests = () => {
   const { user, loading: authLoading } = useAuth();
   const [digests, setDigests] = useState<Digest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -165,13 +164,6 @@ const Digests = () => {
 
   // Ensure digests is always an array before filtering
   const digestsArray = digests || [];
-  const filteredDigests = digestsArray.filter(digest =>
-    digest.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    digest.summaries.some(summary => 
-      summary.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      summary.sourceName.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
 
   const formatDate = (dateString: string, userTimezone: string = 'UTC') => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -186,8 +178,6 @@ const Digests = () => {
   const getTotalReadingTime = (digest: Digest) => {
     return digest.summaries.reduce((total, summary) => total + summary.readingTime, 0);
   };
-
-
 
   // 生成基于用户时区的digest标题
   const generateDigestTitle = (digest: Digest, userTimezone: string) => {
@@ -231,36 +221,35 @@ const Digests = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Left-Right Layout */}
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left Panel - Search & Controls */}
+          {/* Left Panel - Controls */}
           <div className="lg:w-1/3 xl:w-1/4">
             <div className="sticky top-8 space-y-6">
-              {/* Header */}
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Digests</h1>
-                <p className="text-gray-600">
-                  Stay up to date with summaries from your content sources
-                </p>
+              {/* Enhanced Header */}
+              <div className="modern-card-elevated p-6">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center text-white shadow-sm">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Your Digests</h1>
+                    <p className="text-gray-600 text-sm">
+                      Stay up to date with summaries from your content sources
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search digests..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              {/* Controls */}
+              {/* Enhanced Controls */}
               {digestsArray.length > 0 && (
-                <div className="bg-white rounded-lg border p-4">
-                  <h3 className="font-medium text-gray-900 mb-3">Management Actions</h3>
+                <div className="modern-card-elevated p-6">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+                    <div className="w-1 h-5 bg-gradient-primary rounded-full mr-3" />
+                    Management Actions
+                  </h3>
                   <Button
                     variant="outline"
                     onClick={() => setShowClearDialog(true)}
-                    className="w-full text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                    className="w-full text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 hover:bg-red-50 shadow-sm"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Clear All Digests
@@ -268,24 +257,33 @@ const Digests = () => {
                 </div>
               )}
 
-              {/* Stats */}
+              {/* Enhanced Stats */}
               {digestsArray.length > 0 && (
-                <div className="bg-white rounded-lg border p-4">
-                  <h3 className="font-medium text-gray-900 mb-3">Statistics</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                                              <span className="text-gray-600">Total Digests:</span>
-                      <span className="font-medium">{digestsArray.length}</span>
+                <div className="modern-card-elevated p-6">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+                    <div className="w-1 h-5 bg-gradient-primary rounded-full mr-3" />
+                    Statistics
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="stats-card bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <FileText className="stats-card-icon w-5 h-5" />
+                          <span className="text-gray-700 font-medium">Total Digests:</span>
+                        </div>
+                        <span className="stats-card-value text-xl">{digestsArray.length}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                                              <span className="text-gray-600">Search Results:</span>
-                      <span className="font-medium">{filteredDigests.length}</span>
-                    </div>
-                    <div className="flex justify-between">
-                                              <span className="text-gray-600">Unread Count:</span>
-                      <span className="font-medium text-blue-600">
-                        {digestsArray.filter(d => !d.isRead).length}
-                      </span>
+                    <div className="stats-card bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Badge className="w-5 h-5 text-green-600" />
+                          <span className="text-gray-700 font-medium">Unread Count:</span>
+                        </div>
+                        <span className="stats-card-value text-xl text-blue-600">
+                          {digestsArray.filter(d => !d.isRead).length}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -293,7 +291,7 @@ const Digests = () => {
             </div>
           </div>
 
-          {/* Right Panel - Digests List */}
+          {/* Right Panel - Main Content */}
           <div className="lg:w-2/3 xl:w-3/4">
 
         {/* Empty State */}
@@ -316,130 +314,156 @@ const Digests = () => {
             </CardContent>
           </Card>
         ) : (
-          /* Digests List */
+          /* Enhanced Digests List */
           <div className="space-y-6">
-            {filteredDigests.map((digest) => (
-              <Card key={digest.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
+            {digestsArray.map((digest) => (
+              <div key={digest.id} className="modern-card-elevated hover-lift overflow-hidden transition-all duration-200">
+                {/* Enhanced Digest Header */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b border-gray-200">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Calendar className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm text-gray-600">
-                          {formatDate(digest.createdAt, userTimezone)}
-                        </span>
+                    <div className="flex items-center space-x-4 flex-1 min-w-0">
+                      {/* Digest Icon */}
+                      <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center text-white shadow-lg">
+                        <FileText className="h-6 w-6" />
                       </div>
-                      <CardTitle className="text-xl mb-2 break-words">{generateDigestTitle(digest, userTimezone)}</CardTitle>
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
-                        <div className="flex items-center space-x-1">
-                          <FileText className="h-4 w-4" />
-                          <span>{digest.summaries.length} summaries</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Clock className="h-4 w-4" />
-                          <span>{getTotalReadingTime(digest)} min read</span>
-                        </div>
-                        {digest.audioUrl && (
-                          <div className="flex items-center space-x-1">
-                            <Play className="h-4 w-4" />
-                            <span>Audio available</span>
+                      
+                      <div className="flex-1 min-w-0">
+                        {/* Digest Title with Stats and Actions */}
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors flex-1">
+                            {generateDigestTitle(digest, userTimezone)}
+                          </h3>
+                          
+                          {/* Stats and Actions Row */}
+                          <div className="flex items-center space-x-4 ml-6">
+                            {/* Stats Cards */}
+                            <div className="flex items-center space-x-3">
+                              <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
+                                <div className="flex items-center space-x-1">
+                                  <FileText className="w-3 h-3 text-blue-600" />
+                                  <span className="text-sm font-semibold text-gray-900">{digest.summaries.length}</span>
+                                  <span className="text-xs text-gray-600">summaries</span>
+                                </div>
+                              </div>
+                              
+                              <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
+                                <div className="flex items-center space-x-1">
+                                  <Clock className="w-3 h-3 text-purple-600" />
+                                  <span className="text-sm font-semibold text-gray-900">{getTotalReadingTime(digest)}</span>
+                                  <span className="text-xs text-gray-600">min</span>
+                                </div>
+                              </div>
+                              
+                              {digest.audioUrl && (
+                                <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
+                                  <div className="flex items-center space-x-1">
+                                    <Play className="w-3 h-3 text-green-600" />
+                                    <span className="text-xs text-gray-600">Audio</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Enhanced Read Button */}
+                            <Link to={`/digests/${digest.id}`}>
+                              <Button 
+                                onClick={() => markAsRead(digest)}
+                                className="btn-primary bg-gradient-primary hover:shadow-lg text-white font-semibold px-6 py-2 rounded-lg shadow-md transition-all duration-200"
+                              >
+                                <FileText className="h-4 w-4" />
+                                <span>Read Digest</span>
+                              </Button>
+                            </Link>
                           </div>
-                        )}
+                        </div>
+                        
+                        {/* Date and Status Row */}
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="h-3 w-3 text-gray-500" />
+                            <span className="text-sm text-gray-600">
+                              {formatDate(digest.createdAt, userTimezone)}
+                            </span>
+                          </div>
+                          {!digest.isRead && (
+                            <Badge className="badge-accent text-xs">
+                              New
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {!digest.isRead && (
-                        <Badge className="bg-blue-100 text-blue-800">
-                          New
-                        </Badge>
-                      )}
+                    
+                    {/* Action Button */}
+                    <div className="flex items-center gap-3 ml-4">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setDeleteDialog(digest)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 btn-ghost"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                </CardHeader>
+                </div>
                 
-                <CardContent className="p-6">
-                  {/* Summary Preview */}
-                  <div className="mb-4">
-                    <div className="grid gap-2">
-                      {digest.summaries.slice(0, 3).map((summary) => (
-                        <div key={summary.id} className="flex items-center space-x-2 text-sm">
-                          <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0" />
-                          <span className="font-medium text-gray-900 flex-shrink-0 w-32 truncate">{summary.sourceName}:</span>
-                          <span className="text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis max-w-32 sm:max-w-48 md:max-w-64 lg:max-w-96 xl:max-w-[32rem]">{summary.title}</span>
+                {/* Enhanced Content Preview */}
+                <div className="p-6 space-y-4">
+                  {digest.summaries.slice(0, 3).map((summary, index) => (
+                    <div key={index} className="modern-card-elevated p-4 hover-lift">
+                      <div className="flex items-start space-x-3">
+                        <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                          {index + 1}
                         </div>
-                      ))}
-                      {digest.summaries.length > 3 && (
-                        <div className="text-sm text-gray-500 ml-4">
-                          +{digest.summaries.length - 3} more summaries
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-gray-900 mb-2 break-words">
+                            {summary.title}
+                          </h4>
+                          <p className="text-gray-600 text-sm leading-relaxed">
+                            {summary.content.length > 200 
+                              ? `${summary.content.substring(0, 200)}...` 
+                              : summary.content
+                            }
+                          </p>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center space-x-3">
-                    <Link to={`/digests/${digest.id}`}>
-                      <Button 
-                        onClick={() => markAsRead(digest)}
-                        className="flex items-center space-x-2"
-                      >
-                        <FileText className="h-4 w-4" />
-                        <span>Read Digest</span>
-                      </Button>
-                    </Link>
-                    
-                    {digest.audioUrl && (
-                      <Link to={`/digests/${digest.id}?tab=audio`}>
-                        <Button variant="outline" className="flex items-center space-x-2">
-                          <Play className="h-4 w-4" />
-                          <span>Listen</span>
-                        </Button>
-                      </Link>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                  ))}
+                  
+                  {digest.summaries.length > 3 && (
+                    <div className="text-center py-2">
+                      <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        and {digest.summaries.length - 3} more summaries...
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
             ))}
 
-            {/* Load More Button */}
+            {/* Enhanced Load More Button */}
             {currentPage < totalPages && (
-              <div className="text-center pt-6">
+              <div className="text-center pt-8">
                 <Button 
                   variant="outline" 
                   onClick={loadMore}
                   disabled={loadingMore}
+                  className="btn-outline hover:bg-blue-50 shadow-md hover:shadow-lg"
                 >
                   {loadingMore ? (
                     <>
                       <LoadingIndicator size="sm" />
-                      <span className="ml-2">Loading...</span>
+                      <span className="ml-2">Loading more digests...</span>
                     </>
                   ) : (
-                    'Load More Digests'
+                    <>
+                      <FileText className="h-4 w-4" />
+                      <span>Load More Digests</span>
+                    </>
                   )}
                 </Button>
               </div>
-            )}
-
-            {/* No Results */}
-            {searchTerm && filteredDigests.length === 0 && (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <Search className="h-8 w-8 text-gray-400 mx-auto mb-3" />
-                  <h3 className="font-medium text-gray-900 mb-2">No results found</h3>
-                  <p className="text-gray-500">
-                    Try adjusting your search terms or clear the search to see all digests.
-                  </p>
-                </CardContent>
-              </Card>
             )}
           </div>
         )}
@@ -503,7 +527,7 @@ const Digests = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-                    </div>
+                </div>
         </div>
       </div>
     </div>
