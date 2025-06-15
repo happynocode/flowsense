@@ -346,27 +346,8 @@ async function generateAISummary(
 }
 
 async function callDeepSeekAPI(content: string, apiKey: string): Promise<string> {
-  const prompt = `Please create a comprehensive summary of the following article content. Follow these requirements:
+  const prompt = `Extract 1-2 main topics from this content in English. Be brief and direct.
 
-LANGUAGE: Write entirely in English
-LENGTH: 150-400 words
-STRUCTURE: Use clear paragraphs with logical flow
-TONE: Professional, objective, and informative
-
-CONTENT REQUIREMENTS:
-- Capture the main thesis and key arguments
-- Include important facts, statistics, and findings
-- Highlight actionable insights or implications
-- Maintain the original context and nuance
-- Avoid personal opinions or editorial commentary
-
-FORMAT:
-- Start with the core message in 1-2 sentences
-- Follow with supporting details and evidence
-- End with implications or conclusions if relevant
-- Use clear, concise language suitable for business professionals
-
-Article content:
 ${content}`;
   
   const response = await fetch('https://api.deepseek.com/chat/completions', {
@@ -380,7 +361,7 @@ ${content}`;
       messages: [
         { 
           "role": "system", 
-          "content": "You are an expert content analyst specializing in creating high-quality English summaries for business professionals. Your summaries are known for being comprehensive yet concise, capturing essential information while maintaining readability and professional tone. Always write in clear, professional English regardless of the source language." 
+          "content": "Extract main topics briefly in English. No extra formatting or explanations." 
         },
         { "role": "user", "content": prompt }
       ],
