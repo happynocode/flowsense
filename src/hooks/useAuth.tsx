@@ -502,7 +502,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('✅ Registration and login successful');
         toast({
           title: "Registration Successful",
-          description: "Welcome to Neural Hub!",
+          description: "Welcome to FlowSense!",
         });
       }
     } catch (error: any) {
@@ -545,7 +545,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         toast({
           title: "登录成功",
-          description: "欢迎回到 Neural Hub！",
+          description: "欢迎回到 FlowSense！",
         });
         
         // 🔧 登录成功后，调用refreshUser获取完整用户信息（包括auto digest设置）

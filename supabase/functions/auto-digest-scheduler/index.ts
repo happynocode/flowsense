@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+// Removed old std import - using Deno.serve instead
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0'
 
 const corsHeaders = {
@@ -58,7 +58,7 @@ interface ProcessResult {
   taskProcessorStatus?: string;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   console.log('🎯🎯🎯 AUTO DIGEST SCHEDULER FUNCTION CALLED 🎯🎯🎯')
   console.log('Timestamp:', new Date().toISOString())
   console.log('Method:', req.method)

@@ -1,6 +1,6 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
-import Stripe from 'https://esm.sh/stripe@12.9.0?target=deno'
+// Using alternative CDN to avoid deno.land dependency issues
+import { createClient } from 'jsr:@supabase/supabase-js@^2'
+import Stripe from 'https://cdn.skypack.dev/stripe@12.9.0?dts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2022-11-15',
@@ -13,7 +13,7 @@ const supabaseClient = createClient(
 
 const cryptoProvider = Stripe.createSubtleCryptoProvider()
 
-serve(async (request) => {
+Deno.serve(async (request) => {
   const signature = request.headers.get('Stripe-Signature')
   const body = await request.text()
   const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')

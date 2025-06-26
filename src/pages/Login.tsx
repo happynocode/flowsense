@@ -54,7 +54,7 @@ const Login = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="glass-card p-4">
           <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mx-auto mb-2" />
-          <p className="text-center text-gray-600">Initializing neural interface...</p>
+                          <p className="text-center text-gray-600">Initializing FlowSense...</p>
         </div>
       </div>
     );
@@ -149,10 +149,10 @@ const Login = () => {
           <div className="mx-auto w-20 h-20 bg-gradient-primary rounded-2xl flex items-center justify-center mb-6 shadow-lg">
             <Brain className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl font-space-grotesk font-bold mb-2">
-            <span className="text-gradient-primary">Neural</span>{" "}
-            <span className="text-gray-800">Hub</span>
-          </h1>
+                      <h1 className="text-4xl font-space-grotesk font-bold mb-2">
+              <span className="text-gradient-primary">Flow</span>
+              <span className="text-gray-800">Sense</span>
+            </h1>
           <p className="text-gray-600">Connect to your personalized content digest</p>
         </div>
 
@@ -234,7 +234,7 @@ const Login = () => {
                     ) : (
                       <>
                         <Brain className="w-4 h-4 mr-2" />
-                        Connect Neural Interface
+                        Connect to FlowSense
                       </>
                     )}
                   </Button>
@@ -324,7 +324,7 @@ const Login = () => {
                     ) : (
                       <>
                         <Brain className="w-4 h-4 mr-2" />
-                        Create Neural Interface
+                        Create FlowSense Account
                       </>
                     )}
                   </Button>

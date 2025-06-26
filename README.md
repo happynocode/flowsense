@@ -1,8 +1,8 @@
-# Digest Flow Daily
+# FlowSense
 
 **A modern, intelligent content aggregation and digest generation platform built with React and Supabase.**
 
-[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge&logo=githubpages)](https://happynocode.github.io/digest-flow-daily/)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge&logo=githubpages)](https://happynocode.github.io/flowsense/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
@@ -12,12 +12,12 @@
 
 ## 🌟 Overview
 
-Digest Flow Daily is a comprehensive content aggregation platform that helps users stay informed without information overload. The application automatically fetches content from various sources (RSS feeds, blogs, news sites), processes it using AI, and delivers personalized digest summaries on a customizable schedule.
+FlowSense is a comprehensive content aggregation platform that helps users stay informed without information overload. The application automatically fetches content from various sources (RSS feeds, blogs, news sites), processes it using AI, and delivers personalized digest summaries on a customizable schedule.
 
 ### Key Features
 
 - **🔗 Multi-Source Content Aggregation**: Support for RSS feeds, blogs, and news websites
-- **🤖 AI-Powered Summarization**: Intelligent content processing and summarization using DeepSeek API
+- **🤖 AI-Powered Summarization**: Intelligent content processing and summarization using Gemini API
 - **⏰ Automated Scheduling**: Configurable digest generation (daily/weekly) with timezone support
 - **🎯 Smart Content Processing**: Automatic URL correction and resilient error handling
 - **👤 User Management**: Complete authentication system with email verification
@@ -37,7 +37,7 @@ graph TD
     
     E[Cron Schedulers] --> D
     D --> F[External RSS Feeds]
-    D --> G[AI Processing DeepSeek]
+    D --> G[AI Processing Gemini]
     
     H[Stripe Webhooks] --> D
     D --> I[Email Notifications]
@@ -59,7 +59,7 @@ graph TD
 - Row Level Security (RLS) policies
 
 **External Services:**
-- DeepSeek API for content summarization
+- Gemini API for content summarization
 - Stripe for payment processing
 - GitHub Actions for CI/CD
 
@@ -76,8 +76,8 @@ graph TD
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/happynocode/digest-flow-daily.git
-   cd digest-flow-daily
+   git clone https://github.com/happynocode/flowsense.git
+   cd flowsense
    ```
 
 2. **Install dependencies**
@@ -108,10 +108,14 @@ The application will be available at `http://localhost:5173`
 The project is configured for automatic deployment to GitHub Pages:
 
 1. Fork this repository
-2. Set up GitHub Secrets:
+2. Update the repository name in:
+   - `vite.config.ts` - change the `base` path to your repository name
+   - `src/App.tsx` - update the `basename` in BrowserRouter
+3. Set up GitHub Secrets:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-3. Push to main branch to trigger deployment
+4. Enable GitHub Pages in repository settings (source: GitHub Actions)
+5. Push to main branch to trigger deployment
 
 ## 📖 Usage
 
@@ -195,13 +199,13 @@ This project is licensed under the MIT License.
 
 - [Supabase](https://supabase.com/) for the excellent backend platform
 - [Shadcn/ui](https://ui.shadcn.com/) for the beautiful component library
-- [DeepSeek](https://www.deepseek.com/) for AI-powered content processing
+- [Google Gemini](https://ai.google.dev/) for AI-powered content processing
 - [Tailwind CSS](https://tailwindcss.com/) for the utility-first CSS framework
 
 ## 📞 Support
 
-- 🐛 Issues: [GitHub Issues](https://github.com/happynocode/digest-flow-daily/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/happynocode/digest-flow-daily/discussions)
+- 🐛 Issues: [GitHub Issues](https://github.com/happynocode/flowsense/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/happynocode/flowsense/discussions)
 
 ---
 

@@ -28,7 +28,7 @@ const Header = () => {
             <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105">
               <Brain className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-space-grotesk font-bold text-gray-800">Neural Hub</span>
+            <span className="text-xl font-space-grotesk font-bold text-gray-800">FlowSense</span>
           </Link>
 
           {/* Navigation */}

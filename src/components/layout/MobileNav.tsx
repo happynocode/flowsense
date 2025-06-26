@@ -31,7 +31,7 @@ const MobileNav = () => {
               <div className="w-10 h-10 bg-cosmic-gradient rounded-xl flex items-center justify-center glow-purple">
                 <Brain className="w-6 h-6 text-starlight" />
               </div>
-              <span className="text-xl font-space-grotesk font-bold text-starlight">Neural Hub</span>
+              <span className="text-xl font-space-grotesk font-bold text-starlight">FlowSense</span>
             </div>
             
             <nav className="flex-1 space-y-3">
@@ -58,7 +58,7 @@ const MobileNav = () => {
                 }`}
               >
                 <FileText className="h-5 w-5" />
-                <span>Neural Digests</span>
+                <span>Smart Digests</span>
               </Link>
               
               <Link
