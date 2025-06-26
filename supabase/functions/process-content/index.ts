@@ -291,16 +291,29 @@ async function callGeminiAPI(content, apiKey) {
     'gemini-2.0-flash-lite'
   ];
 
-  const prompt = `Analyze the following article content and extract 2-5 key points. Each point should be described in 1-2 sentences so readers can quickly understand the main content of the article.
+  // Preprocess content to ensure it's suitable for analysis
+  const cleanContent = preprocessContent(content);
+  
+  // Check if content is suitable for analysis
+  if (cleanContent.length < 100) {
+    console.log(`❌ Content after preprocessing is too short: ${cleanContent.length} characters`);
+    console.log(`🔍 Original content length: ${content.length} characters`);
+    console.log(`📋 Cleaned content preview: "${cleanContent.substring(0, 200)}..."`);
+    throw new Error(`Content too short for meaningful analysis. After cleaning: ${cleanContent.length} chars, need at least 100 chars.`);
+  }
 
-Please output in the following format:
-• Key Point 1: [1-2 sentence description]
-• Key Point 2: [1-2 sentence description]
-• Key Point 3: [1-2 sentence description]
-(Number of points should be 2-5 based on content richness)
+  console.log(`✅ Content preprocessed successfully: ${content.length} → ${cleanContent.length} characters`);
+
+  const prompt = `Extract 2-5 key points from the following article content. Each point should be 1-2 sentences and help readers quickly understand the main content.
+
+Output exactly the key points with bullet points, without any introductory text or numbering. Use **bold** to highlight important keywords or phrases in each point.
+
+Example format:
+• The study found that **artificial intelligence** significantly improves **healthcare diagnostics** by reducing error rates by 40%.
+• Researchers discovered **quantum computing** could solve **optimization problems** 1000 times faster than classical computers.
 
 Article content:
-${content}`;
+${cleanContent}`;
 
   let lastError;
   
@@ -372,4 +385,53 @@ ${content}`;
   }
 
   throw new Error(`All Gemini models failed. Last error: ${lastError?.message || 'Unknown error'}`);
+}
+
+function preprocessContent(content) {
+  if (!content || typeof content !== 'string') {
+    return '';
+  }
+
+  // Remove common patterns that indicate metadata rather than article content
+  const metadataPatterns = [
+    /^\d+\s+points?\s*$/gmi,           // "123 points"
+    /^\d+\s+comments?\s*$/gmi,         // "456 comments"
+    /^https?:\/\/[^\s]+$/gmi,          // Standalone URLs
+    /^reddit\.com\/[^\s]*$/gmi,        // Reddit URLs
+    /^Posted by\s+.+$/gmi,             // "Posted by username"
+    /^Share this:.*$/gmi,              // "Share this:" lines
+    /^Tags?:\s*.+$/gmi,                // "Tags: tag1, tag2"
+    /^Categories?:\s*.+$/gmi,          // "Categories: cat1, cat2"
+    /^Filed under\s*.+$/gmi,           // "Filed under category"
+    /^\d+\s+(minute|hour|day|week|month|year)s?\s+ago$/gmi, // "5 minutes ago"
+  ];
+
+  let cleanContent = content;
+  
+  // Remove metadata patterns
+  metadataPatterns.forEach(pattern => {
+    cleanContent = cleanContent.replace(pattern, '');
+  });
+
+  // Remove excessive whitespace and normalize
+  cleanContent = cleanContent
+    .replace(/\s+/g, ' ')             // Multiple spaces to single space
+    .replace(/\n\s*\n/g, '\n')        // Multiple newlines to single newline
+    .replace(/^\s+|\s+$/g, '')        // Trim
+    .replace(/^[\s\n]*/, '')          // Remove leading whitespace/newlines
+    .replace(/[\s\n]*$/, '');         // Remove trailing whitespace/newlines
+
+  // If content is still very short or looks like just metadata, 
+  // try to extract meaningful sentences
+  if (cleanContent.length < 200) {
+    const sentences = content.split(/[.!?]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 20 && !s.match(/^\d+\s+(points?|comments?)/i))
+      .filter(s => !s.match(/^https?:\/\//))
+      .filter(s => s.includes(' '));  // Must contain at least one space (likely a sentence)
+    
+    cleanContent = sentences.join('. ').trim();
+  }
+
+  return cleanContent;
 }
