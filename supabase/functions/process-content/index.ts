@@ -252,16 +252,16 @@ function extractTextContent(html) {
 async function generateAISummary(supabaseClient, contentItemId, content, originalUrl) {
   console.log(`🤖 Generating summary for URL: ${originalUrl}`);
   try {
-    const apiKey = Deno.env.get('DEEPSEEK_API_KEY');
+    const apiKey = Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) {
-      throw new Error('DEEPSEEK_API_KEY is not configured in Supabase secrets.');
+      throw new Error('GEMINI_API_KEY is not configured in Supabase secrets.');
     }
-    const summaryText = await callDeepSeekAPI(content, apiKey);
+    const result = await callGeminiAPI(content, apiKey);
     console.log(`💾 Inserting summary into database for content item ${contentItemId}`);
     const { error: insertError } = await supabaseClient.from('summaries').insert({
       content_item_id: contentItemId,
-      summary_text: summaryText,
-      model_used: 'deepseek-chat'
+      summary_text: result.summaryText,
+      model_used: result.modelUsed
     });
     if (insertError) {
       console.error('❌ Failed to insert summary into database:', insertError);
@@ -283,35 +283,93 @@ async function generateAISummary(supabaseClient, contentItemId, content, origina
     };
   }
 }
-async function callDeepSeekAPI(content, apiKey) {
-  const prompt = `Extract 1-2 main topics from this content in English. Be brief and direct.
+async function callGeminiAPI(content, apiKey) {
+  const models = [
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite-preview-06-17', 
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite'
+  ];
 
+  const prompt = `Analyze the following article content and extract 2-5 key points. Each point should be described in 1-2 sentences so readers can quickly understand the main content of the article.
+
+Please output in the following format:
+• Key Point 1: [1-2 sentence description]
+• Key Point 2: [1-2 sentence description]
+• Key Point 3: [1-2 sentence description]
+(Number of points should be 2-5 based on content richness)
+
+Article content:
 ${content}`;
-  const response = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      messages: [
-        {
-          "role": "system",
-          "content": "Extract main topics briefly in English. No extra formatting or explanations."
+
+  let lastError;
+  
+  for (const model of models) {
+    try {
+      console.log(`🤖 Trying Gemini model: ${model}`);
+      
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         },
-        {
-          "role": "user",
-          "content": prompt
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            topP: 0.8,
+            topK: 40,
+            maxOutputTokens: 1024,
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH", 
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+          console.log(`✅ Successfully used model: ${model}`);
+          return {
+            summaryText: data.candidates[0].content.parts[0].text.trim(),
+            modelUsed: model
+          };
         }
-      ]
-    })
-  });
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error('❌ DeepSeek API error response:', errorBody);
-    throw new Error(`DeepSeek API request failed with status ${response.status}`);
+      }
+
+      const errorBody = await response.text();
+      lastError = new Error(`Gemini API request failed for model ${model} with status ${response.status}: ${errorBody}`);
+      console.log(`❌ Model ${model} failed:`, lastError.message);
+      
+    } catch (error) {
+      lastError = error;
+      console.log(`❌ Model ${model} failed:`, error.message);
+    }
   }
-  const data = await response.json();
-  return data.choices[0].message.content.trim();
+
+  throw new Error(`All Gemini models failed. Last error: ${lastError?.message || 'Unknown error'}`);
 }
