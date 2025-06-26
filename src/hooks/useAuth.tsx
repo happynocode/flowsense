@@ -602,19 +602,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: "You have been safely logged out.",
         });
         
-        // 跳转到landing page (GitHub Pages 兼容)
+        // 跳转到 FlowSense 主站
         // 使用最直接的方法：检查当前URL并构建正确的跳转路径
         const currentUrl = window.location.href;
         console.log('🔍 Current URL:', currentUrl);
         
-        if (currentUrl.includes('happynocode.github.io/digest-flow-daily')) {
-          const targetUrl = 'https://happynocode.github.io/digest-flow-daily/';
-          console.log('✅ GitHub Pages detected, redirecting to:', targetUrl);
-          window.location.href = targetUrl;
-        } else if (currentUrl.includes('github.io')) {
-          // 通用GitHub Pages处理
-          const targetUrl = window.location.origin + '/digest-flow-daily/';
-          console.log('✅ Generic GitHub Pages, redirecting to:', targetUrl);
+        if (currentUrl.includes('happynocode.github.io')) {
+          const targetUrl = 'https://happynocode.github.io/flowsense/';
+          console.log('✅ GitHub Pages detected, redirecting to FlowSense main site:', targetUrl);
           window.location.href = targetUrl;
         } else {
           console.log('✅ Not GitHub Pages, redirecting to root');
