@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../ui/button';
@@ -21,27 +20,27 @@ const MobileNav = () => {
     <div className="md:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="sm" className="glass-card border-0 text-starlight hover:glow-blue">
+          <Button variant="ghost" size="sm" className="bg-white/95 backdrop-blur-xl border border-gray-200 shadow-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50">
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-64 bg-midnight/95 backdrop-blur-xl border-white/10">
+        <SheetContent side="left" className="w-72 bg-white/98 backdrop-blur-xl border-r border-gray-200 shadow-xl">
           <div className="flex flex-col h-full">
-            <div className="flex items-center space-x-3 pb-6">
-              <div className="w-10 h-10 bg-cosmic-gradient rounded-xl flex items-center justify-center glow-purple">
-                <Brain className="w-6 h-6 text-starlight" />
+            <div className="flex items-center space-x-3 pb-6 border-b border-gray-100">
+              <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-sm">
+                <Brain className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-space-grotesk font-bold text-starlight">FlowSense</span>
+              <span className="text-xl font-space-grotesk font-bold text-gray-800">FlowSense</span>
             </div>
             
-            <nav className="flex-1 space-y-3">
+            <nav className="flex-1 space-y-2 py-6">
               <Link
                 to="/sources"
                 onClick={closeNav}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive('/sources') 
-                    ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
-                    : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
+                    ? 'text-blue-700 bg-blue-50 border-l-4 border-blue-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
                 <FileText className="h-5 w-5" />
@@ -51,10 +50,10 @@ const MobileNav = () => {
               <Link
                 to="/digests"
                 onClick={closeNav}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive('/digests') 
-                    ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
-                    : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
+                    ? 'text-blue-700 bg-blue-50 border-l-4 border-blue-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
                 <FileText className="h-5 w-5" />
@@ -64,10 +63,10 @@ const MobileNav = () => {
               <Link
                 to="/subscription"
                 onClick={closeNav}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive('/subscription') 
-                    ? 'text-electric-blue bg-electric-blue/10 glow-blue' 
-                    : 'text-lunar-grey hover:text-starlight hover:bg-white/5'
+                    ? 'text-blue-700 bg-blue-50 border-l-4 border-blue-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
                 <Settings className="h-5 w-5" />
@@ -75,16 +74,16 @@ const MobileNav = () => {
               </Link>
             </nav>
 
-            <div className="border-t border-white/10 pt-4 mt-auto">
+            <div className="border-t border-gray-100 pt-4 mt-auto">
               <div className="flex items-center space-x-3 px-4 py-3 mb-3">
-                <div className="w-10 h-10 bg-aurora-gradient rounded-full flex items-center justify-center glow-teal">
-                  <span className="text-sm font-bold text-midnight">
+                <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-sm">
+                  <span className="text-sm font-bold text-white">
                     {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-starlight truncate">{user.name}</p>
-                  <p className="text-xs text-lunar-grey truncate">{user.email}</p>
+                  <p className="text-sm font-medium text-gray-800 truncate">{user.name}</p>
+                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
                 </div>
               </div>
               
@@ -94,7 +93,7 @@ const MobileNav = () => {
                   logout();
                   closeNav();
                 }}
-                className="w-full justify-start px-4 text-nebula-pink hover:text-nebula-pink hover:bg-nebula-pink/10 hover:glow-pink"
+                className="w-full justify-start px-4 text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors duration-200"
               >
                 <LogOut className="mr-3 h-4 w-4" />
                 Disconnect

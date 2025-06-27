@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Brain } from 'lucide-react';
 
@@ -8,31 +7,29 @@ interface LoadingIndicatorProps {
   className?: string;
 }
 
-const LoadingIndicator = ({ size = 'md', text = 'Loading your content...', className = '' }: LoadingIndicatorProps) => {
+const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({ 
+  size = 'md', 
+  text = 'Loading...', 
+  className = '' 
+}) => {
   const sizeClasses = {
+    sm: 'w-8 h-8',
+    md: 'w-12 h-12',
+    lg: 'w-16 h-16'
+  };
+
+  const iconSizes = {
     sm: 'w-4 h-4',
     md: 'w-6 h-6',
     lg: 'w-8 h-8'
   };
 
-  const iconSizes = {
-    sm: 'w-3 h-3',
-    md: 'w-4 h-4',
-    lg: 'w-6 h-6'
-  };
-
   return (
     <div className={`flex flex-col items-center justify-center space-y-4 ${className}`}>
-      <div className={`bg-cosmic-gradient rounded-full flex items-center justify-center glow-purple ${
-        size === 'sm' ? 'w-12 h-12' : size === 'md' ? 'w-16 h-16' : 'w-20 h-20'
-      }`}>
-        <Brain className={`text-starlight ${iconSizes[size]}`} />
+      <div className={`bg-gradient-primary rounded-full flex items-center justify-center shadow-sm ${sizeClasses[size]}`}>
+        <Brain className={`text-white animate-pulse ${iconSizes[size]}`} />
       </div>
-      {text && (
-        <p className="text-lunar-grey text-center">
-          {text}
-        </p>
-      )}
+      <p className="text-gray-600 text-center font-medium">{text}</p>
     </div>
   );
 };

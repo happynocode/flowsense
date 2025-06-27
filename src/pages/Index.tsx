@@ -22,10 +22,10 @@ const Index = () => {
   if (loading) {
     console.log('⏳ Index 页面显示加载状态');
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="glass-card p-8">
-          <div className="w-16 h-16 mx-auto mb-4 bg-cosmic-gradient rounded-full flex items-center justify-center glow-purple">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-starlight border-t-transparent" />
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="modern-card p-8 max-w-sm w-full text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-primary rounded-full flex items-center justify-center shadow-sm">
+            <div className="loading-spinner" />
           </div>
           <LoadingIndicator size="lg" text="正在初始化神经接口..." />
         </div>

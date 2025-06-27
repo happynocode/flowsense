@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import Header from "./components/layout/Header";
-import MobileNav from "./components/layout/MobileNav";
 import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -29,9 +28,6 @@ const App = () => (
         <AuthProvider>
           <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
             <Header />
-            <div className="md:hidden fixed top-4 left-4 z-50">
-              <MobileNav />
-            </div>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/" element={<Index />} />

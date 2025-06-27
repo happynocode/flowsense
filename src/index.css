@@ -262,4 +262,95 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Mobile Optimizations */
+  .mobile-container {
+    @apply px-4 sm:px-6 lg:px-8 max-w-full;
+  }
+
+  .mobile-page {
+    @apply min-h-screen pt-6 pb-8 px-4 sm:px-6 lg:px-8;
+  }
+
+  .mobile-card {
+    @apply modern-card p-4 sm:p-6;
+  }
+
+  .mobile-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6;
+  }
+
+  .mobile-button {
+    @apply btn-primary w-full sm:w-auto text-center;
+  }
+
+  /* Touch-friendly interactive elements */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Responsive text sizes */
+  .responsive-title {
+    @apply text-xl sm:text-2xl lg:text-3xl;
+  }
+
+  .responsive-subtitle {
+    @apply text-sm sm:text-base lg:text-lg;
+  }
+
+  /* Mobile navigation improvements */
+  .mobile-nav-item {
+    @apply touch-target flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200;
+  }
+
+  /* Better mobile form layouts */
+  .mobile-form {
+    @apply space-y-4;
+  }
+
+  .mobile-form-group {
+    @apply space-y-2;
+  }
+
+  .mobile-form-input {
+    @apply input-modern w-full touch-target;
+  }
+
+  /* Mobile-friendly tables */
+  .mobile-table {
+    @apply w-full overflow-x-auto;
+  }
+
+  .mobile-table table {
+    @apply min-w-full text-sm;
+  }
+
+  /* Stack elements vertically on mobile */
+  .mobile-stack {
+    @apply flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4;
+  }
+
+  /* Hide on mobile, show on desktop */
+  .desktop-only {
+    @apply hidden sm:block;
+  }
+
+  /* Show on mobile, hide on desktop */
+  .mobile-only {
+    @apply block sm:hidden;
+  }
+
+  /* Mobile sheet/modal improvements */
+  .mobile-sheet {
+    @apply w-full max-w-sm;
+  }
+
+  /* Better mobile spacing */
+  .mobile-section {
+    @apply py-6 sm:py-8 lg:py-12;
+  }
+
+  .mobile-content {
+    @apply space-y-6 sm:space-y-8;
+  }
 }

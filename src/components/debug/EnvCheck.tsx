@@ -30,37 +30,37 @@ const EnvCheck = () => {
   const allValid = checks.every(check => check.isValid);
 
   return (
-    <Card className="glass-card border-0 mb-6">
+    <Card className="modern-card border border-gray-200 mb-6 shadow-sm">
       <CardHeader>
-        <CardTitle className="flex items-center text-starlight">
+        <CardTitle className="flex items-center text-gray-800">
           {allValid ? (
-            <CheckCircle className="w-5 h-5 text-astral-teal mr-2" />
+            <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
           ) : (
-            <XCircle className="w-5 h-5 text-nebula-pink mr-2" />
+            <XCircle className="w-5 h-5 text-red-600 mr-2" />
           )}
           环境变量配置检查
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {checks.map((check, index) => (
-          <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-midnight/40">
+          <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100">
             <div className="flex items-center">
               {check.isValid ? (
-                <CheckCircle className="w-4 h-4 text-astral-teal mr-3" />
+                <CheckCircle className="w-4 h-4 text-green-600 mr-3" />
               ) : (
-                <XCircle className="w-4 h-4 text-nebula-pink mr-3" />
+                <XCircle className="w-4 h-4 text-red-600 mr-3" />
               )}
               <div>
-                <div className="text-starlight font-medium">{check.name}</div>
-                <div className="text-lunar-grey text-sm font-mono">
+                <div className="text-gray-800 font-medium">{check.name}</div>
+                <div className="text-gray-600 text-sm font-mono">
                   {check.displayValue}
                 </div>
               </div>
             </div>
             <div className={`px-2 py-1 rounded text-xs ${
               check.isValid 
-                ? 'bg-astral-teal/20 text-astral-teal' 
-                : 'bg-nebula-pink/20 text-nebula-pink'
+                ? 'bg-green-100 text-green-700' 
+                : 'bg-red-100 text-red-700'
             }`}>
               {check.isValid ? '✓ 有效' : '✗ 无效'}
             </div>
@@ -68,17 +68,17 @@ const EnvCheck = () => {
         ))}
         
         {!allValid && (
-          <div className="mt-4 p-4 rounded-lg bg-nebula-pink/10 border border-nebula-pink/30">
+          <div className="mt-4 p-4 rounded-lg bg-red-50 border border-red-200">
             <div className="flex items-start">
-              <AlertCircle className="w-5 h-5 text-nebula-pink mr-3 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-red-600 mr-3 mt-0.5" />
               <div>
-                <div className="text-nebula-pink font-medium mb-2">配置问题</div>
-                <div className="text-lunar-grey text-sm space-y-1">
+                <div className="text-red-700 font-medium mb-2">配置问题</div>
+                <div className="text-gray-600 text-sm space-y-1">
                   <p>请检查以下步骤：</p>
                   <ol className="list-decimal list-inside space-y-1 ml-4">
-                    <li>确保项目根目录存在 <code className="bg-midnight/60 px-1 rounded">.env</code> 文件</li>
-                    <li>环境变量名必须以 <code className="bg-midnight/60 px-1 rounded">VITE_</code> 开头</li>
-                    <li>重启开发服务器 (<code className="bg-midnight/60 px-1 rounded">npm run dev</code>)</li>
+                    <li>确保项目根目录存在 <code className="bg-gray-100 px-1 rounded">.env</code> 文件</li>
+                    <li>环境变量名必须以 <code className="bg-gray-100 px-1 rounded">VITE_</code> 开头</li>
+                    <li>重启开发服务器 (<code className="bg-gray-100 px-1 rounded">npm run dev</code>)</li>
                     <li>检查 Supabase 项目设置是否正确</li>
                   </ol>
                 </div>
@@ -87,8 +87,8 @@ const EnvCheck = () => {
           </div>
         )}
 
-        <div className="mt-4 p-3 rounded-lg bg-electric-blue/10 border border-electric-blue/30">
-          <div className="text-electric-blue text-sm">
+        <div className="mt-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
+          <div className="text-blue-700 text-sm">
             <strong>调试信息：</strong> 检查浏览器控制台查看详细的环境变量日志
           </div>
         </div>
