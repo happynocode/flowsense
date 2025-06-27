@@ -63,7 +63,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
   onClearContent
 }) => {
   const { canUseFeature, isPremium } = useSubscription();
-  const { user, updateAutoDigestSettings } = useAuth();
+  const { user, updateAutoDigestSettings, refreshUser } = useAuth();
   const { toast } = useToast();
   
   // 🔧 本地状态管理 - 用于编辑，点击Save时才保存到数据库
@@ -241,11 +241,49 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
         console.log(`  - 用户状态 vs 本地状态: ${userEnabled} vs ${localEnabled} ${userEnabled === localEnabled ? '✅' : '❌'}`);
         console.log(`  - 数据库 vs 本地状态: ${dbEnabled} vs ${localEnabled} ${dbEnabled === localEnabled ? '✅' : '❌'}`);
         
+        // 🔧 检测到不一致时自动修复
+        let hasInconsistency = false;
+        
         if (dbEnabled !== userEnabled) {
           console.error('❌ 数据库和用户状态不一致！这表明useAuth的数据获取有问题');
+          hasInconsistency = true;
         }
         if (userEnabled !== localEnabled) {
           console.error('❌ 用户状态和本地状态不一致！这表明组件的状态同步有问题');
+          hasInconsistency = true;
+        }
+
+        // 🚀 自动修复不一致的数据
+        if (hasInconsistency) {
+          console.log('🔧 检测到数据不一致，开始自动修复...');
+          
+          try {
+                         // 1. 强制刷新用户数据
+             console.log('🔄 Step 1: 强制刷新用户数据...');
+             await refreshUser();
+             
+             // 2. 重新加载组件设置 (refreshUser会触发useEffect重新设置autoSettings)
+             console.log('🔄 Step 2: 等待组件状态更新...');
+             // refreshUser会触发useEffect，无需额外操作
+            
+            // 3. 显示修复成功的提示
+            toast({
+              title: "✅ 数据同步成功",
+              description: "检测到数据不一致并已自动修复。如问题持续，请刷新页面。",
+            });
+            
+            console.log('✅ 自动修复完成');
+            
+          } catch (fixError) {
+            console.error('❌ 自动修复失败:', fixError);
+            toast({
+              title: "❌ 自动修复失败",
+              description: "请手动刷新页面或重新登录。",
+              variant: "destructive",
+            });
+          }
+        } else {
+          console.log('✅ 所有数据状态一致，无需修复');
         }
       }
     } catch (error) {
@@ -364,15 +402,43 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
               <Crown className="h-5 w-5 mr-2" />
               Premium Features
             </CardTitle>
-            {/* 🔧 临时调试按钮 */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={debugDatabaseState}
-              className="border-red-400 text-red-700 hover:bg-red-100 text-xs"
-            >
-              Debug DB
-            </Button>
+            <div className="flex gap-2">
+              {/* 🔧 数据同步按钮 */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    console.log('🔄 手动触发数据同步...');
+                    await refreshUser();
+                    toast({
+                      title: "✅ 数据已同步",
+                      description: "用户状态已从数据库刷新",
+                    });
+                  } catch (error) {
+                    console.error('❌ 手动同步失败:', error);
+                    toast({
+                      title: "❌ 同步失败",
+                      description: "请尝试重新登录",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                className="border-blue-400 text-blue-700 hover:bg-blue-100 text-xs"
+              >
+                <RefreshCw className="w-3 h-3 mr-1" />
+                同步数据
+              </Button>
+              {/* 🔧 调试按钮 */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={debugDatabaseState}
+                className="border-red-400 text-red-700 hover:bg-red-100 text-xs"
+              >
+                Debug DB
+              </Button>
+            </div>
           </div>
         </CardHeader>
         

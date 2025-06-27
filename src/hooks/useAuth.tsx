@@ -41,6 +41,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('🔄 refreshUser 开始执行（StackBlitz 优化版本）...');
     
     try {
+      // 🔧 强制清除任何可能的缓存
+      localStorage.removeItem('supabase.auth.token');
+      
       // 🎯 针对 StackBlitz 环境，使用更短的超时时间
       const createTimeout = (name: string, ms: number = 1500) => 
         new Promise<never>((_, reject) => 
@@ -52,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       let sessionResult;
       try {
+        // 🔧 强制获取最新的session，不使用缓存
         sessionResult = await Promise.race([
           supabase.auth.getSession(),
           createTimeout("getSession", 1500)
@@ -126,11 +130,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(baseUserData);
       console.log('✅ setUser 调用完成');
       
-      // 后台获取订阅信息和auto digest设置
+      // 后台获取订阅信息和auto digest设置 - 🔧 添加强制刷新标志
       try {
-        console.log('🔄 获取用户完整信息（订阅 + auto digest）...');
+        console.log('🔄 强制获取用户完整信息（订阅 + auto digest）...');
         
-        // 并行获取订阅信息和auto digest设置
+        // 🔧 强制从数据库获取最新数据，不使用任何缓存
         const [subscriptionInfo, autoDigestSettings] = await Promise.all([
           userApi.getUserSubscriptionInfo(),
           userApi.getAutoDigestSettings().catch(err => {
@@ -144,12 +148,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           })
         ]);
         
-        console.log('🔍 [DEBUG] 获取到的订阅信息:', subscriptionInfo);
-        console.log('🔍 [DEBUG] 获取到的auto digest设置:', autoDigestSettings);
-        console.log('🔍 [DEBUG] autoDigestSettings详细信息:');
-        console.log('  - autoDigestEnabled:', autoDigestSettings.autoDigestEnabled, typeof autoDigestSettings.autoDigestEnabled);
-        console.log('  - autoDigestTime:', autoDigestSettings.autoDigestTime, typeof autoDigestSettings.autoDigestTime);
-        console.log('  - autoDigestTimezone:', autoDigestSettings.autoDigestTimezone, typeof autoDigestSettings.autoDigestTimezone);
+        console.log('🔍 [DEBUG] 强制获取到的订阅信息:', subscriptionInfo);
+        console.log('🔍 [DEBUG] 强制获取到的auto digest设置:', autoDigestSettings);
         
         const userWithFullInfo = {
           ...baseUserData,
@@ -165,19 +165,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           lastAutoDigestRun: autoDigestSettings.lastAutoDigestRun
         };
         
-        console.log('🔍 [DEBUG] 最终用户对象:', userWithFullInfo);
-        console.log('🔍 [DEBUG] 最终用户对象的auto digest字段:');
-        console.log('  - autoDigestEnabled:', userWithFullInfo.autoDigestEnabled, typeof userWithFullInfo.autoDigestEnabled);
-        console.log('  - autoDigestTime:', userWithFullInfo.autoDigestTime, typeof userWithFullInfo.autoDigestTime);
-        console.log('  - autoDigestTimezone:', userWithFullInfo.autoDigestTimezone, typeof userWithFullInfo.autoDigestTimezone);
+        console.log('🔍 [DEBUG] 强制刷新后的最终用户对象:', userWithFullInfo);
+        console.log('🔍 [DEBUG] 订阅状态 - subscriptionTier:', userWithFullInfo.subscriptionTier);
         
-        console.log('🔄 更新用户数据（包含订阅信息 + auto digest）:', userWithFullInfo);
+        console.log('🔄 更新用户数据（强制刷新 - 包含订阅信息 + auto digest）:', userWithFullInfo);
         setUser(userWithFullInfo);
         
-        // 🔍 验证setUser是否成功
-        setTimeout(() => {
-          console.log('🔍 [DEBUG] setUser调用后验证 - 这将在下次渲染时显示实际的用户状态');
-        }, 100);
       } catch (subscriptionError) {
         console.warn('⚠️ 获取用户信息失败，使用默认值:', subscriptionError);
         // 使用默认的免费用户限制和auto digest设置

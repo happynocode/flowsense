@@ -1,51 +1,172 @@
 import React, { useState } from 'react';
-import { Button } from '../components/ui/button';
 import { useAuth } from '../hooks/useAuth';
-import { useToast } from '../hooks/use-toast';
+import { useSubscription } from '../hooks/useSubscription';
 import { supabase } from '../lib/supabase';
-import { Loader2, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
+import { userApi } from '../services/api';
+import { subscriptionService } from '../services/subscription';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { useToast } from '../hooks/use-toast';
+import { AlertCircle, RefreshCw, Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
 const DebugSubscription = () => {
   const { user, refreshUser } = useAuth();
+  const { isPremium, isFree, limits } = useSubscription();
   const { toast } = useToast();
+  
   const [loading, setLoading] = useState(false);
   const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
+  const [diagnosticsResult, setDiagnosticsResult] = useState<any>(null);
 
-  const fetchCurrentStatus = async () => {
+  // 完整的诊断流程
+  const runCompleteDiagnostics = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
+      const diagnostics: any = {
+        timestamp: new Date().toISOString(),
+        user_id: user.id,
+        user_email: user.email,
+        frontend_state: {},
+        auth_state: {},
+        db_direct_query: {},
+        api_call_result: {},
+        inconsistencies: [],
+        recommendations: []
+      };
 
-      // 获取订阅信息
-      const { data: subscription, error: subError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // 1. 前端状态
+      diagnostics.frontend_state = {
+        isPremium,
+        isFree,
+        limits,
+        user_object_subscription_fields: {
+          subscriptionTier: user.subscriptionTier,
+          maxSources: user.maxSources,
+          canScheduleDigest: user.canScheduleDigest,
+          canProcessWeekly: user.canProcessWeekly
+        }
+      };
 
-      // 获取用户信息
-      const { data: userInfo, error: userError } = await supabase
+      // 2. 认证状态检查
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+      
+      diagnostics.auth_state = {
+        has_session: !!session,
+        session_user_id: session?.user?.id,
+        auth_user_id: authUser?.id,
+        session_error: sessionError?.message,
+        user_error: userError?.message,
+        session_matches_frontend: session?.user?.id === user.id,
+        auth_user_matches_frontend: authUser?.id === user.id
+      };
+
+      // 3. 直接查询数据库
+      const { data: dbUserData, error: dbUserError } = await supabase
         .from('users')
-        .select('subscription_tier, max_sources, can_schedule_digest, can_process_weekly')
+        .select('*')  
         .eq('id', user.id)
         .single();
 
-      setSubscriptionData(subscription);
-      setUserData(userInfo);
+      const { data: dbSubscriptionData, error: dbSubError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      if (subError || userError) {
-        console.error('Fetch errors:', { subError, userError });
+      diagnostics.db_direct_query = {
+        user_data: dbUserData,
+        user_error: dbUserError?.message,
+        subscription_data: dbSubscriptionData,
+        subscription_error: dbSubError?.message
+      };
+
+      // 4. API调用结果
+      try {
+        const apiSubInfo = await userApi.getUserSubscriptionInfo();
+        diagnostics.api_call_result = {
+          success: true,
+          data: apiSubInfo
+        };
+      } catch (apiError: any) {
+        diagnostics.api_call_result = {
+          success: false,
+          error: apiError.message
+        };
       }
 
+      // 5. 数据一致性检查
+      if (dbUserData && diagnostics.api_call_result.success) {
+        const dbTier = dbUserData.subscription_tier;
+        const apiTier = diagnostics.api_call_result.data.subscriptionTier;
+        const frontendTier = user.subscriptionTier;
+
+        if (dbTier !== apiTier) {
+          diagnostics.inconsistencies.push({
+            type: 'db_api_mismatch',
+            message: `Database subscription_tier (${dbTier}) != API result (${apiTier})`
+          });
+        }
+
+        if (dbTier !== frontendTier) {
+          diagnostics.inconsistencies.push({
+            type: 'db_frontend_mismatch', 
+            message: `Database subscription_tier (${dbTier}) != Frontend user object (${frontendTier})`
+          });
+        }
+
+        if (dbTier === 'premium' && !isPremium) {
+          diagnostics.inconsistencies.push({
+            type: 'premium_not_recognized',
+            message: 'User is premium in database but frontend shows as non-premium'
+          });
+        }
+
+        if (dbSubscriptionData?.status === 'active' && dbTier !== 'premium') {
+          diagnostics.inconsistencies.push({
+            type: 'active_subscription_not_premium',
+            message: 'User has active subscription but not marked as premium in users table'
+          });
+        }
+      }
+
+      // 6. 生成建议
+      if (diagnostics.inconsistencies.length > 0) {
+        if (diagnostics.inconsistencies.some((i: any) => i.type === 'db_frontend_mismatch')) {
+          diagnostics.recommendations.push({
+            action: 'refresh_user_data',
+            description: 'Frontend user data is stale, try refreshing user data',
+            priority: 'high'
+          });
+        }
+
+        if (diagnostics.inconsistencies.some((i: any) => i.type === 'active_subscription_not_premium')) {
+          diagnostics.recommendations.push({
+            action: 'sync_subscription_status',
+            description: 'Subscription status needs to be synced to users table',
+            priority: 'critical'
+          });
+        }
+      } else {
+        diagnostics.recommendations.push({
+          action: 'check_browser_cache',
+          description: 'Data appears consistent, issue might be browser cache or session related',
+          priority: 'medium'
+        });
+      }
+
+      setDiagnosticsResult(diagnostics);
+      setUserData(dbUserData);
+      setSubscriptionData(dbSubscriptionData);
+
     } catch (error) {
-      console.error('Failed to fetch status:', error);
+      console.error('Diagnostics failed:', error);
       toast({
-        title: "Failed to Fetch Status",
-        description: "Unable to get current subscription status",
+        title: "Diagnostics Failed",
+        description: "Unable to run complete diagnostics",
         variant: "destructive",
       });
     } finally {
@@ -53,14 +174,16 @@ const DebugSubscription = () => {
     }
   };
 
-  const manualSyncToPremium = async () => {
-    if (!user || !subscriptionData) return;
+  // 修复数据不一致问题
+  const fixDataInconsistency = async () => {
+    if (!user || !diagnosticsResult) return;
 
     try {
       setLoading(true);
 
-      if (subscriptionData.status === 'active') {
-        const { error: updateError } = await supabase
+      // 如果有活跃订阅但用户不是premium，则同步状态
+      if (subscriptionData?.status === 'active' && userData?.subscription_tier !== 'premium') {
+        const { error } = await supabase
           .from('users')
           .update({
             subscription_tier: 'premium',
@@ -70,30 +193,31 @@ const DebugSubscription = () => {
           })
           .eq('id', user.id);
 
-        if (updateError) {
-          throw updateError;
-        }
+        if (error) throw error;
 
         await refreshUser();
-        await fetchCurrentStatus();
+        await runCompleteDiagnostics();
 
         toast({
-          title: "✅ Sync Successful",
-          description: "User permissions have been updated to premium",
+          title: "✅ Fixed Successfully",
+          description: "User permissions have been synced with subscription status",
         });
       } else {
+        // 尝试刷新用户数据
+        await refreshUser();
+        await runCompleteDiagnostics();
+        
         toast({
-          title: "Cannot Sync",
-          description: "Subscription status is not active, cannot update to premium",
-          variant: "destructive",
+          title: "🔄 Refreshed",
+          description: "User data has been refreshed",
         });
       }
 
     } catch (error) {
-      console.error('Manual sync failed:', error);
+      console.error('Fix failed:', error);
       toast({
-        title: "Sync Failed",
-        description: "Unable to update user permissions",
+        title: "Fix Failed",
+        description: "Unable to fix the inconsistency",
         variant: "destructive",
       });
     } finally {
@@ -101,108 +225,152 @@ const DebugSubscription = () => {
     }
   };
 
-  React.useEffect(() => {
-    if (user) {
-      fetchCurrentStatus();
-    }
-  }, [user]);
-
   if (!user) {
     return <div>Please login first</div>;
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Subscription Status Debug</h1>
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Premium Status Diagnostics</h1>
+          <p className="text-gray-600 mt-2">Debug tool for premium user display issues</p>
+        </div>
+        <Button 
+          onClick={runCompleteDiagnostics}
+          disabled={loading}
+          className="btn-primary"
+        >
+          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <AlertCircle className="w-4 h-4 mr-2" />}
+          Run Complete Diagnostics
+        </Button>
+      </div>
 
-        {/* Current Status */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Subscription Info */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 当前状态概览 */}
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <CheckCircle className="w-5 h-5 mr-2 text-blue-500" />
+            Current Frontend Status
+          </h2>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span>Is Premium:</span>
+              <span className={`font-semibold ${isPremium ? 'text-green-600' : 'text-red-600'}`}>
+                {isPremium ? 'Yes' : 'No'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Subscription Tier:</span>
+              <span className={`px-2 py-1 rounded text-xs ${user.subscriptionTier === 'premium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
+                {user.subscriptionTier || 'unknown'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Max Sources:</span>
+              <span>{limits.maxSources}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Can Schedule Digest:</span>
+              <span>{limits.canScheduleDigest ? 'Yes' : 'No'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Can Process Weekly:</span>
+              <span>{limits.canProcessWeekly ? 'Yes' : 'No'}</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* 诊断结果 */}
+        {diagnosticsResult && (
+          <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <CheckCircle className="w-5 h-5 mr-2 text-green-500" />
-              Subscription Info
+              {diagnosticsResult.inconsistencies.length > 0 ? (
+                <XCircle className="w-5 h-5 mr-2 text-red-500" />
+              ) : (
+                <CheckCircle className="w-5 h-5 mr-2 text-green-500" />
+              )}
+              Diagnostics Result
             </h2>
-            {subscriptionData ? (
-              <div className="space-y-2 text-sm">
-                <p><strong>Status:</strong> <span className={`px-2 py-1 rounded text-xs ${subscriptionData.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{subscriptionData.status}</span></p>
-                <p><strong>Plan:</strong> {subscriptionData.plan_type}</p>
-                <p><strong>Subscription ID:</strong> {subscriptionData.stripe_subscription_id}</p>
-                <p><strong>Expires:</strong> {new Date(subscriptionData.current_period_end).toLocaleString()}</p>
-                <p><strong>Cancel at Period End:</strong> {subscriptionData.cancel_at_period_end ? 'Yes' : 'No'}</p>
+            
+            {diagnosticsResult.inconsistencies.length > 0 ? (
+              <div className="space-y-3">
+                <div className="text-red-600 font-semibold">
+                  Found {diagnosticsResult.inconsistencies.length} issue(s):
+                </div>
+                {diagnosticsResult.inconsistencies.map((issue: any, idx: number) => (
+                  <div key={idx} className="bg-red-50 border border-red-200 rounded p-3">
+                    <div className="text-sm text-red-800">
+                      <span className="font-semibold">{issue.type}:</span> {issue.message}
+                    </div>
+                  </div>
+                ))}
+                
+                <div className="mt-4">
+                  <h3 className="font-semibold text-blue-600 mb-2">Recommended Actions:</h3>
+                  {diagnosticsResult.recommendations.map((rec: any, idx: number) => (
+                    <div key={idx} className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
+                      <span className={`font-semibold ${rec.priority === 'critical' ? 'text-red-600' : rec.priority === 'high' ? 'text-orange-600' : 'text-blue-600'}`}>
+                        [{rec.priority.toUpperCase()}]:
+                      </span> {rec.description}
+                    </div>
+                  ))}
+                </div>
+
+                <Button 
+                  onClick={fixDataInconsistency}
+                  disabled={loading}
+                  className="w-full mt-4 bg-red-600 hover:bg-red-700"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Fix Data Inconsistency
+                </Button>
               </div>
             ) : (
-              <p className="text-gray-500">No subscription record</p>
+              <div className="text-green-600">
+                ✅ All data appears consistent. No issues detected.
+              </div>
             )}
-          </div>
+          </Card>
+        )}
+      </div>
 
-          {/* User Info */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <AlertCircle className="w-5 h-5 mr-2 text-blue-500" />
-              User Permissions
-            </h2>
+      {/* 详细数据展示 */}
+      {diagnosticsResult && (
+        <div className="mt-8 space-y-6">
+          {/* 数据库用户数据 */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Database User Data</h2>
             {userData ? (
-              <div className="space-y-2 text-sm">
-                <p><strong>Subscription Tier:</strong> <span className={`px-2 py-1 rounded text-xs ${userData.subscription_tier === 'premium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>{userData.subscription_tier}</span></p>
-                <p><strong>Max Sources:</strong> {userData.max_sources}</p>
-                <p><strong>Can Schedule Digest:</strong> {userData.can_schedule_digest ? 'Yes' : 'No'}</p>
-                <p><strong>Can Process Weekly:</strong> {userData.can_process_weekly ? 'Yes' : 'No'}</p>
+              <div className="bg-gray-50 rounded p-4 text-sm font-mono">
+                <pre>{JSON.stringify(userData, null, 2)}</pre>
               </div>
             ) : (
               <p className="text-gray-500">No user data</p>
             )}
-          </div>
-        </div>
+          </Card>
 
-        {/* Actions */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Actions</h2>
-          <div className="flex gap-4">
-            <Button 
-              onClick={fetchCurrentStatus}
-              disabled={loading}
-              variant="outline"
-            >
-              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-              Refresh Status
-            </Button>
+          {/* 数据库订阅数据 */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Database Subscription Data</h2>
+            {subscriptionData ? (
+              <div className="bg-gray-50 rounded p-4 text-sm font-mono">
+                <pre>{JSON.stringify(subscriptionData, null, 2)}</pre>
+              </div>
+            ) : (
+              <p className="text-gray-500">No subscription data</p>
+            )}
+          </Card>
 
-            <Button 
-              onClick={manualSyncToPremium}
-              disabled={loading || !subscriptionData || subscriptionData.status !== 'active'}
-              className="btn-primary"
-            >
-              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Manual Sync to Premium
-            </Button>
-          </div>
-
-          {subscriptionData && subscriptionData.status === 'active' && userData && userData.subscription_tier !== 'premium' && (
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-yellow-800 text-sm">
-                <strong>Issue Detected:</strong> You have an active subscription but user permissions have not been updated to premium. Please click "Manual Sync to Premium" button.
-              </p>
+          {/* 完整诊断数据 */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Complete Diagnostics Data</h2>
+            <div className="bg-gray-50 rounded p-4 text-sm font-mono">
+              <pre>{JSON.stringify(diagnosticsResult, null, 2)}</pre>
             </div>
-          )}
-
-          {subscriptionData && subscriptionData.status === 'active' && userData && userData.subscription_tier === 'premium' && (
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800 text-sm">
-                <strong>Status Normal:</strong> Your subscription and user permissions are correctly configured.
-              </p>
-            </div>
-          )}
+          </Card>
         </div>
-
-        {/* User ID for manual SQL updates */}
-        <div className="mt-6 bg-gray-50 rounded-lg p-4">
-          <p className="text-sm text-gray-600">
-            <strong>User ID (for manual SQL updates):</strong> <code className="bg-gray-200 px-2 py-1 rounded">{user.id}</code>
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

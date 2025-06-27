@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Crown, Zap, Shield, ArrowRight } from 'lucide-react';
+import { Crown, Zap, Shield, ArrowRight, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useSubscription } from '../../hooks/useSubscription';
 import { navigateTo } from '../../utils/navigation';
+import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../hooks/use-toast';
 
 interface SubscriptionStatusProps {
   showUpgradePrompt?: boolean;
@@ -15,6 +17,35 @@ const SubscriptionStatus: React.FC<SubscriptionStatusProps> = ({
   className = ""
 }) => {
   const { isPremium, isFree, limits, isLoading } = useSubscription();
+  const { user, refreshUser } = useAuth();
+  const { toast } = useToast();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // 快速修复premium状态显示问题
+  const handleQuickFix = async () => {
+    if (!user) return;
+
+    try {
+      setIsRefreshing(true);
+      
+      // 强制刷新用户数据
+      await refreshUser();
+      
+      toast({
+        title: "✅ Status Refreshed",
+        description: "Your premium status has been refreshed. If you're still seeing issues, please visit /debug-subscription for detailed diagnostics.",
+      });
+    } catch (error) {
+      console.error('Quick fix failed:', error);
+      toast({
+        title: "Refresh Failed",
+        description: "Unable to refresh status. Please try logging out and back in.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -32,6 +63,34 @@ const SubscriptionStatus: React.FC<SubscriptionStatusProps> = ({
         : 'bg-gradient-to-br from-white via-blue-50 to-indigo-50 border-indigo-200'
     }`}>
       <div className="p-5">
+        {/* Quick Fix Button for Premium Users showing as Free */}
+        {!isPremium && user && (
+          <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <AlertTriangle className="w-4 h-4 text-orange-600 mr-2" />
+                <span className="text-sm text-orange-800">
+                  Premium user? Status not showing correctly?
+                </span>
+              </div>
+              <Button
+                onClick={handleQuickFix}
+                disabled={isRefreshing}
+                size="sm"
+                variant="outline"
+                className="text-orange-700 border-orange-300 hover:bg-orange-100"
+              >
+                {isRefreshing ? (
+                  <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                )}
+                Quick Fix
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Upgrade Button - Made more prominent for free users */}
         {isFree && showUpgradePrompt && (
           <div className="mb-4 p-1 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-xl">
