@@ -107,9 +107,9 @@ file_size_limit = "50MiB"
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "https://happynocode.github.io/flowsense/"
+site_url = "http://localhost:5173"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["http://localhost:8080/*", "https://happynocode.github.io/flowsense/"]
+additional_redirect_urls = ["http://localhost:5173", "https://happynocode.github.io/flowsense/"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # If disabled, the refresh token will never expire.
@@ -198,6 +198,13 @@ max_frequency = "5s"
 # 4152127777 = "123456"
 
 # Configure logged in session timeouts.
+
+# Google OAuth Configuration
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
+# Redirect URL should be: your_supabase_url/auth/v1/callback
 # [auth.sessions]
 # Force log out after the specified duration.
 # timebox = "24h"

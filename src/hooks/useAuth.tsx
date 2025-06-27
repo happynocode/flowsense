@@ -11,6 +11,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateAutoDigestSettings: (settings: {
@@ -368,6 +369,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
+      // 检查是否是 Google OAuth 用户
+      const isGoogleUser = supabaseUser.app_metadata?.provider === 'google';
+      const googleId = isGoogleUser ? supabaseUser.user_metadata?.sub || supabaseUser.id : null;
+      
+      console.log('🔍 [诊断] 用户认证信息:', {
+        provider: supabaseUser.app_metadata?.provider,
+        isGoogleUser,
+        googleId,
+        sub: supabaseUser.user_metadata?.sub
+      });
+
       // 准备基础用户数据（用于更新）
       const baseUserData = {
         id: supabaseUser.id,
@@ -376,6 +388,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               supabaseUser.user_metadata?.name || 
               supabaseUser.email?.split('@')[0] || 'User',
         avatar_url: supabaseUser.user_metadata?.avatar_url || null,
+        google_id: googleId,
         updated_at: new Date().toISOString()
       };
       
@@ -445,6 +458,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .update({
                 name: baseUserData.name,
                 avatar_url: baseUserData.avatar_url,
+                google_id: baseUserData.google_id,
                 updated_at: baseUserData.updated_at
                 // 🔧 移除auto digest字段，不覆盖用户已保存的设置
               })
@@ -675,6 +689,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      console.log('🔐 开始 Google 登录...');
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        }
+      });
+
+      if (error) {
+        console.error('❌ Google 登录错误:', error);
+        let errorMessage = error.message;
+        
+        if (error.message.includes('User denied')) {
+          errorMessage = '您取消了 Google 登录授权。';
+        } else if (error.message.includes('redirect_uri_mismatch')) {
+          errorMessage = 'Google OAuth 配置错误，请检查重定向 URL 设置。';
+        } else if (error.message.includes('invalid_client')) {
+          errorMessage = 'Google OAuth 客户端配置错误，请检查 Client ID 和 Secret。';
+        }
+        
+        toast({
+          title: "Google 登录失败",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        throw error;
+      }
+
+      console.log('✅ Google 登录请求成功，等待重定向...');
+      
+      // OAuth 登录会自动重定向，不需要在这里处理用户数据
+      // 用户数据将在重定向回来后由 onAuthStateChange 处理
+      
+    } catch (error: any) {
+      console.error('❌ Google sign in error:', error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       console.log('🚪 开始登出...');
@@ -900,6 +960,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
     logout,
     refreshUser,
     updateAutoDigestSettings,
