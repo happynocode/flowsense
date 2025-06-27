@@ -345,128 +345,211 @@ const Digests = () => {
           /* Enhanced Digests List */
           <div className="space-y-6">
             {digestsArray.map((digest) => (
-              <div key={digest.id} className="modern-card-elevated hover-lift overflow-hidden transition-all duration-200">
-                {/* Enhanced Digest Header */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b border-gray-200">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-4 flex-1 min-w-0">
-                      {/* Digest Icon */}
-                      <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center text-white shadow-lg">
-                        <FileText className="h-6 w-6" />
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        {/* Digest Title */}
-                        <div className="mb-2">
-                          <h3 className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-                            {generateDigestTitle(digest, userTimezone)}
-                          </h3>
-                        </div>
-                        
-                        {/* Stats Row - Responsive */}
-                        <div className="flex flex-wrap items-center gap-2 mb-3">
-                          <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
-                            <div className="flex items-center space-x-1">
-                              <FileText className="w-3 h-3 text-blue-600" />
-                              <span className="text-sm font-semibold text-gray-900">{digest.summaries.length}</span>
-                              <span className="text-xs text-gray-600">summaries</span>
-                            </div>
-                          </div>
-                          
-                          <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
-                            <div className="flex items-center space-x-1">
-                              <Clock className="w-3 h-3 text-purple-600" />
-                              <span className="text-sm font-semibold text-gray-900">{getTotalReadingTime(digest)}</span>
-                              <span className="text-xs text-gray-600">min</span>
-                            </div>
-                          </div>
-                          
-                          {digest.audioUrl && (
-                            <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
-                              <div className="flex items-center space-x-1">
-                                <Play className="w-3 h-3 text-green-600" />
-                                <span className="text-xs text-gray-600">Audio</span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Action Button Row - Mobile responsive */}
-                        <div className="flex items-center justify-between">
-                          {/* Date and Status */}
-                          <div className="flex items-center space-x-3">
-                            <div className="flex items-center space-x-2">
-                              <Calendar className="h-3 w-3 text-gray-500" />
-                              <span className="text-sm text-gray-600">
-                                {formatDate(digest.createdAt, userTimezone)}
-                              </span>
-                            </div>
-                            {!digest.isRead && (
-                              <Badge className="badge-accent text-xs">
-                                New
-                              </Badge>
-                            )}
-                          </div>
-                          
-                          {/* Read Button - Always visible */}
-                          <Link to={`/digests/${digest.id}`}>
-                            <Button 
-                              onClick={() => markAsRead(digest)}
-                              className="btn-primary bg-gradient-primary hover:shadow-lg text-white font-semibold px-4 py-2 rounded-lg shadow-md transition-all duration-200"
-                            >
-                              <FileText className="h-4 w-4" />
-                              <span className="hidden sm:inline ml-2">Read Digest</span>
-                              <span className="sm:hidden ml-2">Read</span>
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Action Button */}
-                    <div className="flex items-center gap-3 ml-4">
+              <div key={digest.id}>
+                {/* Mobile Layout */}
+                <div className="lg:hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="p-4 space-y-3">
+                    {/* Title Row */}
+                    <div className="flex items-start justify-between">
+                      <h3 className="text-lg font-bold text-gray-900 flex-1 pr-2">
+                        {generateDigestTitle(digest, userTimezone)}
+                      </h3>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setDeleteDialog(digest)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 btn-ghost"
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50 p-1 flex-shrink-0"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                </div>
-                
-                {/* Enhanced Content Preview */}
-                <div className="p-6 space-y-4">
-                  {digest.summaries.slice(0, 3).map((summary, index) => (
-                    <div key={index} className="modern-card-elevated p-4 hover-lift">
-                      <div className="flex items-start space-x-3">
-                        <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm">
-                          {index + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-gray-900 mb-2 break-words">
-                            {summary.title}
-                          </h4>
-                          <p className="text-gray-600 text-sm leading-relaxed">
-                            {summary.content.length > 200 
-                              ? `${summary.content.substring(0, 200)}...` 
-                              : summary.content
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {digest.summaries.length > 3 && (
-                    <div className="text-center py-2">
-                      <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                        and {digest.summaries.length - 3} more summaries...
+                    
+                    {/* Date Row */}
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600">
+                        {formatDate(digest.createdAt, userTimezone)}
                       </span>
+                      {!digest.isRead && (
+                        <Badge className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5">
+                          New
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    {/* Stats Row */}
+                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                      <div className="flex items-center space-x-1">
+                        <FileText className="h-4 w-4 text-blue-500" />
+                        <span className="font-medium text-gray-900">{digest.summaries.length}</span>
+                        <span>summaries</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Clock className="h-4 w-4 text-purple-500" />
+                        <span className="font-medium text-gray-900">{getTotalReadingTime(digest)}</span>
+                        <span>min read</span>
+                      </div>
+                      {digest.audioUrl && (
+                        <div className="flex items-center space-x-1">
+                          <Play className="h-4 w-4 text-green-500" />
+                          <span>Audio</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Read Button */}
+                    <Link to={`/digests/${digest.id}`} className="block">
+                      <Button 
+                        onClick={() => markAsRead(digest)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg shadow-sm"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Read Digest
+                      </Button>
+                    </Link>
+                  </div>
+                  
+                  {/* Mobile Content Preview - Simple */}
+                  {digest.summaries.length > 0 && (
+                    <div className="border-t border-gray-100 p-4 bg-gray-50">
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        {digest.summaries[0].content.length > 120 
+                          ? `${digest.summaries[0].content.substring(0, 120)}...` 
+                          : digest.summaries[0].content
+                        }
+                      </p>
+                      {digest.summaries.length > 1 && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          +{digest.summaries.length - 1} more articles
+                        </p>
+                      )}
                     </div>
                   )}
+                </div>
+
+                {/* Desktop Layout */}
+                <div className="hidden lg:block modern-card-elevated hover-lift overflow-hidden transition-all duration-200">
+                  {/* Enhanced Digest Header */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b border-gray-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-4 flex-1 min-w-0">
+                        {/* Digest Icon */}
+                        <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center text-white shadow-lg">
+                          <FileText className="h-6 w-6" />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          {/* Digest Title */}
+                          <div className="mb-2">
+                            <h3 className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                              {generateDigestTitle(digest, userTimezone)}
+                            </h3>
+                          </div>
+                          
+                          {/* Stats Row - Responsive */}
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
+                              <div className="flex items-center space-x-1">
+                                <FileText className="w-3 h-3 text-blue-600" />
+                                <span className="text-sm font-semibold text-gray-900">{digest.summaries.length}</span>
+                                <span className="text-xs text-gray-600">summaries</span>
+                              </div>
+                            </div>
+                            
+                            <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
+                              <div className="flex items-center space-x-1">
+                                <Clock className="w-3 h-3 text-purple-600" />
+                                <span className="text-sm font-semibold text-gray-900">{getTotalReadingTime(digest)}</span>
+                                <span className="text-xs text-gray-600">min</span>
+                              </div>
+                            </div>
+                            
+                            {digest.audioUrl && (
+                              <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
+                                <div className="flex items-center space-x-1">
+                                  <Play className="w-3 h-3 text-green-600" />
+                                  <span className="text-xs text-gray-600">Audio</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Action Button Row - Mobile responsive */}
+                          <div className="flex items-center justify-between">
+                            {/* Date and Status */}
+                            <div className="flex items-center space-x-3">
+                              <div className="flex items-center space-x-2">
+                                <Calendar className="h-3 w-3 text-gray-500" />
+                                <span className="text-sm text-gray-600">
+                                  {formatDate(digest.createdAt, userTimezone)}
+                                </span>
+                              </div>
+                              {!digest.isRead && (
+                                <Badge className="badge-accent text-xs">
+                                  New
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {/* Read Button - Always visible */}
+                            <Link to={`/digests/${digest.id}`}>
+                              <Button 
+                                onClick={() => markAsRead(digest)}
+                                className="btn-primary bg-gradient-primary hover:shadow-lg text-white font-semibold px-4 py-2 rounded-lg shadow-md transition-all duration-200"
+                              >
+                                <FileText className="h-4 w-4" />
+                                <span className="ml-2">Read Digest</span>
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Action Button */}
+                      <div className="flex items-center gap-3 ml-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteDialog(digest)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 btn-ghost"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                
+                  {/* Enhanced Content Preview - Desktop Only */}
+                  <div className="p-6 space-y-4">
+                    {digest.summaries.slice(0, 3).map((summary, index) => (
+                      <div key={index} className="modern-card-elevated p-4 hover-lift">
+                        <div className="flex items-start space-x-3">
+                          <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-gray-900 mb-2 break-words">
+                              {summary.title}
+                            </h4>
+                            <p className="text-gray-600 text-sm leading-relaxed">
+                              {summary.content.length > 200 
+                                ? `${summary.content.substring(0, 200)}...` 
+                                : summary.content
+                              }
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {digest.summaries.length > 3 && (
+                      <div className="text-center py-2">
+                        <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                          and {digest.summaries.length - 3} more summaries...
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
