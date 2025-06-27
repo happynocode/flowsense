@@ -34,10 +34,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
 
   // 🛠️ 针对 StackBlitz 环境优化的 refreshUser 函数
   const refreshUser = async () => {
+    if (isRefreshing) {
+      console.log('⚠️ refreshUser 已在执行中，跳过重复调用');
+      return;
+    }
+    
+    setIsRefreshing(true);
     console.log('🔄 refreshUser 开始执行（StackBlitz 优化版本）...');
     
     try {
@@ -72,16 +79,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // 构建用户数据
             if (parsedSession.user) {
-              const fallbackUserData = {
+              const fallbackUserDataWithDefaults = {
                 id: parsedSession.user.id,
                 name: parsedSession.user.user_metadata?.full_name || parsedSession.user.email?.split('@')[0] || 'User',
                 email: parsedSession.user.email || '',
                 avatar: parsedSession.user.user_metadata?.avatar_url || '',
                 createdAt: parsedSession.user.created_at || new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                // 🔧 添加默认的订阅信息，确保用户对象完整
+                maxSources: 3,
+                canScheduleDigest: false,
+                canProcessWeekly: false,
+                subscriptionTier: 'free' as const,
+                autoDigestEnabled: false,
+                autoDigestTime: '09:00',
+                autoDigestTimezone: 'UTC',
+                lastAutoDigestRun: undefined
               };
-              setUser(fallbackUserData);
-              console.log('✅ 用户状态已从 localStorage 恢复');
+              console.log('📋 设置带默认值的完整用户对象（从localStorage恢复）:', fallbackUserDataWithDefaults);
+              setUser(fallbackUserDataWithDefaults);
+              console.log('✅ 用户状态已从 localStorage 恢复（包含默认订阅信息）');
+              setIsRefreshing(false);
+              
+              // 🔧 在后台尝试刷新真实的订阅信息
+              setTimeout(async () => {
+                try {
+                  console.log('🔄 后台刷新真实订阅信息...');
+                  const subscriptionInfo = await userApi.getUserSubscriptionInfo();
+                  const autoDigestSettings = await userApi.getAutoDigestSettings();
+                  
+                  const updatedUserData = {
+                    ...fallbackUserDataWithDefaults,
+                    maxSources: subscriptionInfo.maxSources,
+                    canScheduleDigest: subscriptionInfo.canScheduleDigest,
+                    canProcessWeekly: subscriptionInfo.canProcessWeekly,
+                    subscriptionTier: subscriptionInfo.subscriptionTier,
+                    autoDigestEnabled: autoDigestSettings.autoDigestEnabled,
+                    autoDigestTime: autoDigestSettings.autoDigestTime?.substring(0, 5) || '09:00',
+                    autoDigestTimezone: autoDigestSettings.autoDigestTimezone,
+                    lastAutoDigestRun: autoDigestSettings.lastAutoDigestRun
+                  };
+                  
+                  console.log('✅ 后台刷新完成，更新用户数据:', updatedUserData);
+                  setUser(updatedUserData);
+                } catch (bgRefreshError) {
+                  console.warn('⚠️ 后台刷新订阅信息失败，保持默认值:', bgRefreshError);
+                }
+              }, 100); // 100ms后在后台执行
+              
               return;
             }
           } catch (parseError) {
@@ -91,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // 如果 localStorage 也没有，设置为未登录
         setUser(null);
+        setIsRefreshing(false);
         return;
       }
 
@@ -109,6 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!session) {
         console.log('ℹ️ 未找到有效 session，用户未登录');
         setUser(null);
+        setIsRefreshing(false);
         return;
       }
 
@@ -126,43 +173,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatedAt: new Date().toISOString()
       };
       
-      console.log('🎯 设置基础用户数据（来自 session）:', baseUserData);
-      setUser(baseUserData);
-      console.log('✅ setUser 调用完成');
+      console.log('🎯 构建基础用户数据（来自 session）:', baseUserData);
+      // 🔧 不再立即设置基础用户数据，等待获取完整信息后一次性设置
+      console.log('⏳ 延迟设置用户数据，先获取完整信息...');
       
       // 后台获取订阅信息和auto digest设置 - 🔧 添加强制刷新标志
+      console.log('🔄 强制获取用户完整信息（订阅 + auto digest）...');
+      
+      // 🔧 强制从数据库获取最新数据，不使用任何缓存
+      let subscriptionInfo, autoDigestSettings;
+      
       try {
-        console.log('🔄 强制获取用户完整信息（订阅 + auto digest）...');
-        
-        // 🔧 强制从数据库获取最新数据，不使用任何缓存
-        let subscriptionInfo, autoDigestSettings;
-        
-        try {
-          subscriptionInfo = await userApi.getUserSubscriptionInfo();
-          console.log('✅ 订阅信息获取成功:', subscriptionInfo);
-        } catch (subscriptionError) {
-          console.error('❌ 获取订阅信息失败:', subscriptionError);
-          // 使用默认的免费用户限制
-          subscriptionInfo = {
-            maxSources: 3,
-            canScheduleDigest: false,
-            canProcessWeekly: false,
-            subscriptionTier: 'free' as const
-          };
-        }
-        
-        try {
-          autoDigestSettings = await userApi.getAutoDigestSettings();
-          console.log('✅ Auto digest设置获取成功:', autoDigestSettings);
-        } catch (autoDigestError) {
-          console.warn('⚠️ 获取auto digest设置失败，使用默认值:', autoDigestError);
-          autoDigestSettings = {
-            autoDigestEnabled: false,
-            autoDigestTime: '09:00:00',
-            autoDigestTimezone: 'UTC',
-            lastAutoDigestRun: undefined
-          };
-        }
+        subscriptionInfo = await userApi.getUserSubscriptionInfo();
+        console.log('✅ 订阅信息获取成功:', subscriptionInfo);
+      } catch (subscriptionError) {
+        console.error('❌ 获取订阅信息失败:', subscriptionError);
+        // 使用默认的免费用户限制
+        subscriptionInfo = {
+          maxSources: 3,
+          canScheduleDigest: false,
+          canProcessWeekly: false,
+          subscriptionTier: 'free' as const
+        };
+        console.log('📋 使用订阅信息默认值:', subscriptionInfo);
+      }
+      
+      try {
+        autoDigestSettings = await userApi.getAutoDigestSettings();
+        console.log('✅ Auto digest设置获取成功:', autoDigestSettings);
+      } catch (autoDigestError) {
+        console.warn('⚠️ 获取auto digest设置失败，使用默认值:', autoDigestError);
+        autoDigestSettings = {
+          autoDigestEnabled: false,
+          autoDigestTime: '09:00:00',
+          autoDigestTimezone: 'UTC',
+          lastAutoDigestRun: undefined
+        };
+        console.log('📋 使用auto digest设置默认值:', autoDigestSettings);
+      }
+      
+      try {
         
         console.log('🔍 [DEBUG] 强制获取到的订阅信息:', subscriptionInfo);
         console.log('🔍 [DEBUG] 强制获取到的auto digest设置:', autoDigestSettings);
@@ -200,11 +250,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('🔍 [DEBUG] 强制刷新后的最终用户对象:', userWithFullInfo);
         console.log('🔍 [DEBUG] 订阅状态 - subscriptionTier:', userWithFullInfo.subscriptionTier);
         
-        console.log('🔄 更新用户数据（强制刷新 - 包含订阅信息 + auto digest）:', userWithFullInfo);
+        console.log('🔄 一次性设置完整用户数据:', userWithFullInfo);
         setUser(userWithFullInfo);
         
-      } catch (unexpectedError) {
-        console.error('❌ 获取用户完整信息时发生意外错误:', unexpectedError);
+        // 🔍 验证设置结果
+        console.log('✅ 用户对象已设置，验证关键字段:');
+        console.log('  - subscriptionTier:', userWithFullInfo.subscriptionTier);
+        console.log('  - maxSources:', userWithFullInfo.maxSources);
+        console.log('  - canScheduleDigest:', userWithFullInfo.canScheduleDigest);
+        console.log('  - autoDigestEnabled:', userWithFullInfo.autoDigestEnabled);
+        
+      } catch (userObjectError) {
+        console.error('❌ 创建用户对象时发生错误:', userObjectError);
         // 确保至少设置基础用户数据和默认值
         const userWithDefaults = {
           ...baseUserData,
@@ -222,14 +279,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userWithDefaults);
       }
       
-      // 🔧 立即同步到数据库（这对RLS策略很重要）
-      try {
-        await syncUserToDatabase(supabaseUser);
-        console.log('✅ 用户数据库同步完成');
-      } catch (syncError) {
-        console.error('❌ 用户数据库同步失败，这可能导致后续API调用失败:', syncError);
-        // 不阻塞用户体验，但记录错误
-      }
+      // 🔧 立即同步到数据库（这对RLS策略很重要）- 独立错误处理
+      setTimeout(async () => {
+        try {
+          await syncUserToDatabase(supabaseUser);
+          console.log('✅ 用户数据库同步完成');
+        } catch (syncError) {
+          console.error('❌ 用户数据库同步失败，这可能导致后续API调用失败:', syncError);
+          // 不阻塞用户体验，但记录错误
+        }
+      }, 0);
 
     } catch (error) {
       console.warn('⚠️ refreshUser 异常:', error);
@@ -246,9 +305,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       setUser(null);
+    } finally {
+      setIsRefreshing(false);
+      console.log('🏁 refreshUser 执行完成');
     }
-    
-    console.log('🏁 refreshUser 执行完成');
   };
 
   // 指数退避重试函数
@@ -582,16 +642,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('✅ 登录后用户信息获取完成');
         } catch (refreshError) {
           console.warn('⚠️ 登录后获取用户信息失败，设置基础用户数据:', refreshError);
-          // 如果refreshUser失败，至少设置基础用户数据
-          const authUserData = {
+          // 如果refreshUser失败，设置带有默认订阅信息的完整用户数据
+          const authUserDataWithDefaults = {
             id: data.user.id,
             name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
             email: data.user.email || '',
             avatar: data.user.user_metadata?.avatar_url || '',
             createdAt: data.user.created_at || new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            // 🔧 添加默认的订阅信息，确保用户对象完整
+            maxSources: 3,
+            canScheduleDigest: false,
+            canProcessWeekly: false,
+            subscriptionTier: 'free' as const,
+            autoDigestEnabled: false,
+            autoDigestTime: '09:00',
+            autoDigestTimezone: 'UTC',
+            lastAutoDigestRun: undefined
           };
-          setUser(authUserData);
+          console.log('📋 设置带默认值的完整用户数据（登录回退）:', authUserDataWithDefaults);
+          setUser(authUserDataWithDefaults);
         }
         
         // 后台同步数据库
@@ -770,17 +840,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await refreshUser();
           console.log('✅ 认证状态变化后用户信息获取完成');
         } catch (refreshError) {
-          console.warn('⚠️ 认证状态变化后获取用户信息失败，设置基础用户数据:', refreshError);
-          // 如果refreshUser失败，至少设置基础用户数据
-          const authUserData = {
+          console.warn('⚠️ 认证状态变化后获取用户信息失败，设置带默认值的完整用户数据:', refreshError);
+          // 如果refreshUser失败，设置带有默认订阅信息的完整用户对象
+          const authUserDataWithDefaults = {
             id: session.user.id,
             name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
             email: session.user.email || '',
             avatar: session.user.user_metadata?.avatar_url || '',
             createdAt: session.user.created_at || new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            // 🔧 添加默认的订阅信息，防止用户对象不完整
+            maxSources: 3,
+            canScheduleDigest: false,
+            canProcessWeekly: false,
+            subscriptionTier: 'free' as const,
+            autoDigestEnabled: false,
+            autoDigestTime: '09:00',
+            autoDigestTimezone: 'UTC',
+            lastAutoDigestRun: undefined
           };
-          setUser(authUserData);
+          console.log('📋 设置带默认值的完整用户对象:', authUserDataWithDefaults);
+          setUser(authUserDataWithDefaults);
         }
         setLoading(false);
       } else if (event === 'SIGNED_OUT') {

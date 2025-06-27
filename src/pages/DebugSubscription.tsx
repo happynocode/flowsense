@@ -1,30 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useSubscription } from '../hooks/useSubscription';
 import { supabase } from '../lib/supabase';
 import { userApi } from '../services/api';
 import { subscriptionService } from '../services/subscription';
 import { Button } from '../components/ui/button';
-import { Card } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { useToast } from '../hooks/use-toast';
 import { AlertCircle, RefreshCw, Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import Header from '@/components/layout/Header';
+import { Badge } from '@/components/ui/badge';
 
 const DebugSubscription = () => {
-  const { user, refreshUser } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
   const { isPremium, isFree, limits } = useSubscription();
   const { toast } = useToast();
   
-  const [loading, setLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
   const [diagnosticsResult, setDiagnosticsResult] = useState<any>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [rawDbData, setRawDbData] = useState<any>(null);
+  const [apiData, setApiData] = useState<any>(null);
+  const [isDebugging, setIsDebugging] = useState(false);
 
   // 完整的诊断流程
   const runCompleteDiagnostics = async () => {
     if (!user) return;
 
     try {
-      setLoading(true);
+      setIsProcessing(true);
       const diagnostics: any = {
         timestamp: new Date().toISOString(),
         user_id: user.id,
@@ -170,7 +176,7 @@ const DebugSubscription = () => {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsProcessing(false);
     }
   };
 
@@ -179,7 +185,7 @@ const DebugSubscription = () => {
     if (!user || !diagnosticsResult) return;
 
     try {
-      setLoading(true);
+      setIsProcessing(true);
 
       // 如果有活跃订阅但用户不是premium，则同步状态
       if (subscriptionData?.status === 'active' && userData?.subscription_tier !== 'premium') {
@@ -220,8 +226,198 @@ const DebugSubscription = () => {
         description: "Unable to fix the inconsistency",
         variant: "destructive",
       });
+          } finally {
+        setIsProcessing(false);
+      }
+  };
+
+  // 🔍 深度调试函数 - 检查所有可能的数据源
+  const runFullDiagnostic = async () => {
+    setIsDebugging(true);
+    console.log('🔍 开始全面诊断...');
+    
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        console.error('❌ 未找到认证用户');
+        setDebugInfo({ error: '未找到认证用户' });
+        return;
+      }
+
+      console.log('✅ 认证用户:', authUser.id);
+
+      // 1. 直接查询数据库中的完整用户记录
+      console.log('🔍 Step 1: 查询完整用户记录...');
+      const { data: dbUser, error: dbError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      console.log('📋 数据库查询结果:', { dbUser, dbError });
+
+      // 2. 使用API方法获取订阅信息
+      console.log('🔍 Step 2: 使用API获取订阅信息...');
+      let apiSubInfo = null;
+      let apiError = null;
+      try {
+        apiSubInfo = await userApi.getUserSubscriptionInfo();
+        console.log('✅ API订阅信息:', apiSubInfo);
+      } catch (err) {
+        apiError = err;
+        console.error('❌ API订阅信息获取失败:', err);
+      }
+
+      // 3. 使用API方法获取auto digest设置
+      console.log('🔍 Step 3: 使用API获取auto digest设置...');
+      let apiAutoDigest = null;
+      let autoDigestError = null;
+      try {
+        apiAutoDigest = await userApi.getAutoDigestSettings();
+        console.log('✅ API Auto Digest设置:', apiAutoDigest);
+      } catch (err) {
+        autoDigestError = err;
+        console.error('❌ API Auto Digest设置获取失败:', err);
+      }
+
+      // 4. 检查subscriptions表
+      console.log('🔍 Step 4: 查询subscriptions表...');
+      const { data: subscriptions, error: subsError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', authUser.id);
+
+      console.log('📋 Subscriptions表查询结果:', { subscriptions, subsError });
+
+      // 5. 数据一致性分析
+      const diagnostic = {
+        timestamp: new Date().toISOString(),
+        authUser: {
+          id: authUser.id,
+          email: authUser.email,
+          created_at: authUser.created_at
+        },
+        database: {
+          user: dbUser,
+          error: dbError?.message,
+          subscriptions: subscriptions,
+          subscriptionError: subsError?.message
+        },
+        api: {
+          subscriptionInfo: apiSubInfo,
+          subscriptionError: apiError?.message,
+          autoDigestSettings: apiAutoDigest,
+          autoDigestError: autoDigestError?.message
+        },
+                 userObject: {
+           hasUser: !!user,
+           fullUserObject: user, // 完整的用户对象
+           subscriptionTier: user?.subscriptionTier,
+           maxSources: user?.maxSources,
+           canScheduleDigest: user?.canScheduleDigest,
+           canProcessWeekly: user?.canProcessWeekly,
+           autoDigestEnabled: user?.autoDigestEnabled,
+           autoDigestTime: user?.autoDigestTime,
+           autoDigestTimezone: user?.autoDigestTimezone,
+           userObjectKeys: user ? Object.keys(user) : [] // 显示用户对象包含的所有键
+         },
+        consistency: {
+          dbVsApi: {
+            subscriptionTier: dbUser?.subscription_tier === apiSubInfo?.subscriptionTier,
+            maxSources: dbUser?.max_sources === apiSubInfo?.maxSources,
+            canScheduleDigest: dbUser?.can_schedule_digest === apiSubInfo?.canScheduleDigest,
+            canProcessWeekly: dbUser?.can_process_weekly === apiSubInfo?.canProcessWeekly
+          },
+          dbVsUser: {
+            subscriptionTier: dbUser?.subscription_tier === user?.subscriptionTier,
+            maxSources: dbUser?.max_sources === user?.maxSources,
+            canScheduleDigest: dbUser?.can_schedule_digest === user?.canScheduleDigest,
+            canProcessWeekly: dbUser?.can_process_weekly === user?.canProcessWeekly,
+            autoDigestEnabled: dbUser?.auto_digest_enabled === user?.autoDigestEnabled
+          },
+          apiVsUser: {
+            subscriptionTier: apiSubInfo?.subscriptionTier === user?.subscriptionTier,
+            maxSources: apiSubInfo?.maxSources === user?.maxSources,
+            canScheduleDigest: apiSubInfo?.canScheduleDigest === user?.canScheduleDigest,
+            canProcessWeekly: apiSubInfo?.canProcessWeekly === user?.canProcessWeekly
+          }
+        }
+      };
+
+      console.log('📊 完整诊断报告:', diagnostic);
+      setDebugInfo(diagnostic);
+      setRawDbData(dbUser);
+      setApiData(apiSubInfo);
+
+    } catch (error) {
+      console.error('❌ 诊断过程发生错误:', error);
+      setDebugInfo({ error: error.message });
     } finally {
-      setLoading(false);
+      setIsDebugging(false);
+    }
+  };
+
+  // 🔧 强制修复函数
+  const forceFixUserState = async () => {
+    try {
+      console.log('🔧 开始强制修复用户状态...');
+      
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('未找到认证用户');
+
+      // 直接查询数据库获取最新数据
+      const { data: dbUser, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) throw error;
+
+      console.log('📋 强制修复 - 数据库用户数据:', dbUser);
+
+      // 如果数据库中确实是premium用户，但字段缺失，则补充字段
+      if (dbUser && !dbUser.subscription_tier) {
+        console.log('🔧 检测到缺失的subscription_tier字段，尝试修复...');
+        
+        // 检查subscriptions表确定用户的实际订阅状态
+        const { data: subscriptions } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .eq('status', 'active');
+
+        const isPremium = subscriptions && subscriptions.length > 0;
+        
+        // 更新用户记录
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            subscription_tier: isPremium ? 'premium' : 'free',
+            max_sources: isPremium ? 20 : 3,
+            can_schedule_digest: isPremium,
+            can_process_weekly: isPremium,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', authUser.id);
+
+        if (updateError) {
+          console.error('❌ 用户记录更新失败:', updateError);
+        } else {
+          console.log('✅ 用户记录已更新');
+        }
+      }
+
+      // 强制刷新用户状态
+      await refreshUser();
+      
+      console.log('✅ 强制修复完成');
+      
+      // 重新运行诊断
+      setTimeout(() => runFullDiagnostic(), 1000);
+      
+    } catch (error) {
+      console.error('❌ 强制修复失败:', error);
     }
   };
 
@@ -230,147 +426,98 @@ const DebugSubscription = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Premium Status Diagnostics</h1>
-          <p className="text-gray-600 mt-2">Debug tool for premium user display issues</p>
-        </div>
-        <Button 
-          onClick={runCompleteDiagnostics}
-          disabled={loading}
-          className="btn-primary"
-        >
-          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <AlertCircle className="w-4 h-4 mr-2" />}
-          Run Complete Diagnostics
-        </Button>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="container mx-auto px-4 py-8">
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-gray-800">
+              🔍 Premium用户状态调试
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+                         <div className="flex gap-4 flex-wrap">
+               <Button 
+                 onClick={runFullDiagnostic}
+                 disabled={isDebugging}
+                 variant="outline"
+               >
+                 {isDebugging ? '诊断中...' : '🔍 全面诊断'}
+               </Button>
+               
+               <Button 
+                 onClick={async () => {
+                   try {
+                     setIsDebugging(true);
+                     console.log('🔍 开始数据库访问测试...');
+                     const result = await userApi.debugDatabaseAccess();
+                     console.log('📊 数据库访问测试结果:', result);
+                     setDebugInfo({ databaseTest: result });
+                   } catch (error) {
+                     console.error('❌ 数据库访问测试失败:', error);
+                     setDebugInfo({ error: error.message });
+                   } finally {
+                     setIsDebugging(false);
+                   }
+                 }}
+                 disabled={isDebugging}
+                 variant="outline"
+               >
+                 🔧 数据库测试
+               </Button>
+               
+               <Button 
+                 onClick={forceFixUserState}
+                 disabled={isDebugging}
+                 variant="destructive"
+               >
+                 🔧 强制修复
+               </Button>
+               
+               <Button 
+                 onClick={refreshUser}
+                 disabled={loading || isProcessing}
+                 variant="secondary"
+               >
+                 🔄 刷新用户状态
+               </Button>
+             </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 当前状态概览 */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4 flex items-center">
-            <CheckCircle className="w-5 h-5 mr-2 text-blue-500" />
-            Current Frontend Status
-          </h2>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span>Is Premium:</span>
-              <span className={`font-semibold ${isPremium ? 'text-green-600' : 'text-red-600'}`}>
-                {isPremium ? 'Yes' : 'No'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Subscription Tier:</span>
-              <span className={`px-2 py-1 rounded text-xs ${user.subscriptionTier === 'premium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
-                {user.subscriptionTier || 'unknown'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Max Sources:</span>
-              <span>{limits.maxSources}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Can Schedule Digest:</span>
-              <span>{limits.canScheduleDigest ? 'Yes' : 'No'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Can Process Weekly:</span>
-              <span>{limits.canProcessWeekly ? 'Yes' : 'No'}</span>
-            </div>
-          </div>
+            {/* 当前用户状态 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>当前用户状态</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><strong>Loading:</strong> {loading ? '是' : '否'}</div>
+                  <div><strong>User存在:</strong> {user ? '是' : '否'}</div>
+                  <div><strong>订阅等级:</strong> <Badge variant={user?.subscriptionTier === 'premium' ? 'default' : 'secondary'}>{user?.subscriptionTier || '未知'}</Badge></div>
+                  <div><strong>最大Sources:</strong> {user?.maxSources || '未知'}</div>
+                  <div><strong>可预定Digest:</strong> {user?.canScheduleDigest ? '是' : '否'}</div>
+                  <div><strong>可处理周内容:</strong> {user?.canProcessWeekly ? '是' : '否'}</div>
+                  <div><strong>Auto Digest启用:</strong> {user?.autoDigestEnabled ? '是' : '否'}</div>
+                  <div><strong>Auto Digest时间:</strong> {user?.autoDigestTime || '未知'}</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 诊断结果 */}
+            {debugInfo && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>📊 诊断结果</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <pre className="text-xs bg-gray-100 p-4 rounded overflow-auto max-h-96">
+                    {JSON.stringify(debugInfo, null, 2)}
+                  </pre>
+                </CardContent>
+              </Card>
+            )}
+          </CardContent>
         </Card>
-
-        {/* 诊断结果 */}
-        {diagnosticsResult && (
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              {diagnosticsResult.inconsistencies.length > 0 ? (
-                <XCircle className="w-5 h-5 mr-2 text-red-500" />
-              ) : (
-                <CheckCircle className="w-5 h-5 mr-2 text-green-500" />
-              )}
-              Diagnostics Result
-            </h2>
-            
-            {diagnosticsResult.inconsistencies.length > 0 ? (
-              <div className="space-y-3">
-                <div className="text-red-600 font-semibold">
-                  Found {diagnosticsResult.inconsistencies.length} issue(s):
-                </div>
-                {diagnosticsResult.inconsistencies.map((issue: any, idx: number) => (
-                  <div key={idx} className="bg-red-50 border border-red-200 rounded p-3">
-                    <div className="text-sm text-red-800">
-                      <span className="font-semibold">{issue.type}:</span> {issue.message}
-                    </div>
-                  </div>
-                ))}
-                
-                <div className="mt-4">
-                  <h3 className="font-semibold text-blue-600 mb-2">Recommended Actions:</h3>
-                  {diagnosticsResult.recommendations.map((rec: any, idx: number) => (
-                    <div key={idx} className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
-                      <span className={`font-semibold ${rec.priority === 'critical' ? 'text-red-600' : rec.priority === 'high' ? 'text-orange-600' : 'text-blue-600'}`}>
-                        [{rec.priority.toUpperCase()}]:
-                      </span> {rec.description}
-                    </div>
-                  ))}
-                </div>
-
-                <Button 
-                  onClick={fixDataInconsistency}
-                  disabled={loading}
-                  className="w-full mt-4 bg-red-600 hover:bg-red-700"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  Fix Data Inconsistency
-                </Button>
-              </div>
-            ) : (
-              <div className="text-green-600">
-                ✅ All data appears consistent. No issues detected.
-              </div>
-            )}
-          </Card>
-        )}
       </div>
-
-      {/* 详细数据展示 */}
-      {diagnosticsResult && (
-        <div className="mt-8 space-y-6">
-          {/* 数据库用户数据 */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Database User Data</h2>
-            {userData ? (
-              <div className="bg-gray-50 rounded p-4 text-sm font-mono">
-                <pre>{JSON.stringify(userData, null, 2)}</pre>
-              </div>
-            ) : (
-              <p className="text-gray-500">No user data</p>
-            )}
-          </Card>
-
-          {/* 数据库订阅数据 */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Database Subscription Data</h2>
-            {subscriptionData ? (
-              <div className="bg-gray-50 rounded p-4 text-sm font-mono">
-                <pre>{JSON.stringify(subscriptionData, null, 2)}</pre>
-              </div>
-            ) : (
-              <p className="text-gray-500">No subscription data</p>
-            )}
-          </Card>
-
-          {/* 完整诊断数据 */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Complete Diagnostics Data</h2>
-            <div className="bg-gray-50 rounded p-4 text-sm font-mono">
-              <pre>{JSON.stringify(diagnosticsResult, null, 2)}</pre>
-            </div>
-          </Card>
-        </div>
-      )}
     </div>
   );
 };
