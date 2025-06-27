@@ -8,12 +8,12 @@ const getBasePath = (): string => {
   
   // 在GitHub Pages中使用子路径，在本地开发中不使用
   if (isGitHubPages) {
-    return '/digest-flow-daily';
+    return '/flowsense';
   } else if (isLocalhost) {
     return '';
   } else {
     // 其他生产环境，根据需要调整
-    return '/digest-flow-daily';
+    return '/flowsense';
   }
 };
 
