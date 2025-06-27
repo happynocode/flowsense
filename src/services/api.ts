@@ -773,23 +773,34 @@ export const userApi = {
 
     if (error) {
       console.error('❌ Database error in getUserSubscriptionInfo:', error);
-      // Return default free limits if columns don't exist or other errors
-      return {
-        maxSources: 3,
-        canScheduleDigest: false,
-        canProcessWeekly: false,
-        subscriptionTier: 'free'
-      };
+      
+      // 只有在字段不存在的情况下才返回默认值
+      if (error.message.includes('column') && error.message.includes('does not exist')) {
+        console.log('📋 Subscription columns do not exist, returning free defaults');
+        return {
+          maxSources: 3,
+          canScheduleDigest: false,
+          canProcessWeekly: false,
+          subscriptionTier: 'free'
+        };
+      }
+      
+      // 其他数据库错误应该抛出，而不是默默返回默认值
+      console.error('❌ Serious database error - not masking with defaults:', error.message);
+      throw new Error(`Failed to fetch subscription info: ${error.message}`);
     }
 
     console.log('✅ User subscription info fetched:', data);
 
-    return {
+    const result = {
       maxSources: data?.max_sources ?? 3,
       canScheduleDigest: data?.can_schedule_digest ?? false,
       canProcessWeekly: data?.can_process_weekly ?? false,
       subscriptionTier: (data?.subscription_tier as 'free' | 'premium') ?? 'free'
     };
+    
+    console.log('🔍 Final subscription info result:', result);
+    return result;
   },
 
   getAutoDigestSettings: async (): Promise<{
@@ -828,7 +839,15 @@ export const userApi = {
             lastAutoDigestRun: undefined
           };
         }
-        throw error;
+        
+        // 对于其他数据库错误，也返回默认值而不是抛出，避免破坏用户体验
+        console.warn('⚠️ Database error in getAutoDigestSettings, returning defaults to prevent user experience issues');
+        return {
+          autoDigestEnabled: false,
+          autoDigestTime: '09:00:00',
+          autoDigestTimezone: 'UTC',
+          lastAutoDigestRun: undefined
+        };
       }
 
       // 🔧 数据完整性检查和详细日志
@@ -909,12 +928,15 @@ export const userApi = {
 
       if (error) {
         console.error('❌ Database update error:', error);
-        // 如果字段不存在，先尝试添加字段
+        // 如果字段不存在，给出明确提示
         if (error.message.includes('column') && error.message.includes('does not exist')) {
           console.log('📋 Auto digest columns do not exist, settings cannot be saved');
           throw new Error('Auto digest feature is not available. Please contact support.');
         }
-        throw error;
+        
+        // 对于其他数据库错误，提供更清晰的错误信息
+        console.error('❌ Failed to update auto digest settings due to database error:', error.message);
+        throw new Error(`Database update failed: ${error.message}. Please try again or contact support if the problem persists.`);
       }
 
       // 🔧 验证更新是否成功

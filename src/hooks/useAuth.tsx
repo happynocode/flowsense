@@ -135,18 +135,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('🔄 强制获取用户完整信息（订阅 + auto digest）...');
         
         // 🔧 强制从数据库获取最新数据，不使用任何缓存
-        const [subscriptionInfo, autoDigestSettings] = await Promise.all([
-          userApi.getUserSubscriptionInfo(),
-          userApi.getAutoDigestSettings().catch(err => {
-            console.warn('⚠️ 获取auto digest设置失败，使用默认值:', err);
-            return {
-              autoDigestEnabled: false,
-              autoDigestTime: '09:00:00',
-              autoDigestTimezone: 'UTC',
-              lastAutoDigestRun: undefined
-            };
-          })
-        ]);
+        let subscriptionInfo, autoDigestSettings;
+        
+        try {
+          subscriptionInfo = await userApi.getUserSubscriptionInfo();
+          console.log('✅ 订阅信息获取成功:', subscriptionInfo);
+        } catch (subscriptionError) {
+          console.error('❌ 获取订阅信息失败:', subscriptionError);
+          // 使用默认的免费用户限制
+          subscriptionInfo = {
+            maxSources: 3,
+            canScheduleDigest: false,
+            canProcessWeekly: false,
+            subscriptionTier: 'free' as const
+          };
+        }
+        
+        try {
+          autoDigestSettings = await userApi.getAutoDigestSettings();
+          console.log('✅ Auto digest设置获取成功:', autoDigestSettings);
+        } catch (autoDigestError) {
+          console.warn('⚠️ 获取auto digest设置失败，使用默认值:', autoDigestError);
+          autoDigestSettings = {
+            autoDigestEnabled: false,
+            autoDigestTime: '09:00:00',
+            autoDigestTimezone: 'UTC',
+            lastAutoDigestRun: undefined
+          };
+        }
         
         console.log('🔍 [DEBUG] 强制获取到的订阅信息:', subscriptionInfo);
         console.log('🔍 [DEBUG] 强制获取到的auto digest设置:', autoDigestSettings);
@@ -165,15 +181,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           lastAutoDigestRun: autoDigestSettings.lastAutoDigestRun
         };
         
+        // 🔍 添加数据完整性验证
+        console.log('🔍 [验证] 用户对象数据完整性检查:');
+        console.log('  - autoDigestEnabled:', userWithFullInfo.autoDigestEnabled, '(type:', typeof userWithFullInfo.autoDigestEnabled, ')');
+        console.log('  - subscriptionTier:', userWithFullInfo.subscriptionTier, '(type:', typeof userWithFullInfo.subscriptionTier, ')');
+        console.log('  - maxSources:', userWithFullInfo.maxSources, '(type:', typeof userWithFullInfo.maxSources, ')');
+        
+        // 确保关键字段不为undefined
+        if (userWithFullInfo.autoDigestEnabled === undefined) {
+          console.warn('⚠️ autoDigestEnabled is undefined, setting to false');
+          userWithFullInfo.autoDigestEnabled = false;
+        }
+        if (userWithFullInfo.subscriptionTier === undefined) {
+          console.warn('⚠️ subscriptionTier is undefined, setting to free');
+          userWithFullInfo.subscriptionTier = 'free';
+        }
+        
         console.log('🔍 [DEBUG] 强制刷新后的最终用户对象:', userWithFullInfo);
         console.log('🔍 [DEBUG] 订阅状态 - subscriptionTier:', userWithFullInfo.subscriptionTier);
         
         console.log('🔄 更新用户数据（强制刷新 - 包含订阅信息 + auto digest）:', userWithFullInfo);
         setUser(userWithFullInfo);
         
-      } catch (subscriptionError) {
-        console.warn('⚠️ 获取用户信息失败，使用默认值:', subscriptionError);
-        // 使用默认的免费用户限制和auto digest设置
+      } catch (unexpectedError) {
+        console.error('❌ 获取用户完整信息时发生意外错误:', unexpectedError);
+        // 确保至少设置基础用户数据和默认值
         const userWithDefaults = {
           ...baseUserData,
           maxSources: 3,
@@ -185,6 +217,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           autoDigestTimezone: 'UTC',
           lastAutoDigestRun: undefined
         };
+        
+        console.log('🔄 设置带默认值的用户数据:', userWithDefaults);
         setUser(userWithDefaults);
       }
       
