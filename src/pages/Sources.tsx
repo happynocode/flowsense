@@ -617,8 +617,10 @@ const Sources = () => {
           </div>
         </div>
 
-        {/* Header Section */}
-        <div className="mobile-stack mb-8">
+        {/* Main Content - positioned correctly for desktop/mobile */}
+        <div className="lg:absolute lg:inset-0 lg:left-1/3 xl:left-1/4 lg:overflow-y-auto lg:p-8">
+          {/* Header Section */}
+          <div className="mobile-stack mb-8">
           <div className="flex-1 mb-4 lg:mb-0">
             <h1 className="responsive-title font-bold text-gray-800">Content Sources</h1>
             <p className="text-gray-600 mt-2 responsive-subtitle">
@@ -936,6 +938,7 @@ const Sources = () => {
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {/* Form Modal - Mobile optimized */}
