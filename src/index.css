@@ -353,4 +353,43 @@
   .mobile-content {
     @apply space-y-6 sm:space-y-8;
   }
+
+  /* Force white background for mobile navigation */
+  [data-radix-dialog-content] {
+    background-color: #ffffff !important;
+  }
+
+  /* Mobile Navigation Overrides */
+  .mobile-nav-sheet {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+  }
+
+  .mobile-nav-sheet * {
+    background-color: transparent !important;
+  }
+
+  /* Ensure mobile nav text is always dark */
+  .mobile-nav-text {
+    color: #374151 !important;
+  }
+
+  .mobile-nav-text:hover {
+    color: #111827 !important;
+  }
+
+  .mobile-nav-active {
+    color: #1d4ed8 !important;
+    background-color: #eff6ff !important;
+  }
+
+  /* Override any dark theme on mobile nav */
+  [role="dialog"][data-state="open"] {
+    background-color: #ffffff !important;
+  }
+
+  /* Force light theme for radix dialog overlay */
+  [data-radix-dialog-overlay] {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+  }
 }

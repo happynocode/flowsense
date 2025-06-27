@@ -20,28 +20,36 @@ const MobileNav = () => {
     <div className="md:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="sm" className="bg-white/95 backdrop-blur-xl border border-gray-200 shadow-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50">
+          <Button variant="ghost" size="sm" className="!bg-white !border-gray-200 shadow-sm !text-gray-700 hover:!text-gray-900 hover:!bg-gray-50 transition-all duration-200">
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-72 bg-white/98 backdrop-blur-xl border-r border-gray-200 shadow-xl">
-          <div className="flex flex-col h-full">
-            <div className="flex items-center space-x-3 pb-6 border-b border-gray-100">
-              <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-sm">
+        <SheetContent 
+          side="left" 
+          className="!w-72 !bg-white !border-r !border-gray-200 shadow-xl"
+          style={{ backgroundColor: '#ffffff !important' }}
+        >
+          <div className="flex flex-col h-full !bg-white" style={{ backgroundColor: '#ffffff' }}>
+            <div className="flex items-center space-x-3 pb-6 border-b border-gray-200 !bg-white" style={{ backgroundColor: '#ffffff' }}>
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm">
                 <Brain className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-space-grotesk font-bold text-gray-800">FlowSense</span>
+              <span className="text-xl font-space-grotesk font-bold !text-gray-900" style={{ color: '#111827' }}>FlowSense</span>
             </div>
             
-            <nav className="flex-1 space-y-2 py-6">
+            <nav className="flex-1 space-y-2 py-6 !bg-white" style={{ backgroundColor: '#ffffff' }}>
               <Link
                 to="/sources"
                 onClick={closeNav}
                 className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive('/sources') 
-                    ? 'text-blue-700 bg-blue-50 border-l-4 border-blue-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? '!text-blue-700 !bg-blue-50 border-l-4 !border-blue-600 shadow-sm' 
+                    : '!text-gray-700 hover:!text-gray-900 hover:!bg-gray-100'
                 }`}
+                style={{ 
+                  color: isActive('/sources') ? '#1d4ed8' : '#374151',
+                  backgroundColor: isActive('/sources') ? '#eff6ff' : 'transparent'
+                }}
               >
                 <FileText className="h-5 w-5" />
                 <span>Data Sources</span>
@@ -52,9 +60,13 @@ const MobileNav = () => {
                 onClick={closeNav}
                 className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive('/digests') 
-                    ? 'text-blue-700 bg-blue-50 border-l-4 border-blue-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? '!text-blue-700 !bg-blue-50 border-l-4 !border-blue-600 shadow-sm' 
+                    : '!text-gray-700 hover:!text-gray-900 hover:!bg-gray-100'
                 }`}
+                style={{ 
+                  color: isActive('/digests') ? '#1d4ed8' : '#374151',
+                  backgroundColor: isActive('/digests') ? '#eff6ff' : 'transparent'
+                }}
               >
                 <FileText className="h-5 w-5" />
                 <span>Smart Digests</span>
@@ -65,25 +77,29 @@ const MobileNav = () => {
                 onClick={closeNav}
                 className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive('/subscription') 
-                    ? 'text-blue-700 bg-blue-50 border-l-4 border-blue-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? '!text-blue-700 !bg-blue-50 border-l-4 !border-blue-600 shadow-sm' 
+                    : '!text-gray-700 hover:!text-gray-900 hover:!bg-gray-100'
                 }`}
+                style={{ 
+                  color: isActive('/subscription') ? '#1d4ed8' : '#374151',
+                  backgroundColor: isActive('/subscription') ? '#eff6ff' : 'transparent'
+                }}
               >
                 <Settings className="h-5 w-5" />
                 <span>Power Level</span>
               </Link>
             </nav>
 
-            <div className="border-t border-gray-100 pt-4 mt-auto">
+            <div className="border-t border-gray-200 pt-4 mt-auto !bg-white" style={{ backgroundColor: '#ffffff' }}>
               <div className="flex items-center space-x-3 px-4 py-3 mb-3">
-                <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-sm">
+                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shadow-sm">
                   <span className="text-sm font-bold text-white">
                     {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{user.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  <p className="text-sm font-medium !text-gray-900 truncate" style={{ color: '#111827' }}>{user.name}</p>
+                  <p className="text-xs !text-gray-600 truncate" style={{ color: '#4b5563' }}>{user.email}</p>
                 </div>
               </div>
               
@@ -93,7 +109,8 @@ const MobileNav = () => {
                   logout();
                   closeNav();
                 }}
-                className="w-full justify-start px-4 text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors duration-200"
+                className="w-full justify-start px-4 !text-red-600 hover:!text-red-700 hover:!bg-red-50 transition-colors duration-200"
+                style={{ color: '#dc2626' }}
               >
                 <LogOut className="mr-3 h-4 w-4" />
                 Disconnect
