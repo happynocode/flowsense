@@ -314,7 +314,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
           </div>
         </CardHeader>
         
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-6">
           {/* 🔧 Premium Features内容始终显示 */}
             {loading ? (
               <div className="flex items-center justify-center py-4">
