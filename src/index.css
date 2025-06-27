@@ -300,7 +300,11 @@
 
   /* Mobile navigation improvements */
   .mobile-nav-item {
-    @apply touch-target flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200;
+    @apply touch-target flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200;
+  }
+
+  .mobile-nav-item.mobile-nav-active {
+    @apply text-blue-700 bg-blue-50 hover:bg-blue-100 border-l-4 border-blue-600 shadow-sm;
   }
 
   /* Better mobile form layouts */
@@ -359,28 +363,13 @@
     background-color: #ffffff !important;
   }
 
-  /* Mobile Navigation Overrides */
+  /* Mobile Navigation Clean Styles */
   .mobile-nav-sheet {
-    background-color: #ffffff !important;
-    color: #111827 !important;
+    @apply bg-white text-gray-900;
   }
 
   .mobile-nav-sheet * {
-    background-color: transparent !important;
-  }
-
-  /* Ensure mobile nav text is always dark */
-  .mobile-nav-text {
-    color: #374151 !important;
-  }
-
-  .mobile-nav-text:hover {
-    color: #111827 !important;
-  }
-
-  .mobile-nav-active {
-    color: #1d4ed8 !important;
-    background-color: #eff6ff !important;
+    @apply bg-transparent;
   }
 
   /* Override any dark theme on mobile nav */

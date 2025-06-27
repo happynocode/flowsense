@@ -431,82 +431,36 @@ const Digests = () => {
                 <div className="hidden lg:block modern-card-elevated hover-lift overflow-hidden transition-all duration-200">
                   {/* Enhanced Digest Header */}
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b border-gray-200">
-                    <div className="flex items-start justify-between">
+                    {/* Top Row - Title, Read Button, Delete Button */}
+                    <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-4 flex-1 min-w-0">
                         {/* Digest Icon */}
                         <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center text-white shadow-lg">
                           <FileText className="h-6 w-6" />
                         </div>
                         
+                        {/* Digest Title */}
                         <div className="flex-1 min-w-0">
-                          {/* Digest Title */}
-                          <div className="mb-2">
-                            <h3 className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-                              {generateDigestTitle(digest, userTimezone)}
-                            </h3>
-                          </div>
-                          
-                          {/* Stats Row - Responsive */}
-                          <div className="flex flex-wrap items-center gap-2 mb-3">
-                            <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
-                              <div className="flex items-center space-x-1">
-                                <FileText className="w-3 h-3 text-blue-600" />
-                                <span className="text-sm font-semibold text-gray-900">{digest.summaries.length}</span>
-                                <span className="text-xs text-gray-600">summaries</span>
-                              </div>
-                            </div>
-                            
-                            <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
-                              <div className="flex items-center space-x-1">
-                                <Clock className="w-3 h-3 text-purple-600" />
-                                <span className="text-sm font-semibold text-gray-900">{getTotalReadingTime(digest)}</span>
-                                <span className="text-xs text-gray-600">min</span>
-                              </div>
-                            </div>
-                            
-                            {digest.audioUrl && (
-                              <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
-                                <div className="flex items-center space-x-1">
-                                  <Play className="w-3 h-3 text-green-600" />
-                                  <span className="text-xs text-gray-600">Audio</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Action Button Row - Mobile responsive */}
-                          <div className="flex items-center justify-between">
-                            {/* Date and Status */}
-                            <div className="flex items-center space-x-3">
-                              <div className="flex items-center space-x-2">
-                                <Calendar className="h-3 w-3 text-gray-500" />
-                                <span className="text-sm text-gray-600">
-                                  {formatDate(digest.createdAt, userTimezone)}
-                                </span>
-                              </div>
-                              {!digest.isRead && (
-                                <Badge className="badge-accent text-xs">
-                                  New
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            {/* Read Button - Always visible */}
-                            <Link to={`/digests/${digest.id}`}>
-                              <Button 
-                                onClick={() => markAsRead(digest)}
-                                className="btn-primary bg-gradient-primary hover:shadow-lg text-white font-semibold px-4 py-2 rounded-lg shadow-md transition-all duration-200"
-                              >
-                                <FileText className="h-4 w-4" />
-                                <span className="ml-2">Read Digest</span>
-                              </Button>
-                            </Link>
-                          </div>
+                          <h3 className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                            {generateDigestTitle(digest, userTimezone)}
+                          </h3>
                         </div>
                       </div>
                       
-                      {/* Action Button */}
-                      <div className="flex items-center gap-3 ml-4">
+                      {/* Action Buttons Row */}
+                      <div className="flex items-center gap-3">
+                        {/* Read Button */}
+                        <Link to={`/digests/${digest.id}`}>
+                          <Button 
+                            onClick={() => markAsRead(digest)}
+                            className="btn-primary bg-gradient-primary hover:shadow-lg text-white font-semibold px-4 py-2 rounded-lg shadow-md transition-all duration-200 flex items-center"
+                          >
+                            <FileText className="h-4 w-4" />
+                            <span className="ml-2">Read Digest</span>
+                          </Button>
+                        </Link>
+                        
+                        {/* Delete Button */}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -515,6 +469,52 @@ const Digests = () => {
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
+                      </div>
+                    </div>
+
+                    {/* Bottom Section - Stats and Date */}
+                    <div className="flex items-center space-x-4">
+                      {/* Stats Row */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
+                          <div className="flex items-center space-x-1">
+                            <FileText className="w-3 h-3 text-blue-600" />
+                            <span className="text-sm font-semibold text-gray-900">{digest.summaries.length}</span>
+                            <span className="text-xs text-gray-600">summaries</span>
+                          </div>
+                        </div>
+                        
+                        <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
+                          <div className="flex items-center space-x-1">
+                            <Clock className="w-3 h-3 text-purple-600" />
+                            <span className="text-sm font-semibold text-gray-900">{getTotalReadingTime(digest)}</span>
+                            <span className="text-xs text-gray-600">min</span>
+                          </div>
+                        </div>
+                        
+                        {digest.audioUrl && (
+                          <div className="stats-card bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-white/50 shadow-sm">
+                            <div className="flex items-center space-x-1">
+                              <Play className="w-3 h-3 text-green-600" />
+                              <span className="text-xs text-gray-600">Audio</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Date and Status */}
+                      <div className="flex items-center space-x-3 ml-auto">
+                        <div className="flex items-center space-x-2">
+                          <Calendar className="h-3 w-3 text-gray-500" />
+                          <span className="text-sm text-gray-600">
+                            {formatDate(digest.createdAt, userTimezone)}
+                          </span>
+                        </div>
+                        {!digest.isRead && (
+                          <Badge className="badge-accent text-xs">
+                            New
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>

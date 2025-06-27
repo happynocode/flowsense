@@ -201,10 +201,11 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
       {/* 手动处理控制 */}
       <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200">
         <CardHeader className="pb-3">
-                      <CardTitle className="text-lg font-semibold text-indigo-800 flex items-center">
-              <Zap className="h-5 w-5 mr-2" />
-              Content Processing Control
-            </CardTitle>
+          <CardTitle className="text-base sm:text-lg font-semibold text-indigo-800 flex items-center">
+            <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+            <span className="hidden sm:inline">Content Processing Control</span>
+            <span className="sm:hidden">Processing</span>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* 手动处理按钮 */}
@@ -217,17 +218,19 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                     onClick={onProcessToday}
                     disabled={globalProcessing}
                     size="sm"
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white w-full justify-start"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white w-full justify-start text-sm"
                   >
                     {globalProcessing ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Processing...
+                        <span className="hidden sm:inline">Processing...</span>
+                        <span className="sm:hidden">Processing</span>
                       </>
                     ) : (
                       <>
                         <Sparkles className="h-4 w-4 mr-2" />
-                        Process Today's Content
+                        <span className="hidden sm:inline">Process Today's Content</span>
+                        <span className="sm:hidden">Today</span>
                       </>
                     )}
                   </Button>
@@ -238,10 +241,11 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                       disabled={globalProcessing}
                       size="sm"
                       variant="outline"
-                      className="border-indigo-300 text-indigo-600 hover:bg-indigo-50 w-full justify-start"
+                      className="border-indigo-300 text-indigo-600 hover:bg-indigo-50 w-full justify-start text-sm"
                     >
                       <Sparkles className="h-4 w-4 mr-2" />
-                      Process This Week's Content
+                      <span className="hidden sm:inline">Process This Week's Content</span>
+                      <span className="sm:hidden">This Week</span>
                     </Button>
                   ) : (
                     <Button
@@ -265,16 +269,17 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                       disabled
                       size="sm"
                       variant="outline"
-                      className="bg-gray-100 border-gray-300 text-gray-500 w-full justify-start cursor-not-allowed"
+                      className="bg-gray-100 border-gray-300 text-gray-500 w-full justify-start cursor-not-allowed text-sm"
                     >
                       <Lock className="h-4 w-4 mr-2" />
-                      Process This Week's Content (Premium)
+                      <span className="hidden sm:inline">Process This Week's Content (Premium)</span>
+                      <span className="sm:hidden">This Week (Premium)</span>
                     </Button>
                   )}
                 </>
               ) : (
-                                  <p className="text-sm text-gray-600 italic p-2 bg-white border border-gray-200 rounded">
-                  Please add sources first before processing
+                <p className="text-sm text-gray-600 italic p-2 bg-white border border-gray-200 rounded text-center">
+                  Please add sources first
                 </p>
               )}
             </div>
@@ -287,10 +292,11 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
               onClick={onClearContent}
               variant="outline"
               size="sm"
-              className="border-orange-300 text-orange-600 hover:bg-orange-50 w-full justify-start"
+              className="border-orange-300 text-orange-600 hover:bg-orange-50 w-full justify-start text-sm"
             >
               <Eraser className="h-4 w-4 mr-2" />
-              Clear Fetched Content
+              <span className="hidden sm:inline">Clear Fetched Content</span>
+              <span className="sm:hidden">Clear Content</span>
             </Button>
           </div>
         </CardContent>
@@ -300,11 +306,11 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
       <Card className="bg-white border-purple-300 shadow-sm">
         <CardHeader className="pb-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-t-lg">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-purple-900 flex items-center">
-              <Crown className="h-5 w-5 mr-2" />
-              Premium Features
+            <CardTitle className="text-base sm:text-lg font-semibold text-purple-900 flex items-center">
+              <Crown className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+              <span className="hidden sm:inline">Premium Features</span>
+              <span className="sm:hidden">Premium</span>
             </CardTitle>
-
           </div>
         </CardHeader>
         
@@ -317,7 +323,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
               </div>
             ) : !autoSettings ? (
               // 🔧 加载失败状态
-              <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border-2 border-red-200">
+              <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-red-50 rounded-lg border-2 border-red-200 gap-3">
                 <div className="flex items-center space-x-2">
                   <AlertCircle className="h-5 w-5 text-red-600" />
                   <span className="text-sm text-red-700">Failed to load settings</span>
@@ -326,7 +332,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                   variant="outline" 
                   size="sm"
                   onClick={() => window.location.reload()}
-                  className="text-red-600 border-red-300 hover:bg-red-50"
+                  className="text-red-600 border-red-300 hover:bg-red-50 w-full sm:w-auto"
                 >
                   <RefreshCw className="h-4 w-4 mr-1" />
                   Reload Page
@@ -335,16 +341,18 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
             ) : (
               <>
                 {/* Auto Daily Digest Toggle */}
-                <div className="flex items-center justify-between p-4 bg-white rounded-lg border-2 border-purple-100 hover:border-purple-200 transition-colors">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-lg border-2 border-purple-100 hover:border-purple-200 transition-colors gap-3">
                   <div className="space-y-1 flex-1">
-                    <div className="flex items-center space-x-2">
-                      <Clock className="h-5 w-5 text-purple-600" />
-                      <Label className="text-base font-semibold text-gray-900">
-                        Auto Daily Digest
-                      </Label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+                        <Label className="text-sm sm:text-base font-semibold text-gray-900">
+                          Auto Daily Digest
+                        </Label>
+                      </div>
                       {!isPremium && (
                         <div className="flex items-center space-x-1">
-                          <Lock className="h-4 w-4 text-amber-500" />
+                          <Lock className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500" />
                           <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-medium">
                             Premium
                           </span>
@@ -358,7 +366,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                         </div>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs sm:text-sm text-gray-600">
                       {autoSettings.autoDigestEnabled 
                         ? `Scheduled to run daily at ${autoSettings.autoDigestTime}` 
                         : 'Currently disabled - Click to enable automatic digest generation'}
@@ -366,11 +374,11 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                   </div>
                   
                   {isPremium ? (
-                    <div className="ml-4">
+                    <div className="flex justify-center sm:ml-4">
                       <button
                         onClick={() => handleToggleEnabled(!autoSettings.autoDigestEnabled)}
                         disabled={saving}
-                        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                        className={`relative inline-flex h-6 w-11 sm:h-8 sm:w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
                           autoSettings.autoDigestEnabled 
                             ? 'bg-purple-600' 
                             : 'bg-gray-200'
@@ -378,19 +386,19 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                       >
                         <span className="sr-only">Enable auto digest</span>
                         <span
-                          className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform ${
-                            autoSettings.autoDigestEnabled ? 'translate-x-7' : 'translate-x-1'
+                          className={`inline-block h-4 w-4 sm:h-6 sm:w-6 transform rounded-full bg-white shadow-lg transition-transform ${
+                            autoSettings.autoDigestEnabled ? 'translate-x-6 sm:translate-x-7' : 'translate-x-1'
                           }`}
                         />
                         {saving && (
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <Loader2 className="h-3 w-3 animate-spin text-purple-600" />
+                            <Loader2 className="h-2 w-2 sm:h-3 sm:w-3 animate-spin text-purple-600" />
                           </div>
                         )}
                       </button>
                     </div>
                   ) : (
-                    <div className="ml-4">
+                    <div className="flex justify-center sm:ml-4">
                       <button
                         onClick={() => {
                           toast({
@@ -409,12 +417,12 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                             ),
                           });
                         }}
-                        className="relative inline-flex h-8 w-14 items-center rounded-full bg-gray-300 cursor-not-allowed"
+                        className="relative inline-flex h-6 w-11 sm:h-8 sm:w-14 items-center rounded-full bg-gray-300 cursor-not-allowed"
                         disabled
                       >
                         <span className="sr-only">Enable auto digest (Premium required)</span>
-                        <span className="inline-block h-6 w-6 transform rounded-full bg-gray-100 shadow-lg translate-x-1" />
-                        <Lock className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-3 w-3 text-gray-500" />
+                        <span className="inline-block h-4 w-4 sm:h-6 sm:w-6 transform rounded-full bg-gray-100 shadow-lg translate-x-1" />
+                        <Lock className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-2 w-2 sm:h-3 sm:w-3 text-gray-500" />
                       </button>
                     </div>
                   )}
@@ -423,46 +431,49 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                 {/* 时间和时区设置 */}
                 {autoSettings.autoDigestEnabled && isPremium && (
                   <div className="space-y-3 p-4 bg-gray-50 rounded-lg border-2 border-purple-200 shadow-sm">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-900">Run Time</Label>
-                                                                    <Input
-                      type="time"
-                      value={autoSettings.autoDigestTime}
-                      onChange={(e) => {
-                        const newTime = e.target.value;
-                        // 只更新本地状态，不自动保存
-                        setAutoSettings(prev => prev ? {
-                          ...prev,
-                          autoDigestTime: newTime
-                        } : null);
-                      }}
-                      className="w-full bg-white border-gray-300 text-gray-900"
-                    />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-900">Timezone</Label>
-                                            <Select
-                      value={autoSettings.autoDigestTimezone}
-                      onValueChange={(value) => {
-                        // 只更新本地状态，不自动保存
-                        setAutoSettings(prev => prev ? {
-                          ...prev,
-                          autoDigestTimezone: value
-                        } : null);
-                      }}
-                    >
-                        <SelectTrigger className="bg-white border-gray-300 text-gray-900">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TIMEZONES.map(tz => (
-                            <SelectItem key={tz.value} value={tz.value}>
-                              {tz.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-900">Run Time</Label>
+                        <Input
+                          type="time"
+                          value={autoSettings.autoDigestTime}
+                          onChange={(e) => {
+                            const newTime = e.target.value;
+                            // 只更新本地状态，不自动保存
+                            setAutoSettings(prev => prev ? {
+                              ...prev,
+                              autoDigestTime: newTime
+                            } : null);
+                          }}
+                          className="w-full bg-white border-gray-300 text-gray-900"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-900">Timezone</Label>
+                        <Select
+                          value={autoSettings.autoDigestTimezone}
+                          onValueChange={(value) => {
+                            // 只更新本地状态，不自动保存
+                            setAutoSettings(prev => prev ? {
+                              ...prev,
+                              autoDigestTimezone: value
+                            } : null);
+                          }}
+                        >
+                          <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIMEZONES.map(tz => (
+                              <SelectItem key={tz.value} value={tz.value}>
+                                <span className="hidden sm:inline">{tz.label}</span>
+                                <span className="sm:hidden">{tz.value}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
                     {autoSettings.lastAutoDigestRun && (
@@ -478,17 +489,19 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                   <Button
                     onClick={saveAutoSettings}
                     disabled={saving}
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm"
                   >
                     {saving ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Saving...
+                        <span className="hidden sm:inline">Saving...</span>
+                        <span className="sm:hidden">Saving</span>
                       </>
                     ) : (
                       <>
                         <Settings2 className="h-4 w-4 mr-2" />
-                        Save Settings
+                        <span className="hidden sm:inline">Save Settings</span>
+                        <span className="sm:hidden">Save</span>
                       </>
                     )}
                   </Button>
@@ -498,15 +511,17 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                   <div className="p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
                     <div className="flex items-center text-sm text-yellow-800 mb-2">
                       <Crown className="h-4 w-4 mr-2" />
-                      Upgrade to Premium to unlock automatic digest features
+                      <span className="hidden sm:inline">Upgrade to Premium to unlock automatic digest features</span>
+                      <span className="sm:hidden">Upgrade for auto digest</span>
                     </div>
                     <Button 
                       size="sm"
                       onClick={() => window.location.href = '/subscription'}
-                      className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
+                      className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white text-sm"
                     >
                       <Crown className="w-4 h-4 mr-2" />
-                      Upgrade to Premium
+                      <span className="hidden sm:inline">Upgrade to Premium</span>
+                      <span className="sm:hidden">Upgrade</span>
                     </Button>
                   </div>
                 )}
@@ -517,7 +532,7 @@ const CombinedControlPanel: React.FC<CombinedControlPanelProps> = ({
                   </div>
                 )}
               </>
-                        )}
+            )}
         </CardContent>
       </Card>
     </div>

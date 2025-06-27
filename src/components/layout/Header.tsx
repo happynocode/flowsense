@@ -21,7 +21,7 @@ const Header = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="!bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm" style={{ backgroundColor: '#ffffff' }}>
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           {/* Mobile Nav (left side) + Logo */}
@@ -86,7 +86,7 @@ const Header = () => {
                     </Avatar>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 !bg-white border border-gray-200 shadow-lg" align="end" forceMount style={{ backgroundColor: '#ffffff' }}>
+                <DropdownMenuContent className="w-56 bg-white border border-gray-200 shadow-lg" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col gap-1">
                       <p className="text-sm font-medium text-gray-800">{user.name}</p>
