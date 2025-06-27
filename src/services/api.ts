@@ -753,76 +753,7 @@ export const subscriptionApi = {
 
 // User Settings API
 export const userApi = {
-  // 🔧 临时调试函数 - 测试数据库查询
-  debugDatabaseAccess: async (): Promise<any> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
 
-    console.log('🔍 Debug: Testing database access for user:', user.id);
-
-    // 1. 测试基础users表查询
-    console.log('🔍 Step 1: Testing basic users table access...');
-    const { data: basicUser, error: basicError } = await supabase
-      .from('users')
-      .select('id, email, name, created_at')
-      .eq('id', user.id)
-      .single();
-
-    console.log('📋 Basic user query result:', { basicUser, basicError });
-
-    // 2. 测试订阅相关字段查询
-    console.log('🔍 Step 2: Testing subscription fields...');
-    const { data: subFields, error: subError } = await supabase
-      .from('users')
-      .select('subscription_tier, max_sources, can_schedule_digest, can_process_weekly')
-      .eq('id', user.id)
-      .single();
-
-    console.log('📋 Subscription fields query result:', { subFields, subError });
-
-    // 3. 测试auto digest字段查询
-    console.log('🔍 Step 3: Testing auto digest fields...');
-    const { data: autoFields, error: autoError } = await supabase
-      .from('users')
-      .select('auto_digest_enabled, auto_digest_time, auto_digest_timezone, last_auto_digest_run')
-      .eq('id', user.id)
-      .single();
-
-    console.log('📋 Auto digest fields query result:', { autoFields, autoError });
-
-    // 4. 测试完整记录查询
-    console.log('🔍 Step 4: Testing full record query...');
-    const { data: fullUser, error: fullError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    console.log('📋 Full user query result:', { fullUser, fullError });
-
-    // 5. 测试subscriptions表查询
-    console.log('🔍 Step 5: Testing subscriptions table...');
-    const { data: subscriptions, error: subscriptionsError } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', user.id);
-
-    console.log('📋 Subscriptions query result:', { subscriptions, subscriptionsError });
-
-    return {
-      userId: user.id,
-      basicUser,
-      basicError: basicError?.message,
-      subFields,
-      subError: subError?.message,
-      autoFields,
-      autoError: autoError?.message,
-      fullUser,
-      fullError: fullError?.message,
-      subscriptions,
-      subscriptionsError: subscriptionsError?.message
-    };
-  },
 
   // Get user subscription information including limits
   getUserSubscriptionInfo: async (): Promise<{

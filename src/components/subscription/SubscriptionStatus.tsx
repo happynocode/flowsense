@@ -33,7 +33,7 @@ const SubscriptionStatus: React.FC<SubscriptionStatusProps> = ({
       
       toast({
         title: "✅ Status Refreshed",
-        description: "Your premium status has been refreshed. If you're still seeing issues, please visit /debug-subscription for detailed diagnostics.",
+        description: "Your premium status has been refreshed. If you're still seeing issues, please try logging out and back in.",
       });
     } catch (error) {
       console.error('Quick fix failed:', error);

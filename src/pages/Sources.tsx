@@ -575,369 +575,366 @@ const Sources = () => {
   return (
     <div className="min-h-screen bg-gradient-hero">
       <div className="mobile-container mobile-section">
-        {/* Mobile-optimized Layout */}
-        <div className="mobile-content">
-          {/* Mobile Control Panel - Shown at top on mobile */}
-          <div className="block lg:hidden mb-6">
-            <CombinedControlPanel
-              sourcesArray={sourcesArray}
-              globalProcessing={globalProcessing}
-              onProcessToday={() => handleProcessDirectly('today')}
-              onProcessWeek={() => handleProcessDirectly('week')}
-              onClearContent={() => setShowClearDialog(true)}
-            />
-          </div>
-
-          {/* Desktop Left-Right Layout */}
-          <div className="hidden lg:flex lg:gap-8">
-            {/* Left Panel - Control Panel */}
-            <div className="lg:w-1/3 xl:w-1/4">
-              <div className="sticky top-8 space-y-6">
-                <CombinedControlPanel
-                  sourcesArray={sourcesArray}
-                  globalProcessing={globalProcessing}
-                  onProcessToday={() => handleProcessDirectly('today')}
-                  onProcessWeek={() => handleProcessDirectly('week')}
-                  onClearContent={() => setShowClearDialog(true)}
-                />
-              </div>
-            </div>
-
-            {/* Right Panel - Main Content (Desktop only wrapper) */}
-            <div className="lg:w-2/3 xl:w-3/4">
-              <div className="sources-main-content">
-                {/* Content will be filled below */}
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content - Responsive for both mobile and desktop */}
-          <div className="sources-main-content lg:hidden">
-            {/* Content will be filled below */}
-          </div>
+        {/* Mobile Layout - Control Panel at top */}
+        <div className="block lg:hidden mb-6">
+          <CombinedControlPanel
+            sourcesArray={sourcesArray}
+            globalProcessing={globalProcessing}
+            onProcessToday={() => handleProcessDirectly('today')}
+            onProcessWeek={() => handleProcessDirectly('week')}
+            onClearContent={() => setShowClearDialog(true)}
+          />
         </div>
 
-        {/* Main Content - positioned correctly for desktop/mobile */}
-        <div className="lg:absolute lg:inset-0 lg:left-1/3 xl:left-1/4 lg:overflow-y-auto lg:p-8">
-          {/* Header Section */}
-          <div className="mobile-stack mb-8">
-          <div className="flex-1 mb-4 lg:mb-0">
-            <h1 className="responsive-title font-bold text-gray-800">Content Sources</h1>
-            <p className="text-gray-600 mt-2 responsive-subtitle">
-              Add RSS feeds from your favorite blogs and news sites
-            </p>
-            {/* Debug Info - Mobile responsive */}
-            <div className="mt-2 text-xs text-gray-500 bg-gray-100 rounded p-2 lg:p-3">
-              <div className="flex flex-wrap gap-2">
-                <span>📊 Sources: {sourcesArray.length}</span>
-                <span>Plan: {isPremium ? 'Premium' : 'Free'}</span>
-                <span>Limit: {sources.length}/{limits.maxSources}</span>
-                <span>Status: {loading ? 'Loading' : 'Loaded'}</span>
-              </div>
+        {/* Desktop Layout - Side by side */}
+        <div className="lg:flex lg:gap-8">
+          {/* Left Panel - Control Panel (Desktop only) */}
+          <div className="hidden lg:block lg:w-1/3 xl:w-1/4">
+            <div className="sticky top-8">
+              <CombinedControlPanel
+                sourcesArray={sourcesArray}
+                globalProcessing={globalProcessing}
+                onProcessToday={() => handleProcessDirectly('today')}
+                onProcessWeek={() => handleProcessDirectly('week')}
+                onClearContent={() => setShowClearDialog(true)}
+              />
             </div>
           </div>
-          
-          {/* Action Buttons - Mobile responsive */}
-          <div className="mobile-stack">
-            {canAddSource(sources.length) ? (
-              <button onClick={() => setShowForm(true)} className="mobile-button">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Source
-              </button>
-            ) : (
-              <div className="relative group">
-                <button 
-                  onClick={() => {
-                    toast({
-                      title: "Upgrade to Premium",
-                      description: `Free users can add up to ${limits.maxSources} sources. Upgrade to Premium to add 20 sources.`,
-                      action: (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => navigateTo('/subscription')}
-                          className="ml-2"
-                        >
-                          <Crown className="w-4 h-4 mr-1" />
-                          Upgrade
-                        </Button>
-                      ),
-                    });
-                  }}
-                  className="mobile-button opacity-50 cursor-not-allowed"
-                  disabled
-                >
-                  <Lock className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Add Source ({sources.length}/{limits.maxSources})</span>
-                  <span className="sm:hidden">Locked</span>
-                </button>
-                <div className="absolute -top-2 -right-2">
-                  <Crown className="w-5 h-5 text-yellow-500" />
-                </div>
-              </div>
-            )}
-            
-            {/* Debug Reset Button - Mobile responsive */}
-            {globalProcessing && (
-              <button
-                onClick={() => {
-                  console.log('🔧 Resetting global processing state');
-                  setGlobalProcessing(false);
-                  setCurrentTask(null);
-                  setTaskProgress(null);
-                  setIsPollingTask(false);
-                }}
-                className="btn-secondary text-red-600 border-red-300 hover:bg-red-50 hover:border-red-500"
-              >
-                <span className="hidden sm:inline">🔧 重置状态</span>
-                <span className="sm:hidden">Reset</span>
-              </button>
-            )}
-          </div>
-        </div>
 
-        {/* Task Progress - Mobile optimized */}
-        {globalProcessing && (
-          <div className="mobile-card bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 mb-6">
-            <div className="mobile-stack mb-4">
-              <h3 className="text-lg font-semibold text-blue-800 flex items-center">
-                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                <span className="hidden sm:inline">Processing in Progress</span>
-                <span className="sm:hidden">Processing...</span>
-              </h3>
-              {taskProgress && (
-                <span className="text-sm text-blue-600 font-medium">
-                  {taskProgress.current || 0} / {taskProgress.total || 0}
-                </span>
-              )}
-            </div>
-            
-            {/* Mobile-friendly progress info */}
-            <div className="text-sm text-blue-700 mb-4 bg-blue-100 rounded-md p-3">
-              ⏱️ <strong>Time:</strong> 1-5 min • AI summaries generating
-            </div>
-            
-            {/* Progress bar */}
-            {taskProgress && (
-              <div className="w-full bg-blue-200 rounded-full h-3 mb-4">
-                <div 
-                  className="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-500 ease-out" 
-                  style={{ 
-                    width: `${taskProgress.total ? Math.max(5, (taskProgress.current / taskProgress.total) * 100) : 5}%` 
-                  }}
-                ></div>
+          {/* Main Content Area */}
+          <div className="lg:w-2/3 xl:w-3/4">
+            {/* Header Section */}
+            <div className="mobile-stack mb-8">
+              <div className="flex-1 mb-4 lg:mb-0">
+                <h1 className="responsive-title font-bold text-gray-800">Content Sources</h1>
+                <p className="text-gray-600 mt-2 responsive-subtitle">
+                  Add RSS feeds from your favorite blogs and news sites
+                </p>
               </div>
-            )}
-            
-            {/* Current source - mobile responsive */}
-            {taskProgress?.current_source && (
-              <div className="text-sm text-blue-700 mb-3 bg-white rounded-md p-3 border border-blue-100">
-                🔄 <strong>Processing:</strong>
-                <div className="mt-1 text-blue-800 font-medium truncate">
-                  {taskProgress.current_source}
-                </div>
-              </div>
-            )}
-            
-            {/* Mobile-friendly progress grid */}
-            {taskProgress && (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-                <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-                  <div className="text-lg font-semibold text-green-600">
-                    {taskProgress.processed_sources?.length || 0}
-                  </div>
-                  <div className="text-green-700 text-xs">Completed</div>
-                </div>
-                <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="text-lg font-semibold text-orange-600">
-                    {taskProgress.skipped_sources?.length || 0}
-                  </div>
-                  <div className="text-orange-700 text-xs">Skipped</div>
-                </div>
-                <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="text-lg font-semibold text-blue-600">
-                    {taskProgress.processed_sources?.reduce((total: number, source: any) => total + (source.articles_count || 0), 0) || 0}
-                  </div>
-                  <div className="text-blue-700 text-xs">Articles</div>
-                </div>
-                <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-200">
-                  <div className="text-lg font-semibold text-purple-600">
-                    {currentTask?.status || 'running'}
-                  </div>
-                  <div className="text-purple-700 text-xs">Status</div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Process Results - Mobile optimized */}
-        {processResults && (
-          <div className="mb-8">
-            <Card className={`mobile-card ${
-              processResults.success 
-                ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-md' 
-                : 'bg-red-50 border-red-200'
-            }`}>
-              <CardHeader className="pb-4">
-                <div className="mobile-stack">
-                  <CardTitle className={`flex items-center ${
-                    processResults.success ? 'text-green-800' : 'text-red-800'
-                  }`}>
-                    {processResults.success ? (
-                      <CheckCircle className="h-6 w-6 mr-2" />
-                    ) : (
-                      <AlertCircle className="h-6 w-6 mr-2" />
-                    )}
-                    <span className="hidden sm:inline">
-                      {processResults.success ? 'Processing Complete!' : 'Processing Failed'}
-                    </span>
-                    <span className="sm:hidden">
-                      {processResults.success ? 'Complete!' : 'Failed'}
-                    </span>
-                  </CardTitle>
-                  {processResults.success && (
-                    <Button 
-                      onClick={() => window.location.href = '/digests'}
-                      className="mobile-button bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                    >
-                      📖 View Digest
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {/* Mobile-optimized success content */}
-                {processResults.success ? (
-                  <div className="mobile-content">
-                    <div className="bg-white rounded-lg p-4 border border-green-100">
-                      <p className="text-green-800 font-medium mb-2 text-sm sm:text-base">
-                        🎉 Your digest has been generated successfully!
-                      </p>
-                      <p className="text-green-700 text-sm">
-                        Content summarized and ready to read.
-                      </p>
+              
+              {/* Action Buttons - Mobile responsive */}
+              <div className="mobile-stack">
+                {canAddSource(sources.length) ? (
+                  <button 
+                    onClick={() => setShowForm(true)} 
+                    className="group relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3 min-w-[200px] justify-center"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                        <Plus className="h-3 w-3" />
+                      </div>
+                      <span className="hidden sm:inline">Add New Source</span>
+                      <span className="sm:hidden">Add Source</span>
                     </div>
-                    
-                    <div className="mobile-grid">
-                      <div className="text-center p-4 bg-white rounded-lg border border-green-100">
-                        <div className="text-xl sm:text-2xl font-bold text-green-600">
-                          {processResults?.data?.processedSources?.length || 0}
-                        </div>
-                        <div className="text-xs sm:text-sm text-green-700">Sources</div>
-                      </div>
-                      <div className="text-center p-4 bg-white rounded-lg border border-green-100">
-                        <div className="text-xl sm:text-2xl font-bold text-blue-600">
-                          {processResults?.data?.totalSummaries || 0}
-                        </div>
-                        <div className="text-xs sm:text-sm text-blue-700">Summaries</div>
-                      </div>
-                      <div className="text-center p-4 bg-white rounded-lg border border-green-100">
-                        <div className="text-xl sm:text-2xl font-bold text-orange-600">
-                          {processResults?.data?.skippedSources?.length || 0}
-                        </div>
-                        <div className="text-xs sm:text-sm text-orange-700">Skipped</div>
-                      </div>
-                    </div>
-                  </div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"></div>
+                  </button>
                 ) : (
-                  <div className="text-red-700 bg-white rounded-lg p-4 border border-red-200">
-                    <p className="font-medium text-sm sm:text-base">Processing Failed:</p>
-                    <p className="text-sm mt-1">{processResults?.error || 'Unknown error occurred'}</p>
+                  <div className="relative group">
+                    <button 
+                      onClick={() => {
+                        toast({
+                          title: "Upgrade to Premium",
+                          description: `Free users can add up to ${limits.maxSources} sources. Upgrade to Premium to add 20 sources.`,
+                          action: (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => navigateTo('/subscription')}
+                              className="ml-2"
+                            >
+                              <Crown className="w-4 h-4 mr-1" />
+                              Upgrade
+                            </Button>
+                          ),
+                        });
+                      }}
+                      className="relative bg-gradient-to-r from-gray-400 to-gray-500 text-white font-semibold px-6 py-3 rounded-xl shadow-lg opacity-60 cursor-not-allowed flex items-center gap-3 min-w-[200px] justify-center"
+                      disabled
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
+                          <Lock className="h-3 w-3" />
+                        </div>
+                        <span className="hidden sm:inline">Add Source ({sources.length}/{limits.maxSources})</span>
+                        <span className="sm:hidden">Locked</span>
+                      </div>
+                    </button>
+                    <div className="absolute -top-2 -right-2 bg-yellow-100 rounded-full p-1">
+                      <Crown className="w-4 h-4 text-yellow-600" />
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Sources List - Mobile optimized */}
-        {sourcesArray.length === 0 ? (
-          <div className="mobile-card text-center">
-            <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-              <Plus className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="responsive-title font-semibold text-gray-800 mb-2">No Sources Yet</h3>
-            <p className="text-gray-600 mb-6 max-w-md mx-auto responsive-subtitle">
-              Add your favorite blogs and news sites to start generating content digests.
-            </p>
-            <button onClick={() => setShowForm(true)} className="mobile-button">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Your First Source
-            </button>
-          </div>
-        ) : (
-          /* Mobile-responsive Sources Grid */
-          <div className="mobile-grid">
-            {sourcesArray.map((source) => (
-              <div key={source.id} className="mobile-card hover-lift">
-                <div className="space-y-4">
-                  {/* Source Header */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {getTypeIcon(source.type)}
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-800 truncate" title={source.name}>
-                        {source.name}
-                      </h3>
-                    </div>
-                    <button
-                      onClick={() => toggleSourceStatus(source)}
-                      className={`flex-shrink-0 w-3 h-3 rounded-full transition-colors ${
-                        source.isActive ? 'bg-green-500' : 'bg-gray-300'
-                      }`}
-                      title={source.isActive ? 'Active' : 'Inactive'}
-                    />
-                  </div>
-
-                  {/* Source Details */}
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-600 truncate" title={source.url}>{source.url}</p>
-                    {source.description && (
-                      <p className="text-sm text-gray-500 line-clamp-2">
-                        {source.description}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Source Badges */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="badge-secondary text-xs">
-                      {source.type === 'podcast' ? 'Podcast' : source.type === 'blog' ? 'Blog' : 'Website'}
-                    </span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      source.isActive ? 'badge-success' : 'badge-secondary'
-                    }`}>
-                      {source.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-
-                  {/* Last Scraped */}
-                  <div className="text-xs text-gray-500">
-                    Last Scraped: {formatDate(source.lastScraped)}
-                  </div>
-
-                  {/* Action Buttons - Mobile friendly */}
-                  <div className="mobile-stack">
-                    <button
-                      onClick={() => handleEdit(source)}
-                      className="btn-ghost btn-sm flex-1 sm:flex-none touch-target"
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setDeleteDialog(source)}
-                      className="btn-ghost btn-sm text-red-600 hover:text-red-700 hover:bg-red-50 flex-1 sm:flex-none touch-target"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete
-                    </button>
-                  </div>
-                </div>
+                
+                {/* Debug Reset Button - Mobile responsive */}
+                {globalProcessing && (
+                  <button
+                    onClick={() => {
+                      console.log('🔧 Resetting global processing state');
+                      setGlobalProcessing(false);
+                      setCurrentTask(null);
+                      setTaskProgress(null);
+                      setIsPollingTask(false);
+                    }}
+                    className="btn-secondary text-red-600 border-red-300 hover:bg-red-50 hover:border-red-500"
+                  >
+                    <span className="hidden sm:inline">🔧 重置状态</span>
+                    <span className="sm:hidden">Reset</span>
+                  </button>
+                )}
               </div>
-            ))}
+            </div>
+
+            {/* Task Progress - Mobile optimized */}
+            {globalProcessing && (
+              <div className="mobile-card bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 mb-6">
+                <div className="mobile-stack mb-4">
+                  <h3 className="text-lg font-semibold text-blue-800 flex items-center">
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    <span className="hidden sm:inline">Processing in Progress</span>
+                    <span className="sm:hidden">Processing...</span>
+                  </h3>
+                  {taskProgress && (
+                    <span className="text-sm text-blue-600 font-medium">
+                      {taskProgress.current || 0} / {taskProgress.total || 0}
+                    </span>
+                  )}
+                </div>
+                
+                {/* Mobile-friendly progress info */}
+                <div className="text-sm text-blue-700 mb-4 bg-blue-100 rounded-md p-3">
+                  ⏱️ <strong>Time:</strong> 1-5 min • AI summaries generating
+                </div>
+                
+                {/* Progress bar */}
+                {taskProgress && (
+                  <div className="w-full bg-blue-200 rounded-full h-3 mb-4">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-500 ease-out" 
+                      style={{ 
+                        width: `${taskProgress.total ? Math.max(5, (taskProgress.current / taskProgress.total) * 100) : 5}%` 
+                      }}
+                    ></div>
+                  </div>
+                )}
+                
+                {/* Current source - mobile responsive */}
+                {taskProgress?.current_source && (
+                  <div className="text-sm text-blue-700 mb-3 bg-white rounded-md p-3 border border-blue-100">
+                    🔄 <strong>Processing:</strong>
+                    <div className="mt-1 text-blue-800 font-medium truncate">
+                      {taskProgress.current_source}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Mobile-friendly progress grid */}
+                {taskProgress && (
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                    <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="text-lg font-semibold text-green-600">
+                        {taskProgress.processed_sources?.length || 0}
+                      </div>
+                      <div className="text-green-700 text-xs">Completed</div>
+                    </div>
+                    <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="text-lg font-semibold text-orange-600">
+                        {taskProgress.skipped_sources?.length || 0}
+                      </div>
+                      <div className="text-orange-700 text-xs">Skipped</div>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="text-lg font-semibold text-blue-600">
+                        {taskProgress.processed_sources?.reduce((total: number, source: any) => total + (source.articles_count || 0), 0) || 0}
+                      </div>
+                      <div className="text-blue-700 text-xs">Articles</div>
+                    </div>
+                    <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-200">
+                      <div className="text-lg font-semibold text-purple-600">
+                        {currentTask?.status || 'running'}
+                      </div>
+                      <div className="text-purple-700 text-xs">Status</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+                        {/* Process Results - Mobile optimized */}
+            {processResults && (
+              <div className="mb-8">
+                <Card className={`mobile-card ${
+                  processResults.success 
+                    ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-md' 
+                    : 'bg-red-50 border-red-200'
+                }`}>
+                  <CardHeader className="pb-4">
+                    <div className="mobile-stack">
+                      <CardTitle className={`flex items-center ${
+                        processResults.success ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        {processResults.success ? (
+                          <CheckCircle className="h-6 w-6 mr-2" />
+                        ) : (
+                          <AlertCircle className="h-6 w-6 mr-2" />
+                        )}
+                        <span className="hidden sm:inline">
+                          {processResults.success ? 'Processing Complete!' : 'Processing Failed'}
+                        </span>
+                        <span className="sm:hidden">
+                          {processResults.success ? 'Complete!' : 'Failed'}
+                        </span>
+                      </CardTitle>
+                      {processResults.success && (
+                        <Button 
+                          onClick={() => window.location.href = '/digests'}
+                          className="mobile-button bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                        >
+                          📖 View Digest
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Mobile-optimized success content */}
+                    {processResults.success ? (
+                      <div className="mobile-content">
+                        <div className="bg-white rounded-lg p-4 border border-green-100">
+                          <p className="text-green-800 font-medium mb-2 text-sm sm:text-base">
+                            🎉 Your digest has been generated successfully!
+                          </p>
+                          <p className="text-green-700 text-sm">
+                            Content summarized and ready to read.
+                          </p>
+                        </div>
+                        
+                        <div className="mobile-grid">
+                          <div className="text-center p-4 bg-white rounded-lg border border-green-100">
+                            <div className="text-xl sm:text-2xl font-bold text-green-600">
+                              {processResults?.data?.processedSources?.length || 0}
+                            </div>
+                            <div className="text-xs sm:text-sm text-green-700">Sources</div>
+                          </div>
+                          <div className="text-center p-4 bg-white rounded-lg border border-green-100">
+                            <div className="text-xl sm:text-2xl font-bold text-blue-600">
+                              {processResults?.data?.totalSummaries || 0}
+                            </div>
+                            <div className="text-xs sm:text-sm text-blue-700">Summaries</div>
+                          </div>
+                          <div className="text-center p-4 bg-white rounded-lg border border-green-100">
+                            <div className="text-xl sm:text-2xl font-bold text-orange-600">
+                              {processResults?.data?.skippedSources?.length || 0}
+                            </div>
+                            <div className="text-xs sm:text-sm text-orange-700">Skipped</div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-red-700 bg-white rounded-lg p-4 border border-red-200">
+                        <p className="font-medium text-sm sm:text-base">Processing Failed:</p>
+                        <p className="text-sm mt-1">{processResults?.error || 'Unknown error occurred'}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Sources List - Mobile optimized */}
+            {sourcesArray.length === 0 ? (
+              <div className="mobile-card text-center">
+                <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                  <Plus className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="responsive-title font-semibold text-gray-800 mb-2">No Sources Yet</h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto responsive-subtitle">
+                  Add your favorite blogs and news sites to start generating content digests.
+                </p>
+                <button 
+                  onClick={() => setShowForm(true)} 
+                  className="group relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3 min-w-[240px] justify-center mx-auto"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                      <Plus className="h-4 w-4" />
+                    </div>
+                    <span className="text-lg">Add Your First Source</span>
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"></div>
+                </button>
+              </div>
+            ) : (
+              /* Mobile-responsive Sources Grid */
+              <div className="mobile-grid">
+                {sourcesArray.map((source) => (
+                  <div key={source.id} className="mobile-card hover-lift">
+                    <div className="space-y-4">
+                      {/* Source Header */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {getTypeIcon(source.type)}
+                          <h3 className="text-base sm:text-lg font-semibold text-gray-800 truncate" title={source.name}>
+                            {source.name}
+                          </h3>
+                        </div>
+                        <button
+                          onClick={() => toggleSourceStatus(source)}
+                          className={`flex-shrink-0 w-3 h-3 rounded-full transition-colors ${
+                            source.isActive ? 'bg-green-500' : 'bg-gray-300'
+                          }`}
+                          title={source.isActive ? 'Active' : 'Inactive'}
+                        />
+                      </div>
+
+                      {/* Source Details */}
+                      <div className="space-y-2">
+                        <p className="text-sm text-gray-600 truncate" title={source.url}>{source.url}</p>
+                        {source.description && (
+                          <p className="text-sm text-gray-500 line-clamp-2">
+                            {source.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Source Badges */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="badge-secondary text-xs">
+                          {source.type === 'podcast' ? 'Podcast' : source.type === 'blog' ? 'Blog' : 'Website'}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          source.isActive ? 'badge-success' : 'badge-secondary'
+                        }`}>
+                          {source.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+
+                      {/* Last Scraped */}
+                      <div className="text-xs text-gray-500">
+                        Last Scraped: {formatDate(source.lastScraped)}
+                      </div>
+
+                      {/* Action Buttons - Mobile friendly */}
+                      <div className="mobile-stack">
+                        <button
+                          onClick={() => handleEdit(source)}
+                          className="btn-ghost btn-sm flex-1 sm:flex-none touch-target"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setDeleteDialog(source)}
+                          className="btn-ghost btn-sm text-red-600 hover:text-red-700 hover:bg-red-50 flex-1 sm:flex-none touch-target"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
         </div>
       </div>
 
