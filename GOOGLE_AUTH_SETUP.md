@@ -44,7 +44,7 @@ https://您的域名.com
 
 ```
 http://localhost:5173/flowsense/auth/callback
-https://您的域名.com/flowsense/auth/callback
+https://happynocode.github.io/flowsense/auth/callback
 ```
 
 ### 6. 保存凭据
@@ -69,11 +69,11 @@ https://您的域名.com/flowsense/auth/callback
 - 点击 "Authentication" > "URL Configuration"
 - **Site URL**: 
   - 开发环境：`http://localhost:5173/flowsense`
-  - 生产环境：`https://您的域名.com/flowsense`
+  - 生产环境：`https://happynocode.github.io/flowsense`
 - **Redirect URLs**：
   ```
   http://localhost:5173/flowsense
-  https://您的域名.com/flowsense
+  https://happynocode.github.io/flowsense
   ```
 
 ## 第三步：更新项目配置

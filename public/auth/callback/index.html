@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowSense - Redirecting...</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            text-align: center;
+            color: white;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 24px;
+            backdrop-filter: blur(10px);
+        }
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 12px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h1 {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        p {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+        .small {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="white">
+                <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 7.5V9.5L21 9ZM3 9V7L9 7.5V9.5L3 9ZM15 13.5C15.6 13.5 16 13.9 16 14.5S15.6 15.5 15 15.5 14 15.1 14 14.5 14.4 13.5 15 13.5ZM9 13.5C9.6 13.5 10 13.9 10 14.5S9.6 15.5 9 15.5 8 15.1 8 14.5 8.4 13.5 9 13.5ZM12 13.5C12.6 13.5 13 13.9 13 14.5S12.6 15.5 12 15.5 11 15.1 11 14.5 11.4 13.5 12 13.5Z"/>
+            </svg>
+        </div>
+        <h1><span style="background: linear-gradient(45deg, #ff6b6b, #4ecdc4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Flow</span>Sense</h1>
+        <p><span class="spinner"></span>Redirecting to secure login...</p>
+        <p class="small">Please wait while we complete your authentication.</p>
+    </div>
+
+    <script>
+        console.log('🔄 OAuth 重定向处理器启动...');
+        console.log('📍 当前URL:', window.location.href);
+        
+        // 获取当前 URL 的所有参数
+        const currentUrl = window.location.href;
+        const urlObj = new URL(currentUrl);
+        
+        // 构建正确的重定向 URL
+        const correctPath = '/flowsense/auth/callback';
+        const newUrl = `${urlObj.origin}${correctPath}${urlObj.search}${urlObj.hash}`;
+        
+        console.log('🔄 从错误路径重定向:', currentUrl);
+        console.log('🎯 重定向到正确路径:', newUrl);
+        
+        // 立即重定向到正确的路径
+        setTimeout(() => {
+            console.log('✅ 执行重定向...');
+            window.location.replace(newUrl);
+        }, 1000); // 1秒延迟，让用户看到加载状态
+    </script>
+</body>
+</html> 
