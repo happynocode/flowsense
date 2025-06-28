@@ -917,20 +917,20 @@ const Sources = () => {
                       </div>
 
                       {/* Action Buttons - Mobile optimized */}
-                      <div className="mobile-action-buttons">
+                      <div className="mobile-action-buttons pt-2">
                         <button
                           onClick={() => handleEdit(source)}
                           className="btn-mobile-action flex-1 sm:flex-none"
                         >
-                          <Edit className="w-4 h-4" />
-                          <span>Edit</span>
+                          <Edit className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">Edit</span>
                         </button>
                         <button
                           onClick={() => setDeleteDialog(source)}
                           className="btn-mobile-action-danger flex-1 sm:flex-none"
                         >
-                          <Trash2 className="w-4 h-4" />
-                          <span>Delete</span>
+                          <Trash2 className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">Delete</span>
                         </button>
                       </div>
                     </div>
