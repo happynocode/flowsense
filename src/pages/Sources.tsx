@@ -878,11 +878,15 @@ const Sources = () => {
                         </div>
                         <button
                           onClick={() => toggleSourceStatus(source)}
-                          className={`flex-shrink-0 w-3 h-3 rounded-full transition-colors ${
-                            source.isActive ? 'bg-green-500' : 'bg-gray-300'
+                          className={`flex-shrink-0 p-2 rounded-lg transition-colors hover:bg-gray-100 ${
+                            source.isActive ? 'text-green-600' : 'text-gray-400'
                           }`}
-                          title={source.isActive ? 'Active' : 'Inactive'}
-                        />
+                          title={source.isActive ? 'Active - Click to deactivate' : 'Inactive - Click to activate'}
+                        >
+                          <div className={`w-3 h-3 rounded-full ${
+                            source.isActive ? 'bg-green-500' : 'bg-gray-300'
+                          }`} />
+                        </button>
                       </div>
 
                       {/* Source Details */}
@@ -912,21 +916,21 @@ const Sources = () => {
                         Last Scraped: {formatDate(source.lastScraped)}
                       </div>
 
-                      {/* Action Buttons - Mobile friendly */}
-                      <div className="mobile-stack">
+                      {/* Action Buttons - Mobile optimized */}
+                      <div className="mobile-action-buttons">
                         <button
                           onClick={() => handleEdit(source)}
-                          className="btn-ghost btn-sm flex-1 sm:flex-none touch-target"
+                          className="btn-mobile-action flex-1 sm:flex-none"
                         >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
+                          <Edit className="w-4 h-4" />
+                          <span>Edit</span>
                         </button>
                         <button
                           onClick={() => setDeleteDialog(source)}
-                          className="btn-ghost btn-sm text-red-600 hover:text-red-700 hover:bg-red-50 flex-1 sm:flex-none touch-target"
+                          className="btn-mobile-action-danger flex-1 sm:flex-none"
                         >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete</span>
                         </button>
                       </div>
                     </div>

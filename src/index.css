@@ -280,6 +280,11 @@
     @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6;
   }
 
+  /* Hover effect for cards */
+  .hover-lift {
+    @apply transition-transform duration-200 hover:scale-[1.02] hover:shadow-lg;
+  }
+
   .mobile-button {
     @apply btn-primary w-full sm:w-auto text-center;
   }
@@ -332,6 +337,20 @@
   /* Stack elements vertically on mobile */
   .mobile-stack {
     @apply flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4;
+  }
+
+  /* Improved mobile button layout for action buttons */
+  .mobile-action-buttons {
+    @apply flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2;
+  }
+
+  /* Mobile-optimized button styles */
+  .btn-mobile-action {
+    @apply bg-transparent hover:bg-gray-100 text-gray-700 font-medium px-4 py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 min-h-[44px] text-sm border border-transparent hover:border-gray-200;
+  }
+
+  .btn-mobile-action-danger {
+    @apply bg-transparent hover:bg-red-50 text-red-600 hover:text-red-700 font-medium px-4 py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 min-h-[44px] text-sm border border-transparent hover:border-red-200;
   }
 
   /* Hide on mobile, show on desktop */
