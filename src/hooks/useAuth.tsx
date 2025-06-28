@@ -121,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     lastAutoDigestRun: autoDigestSettings.lastAutoDigestRun
                   };
                   
-                  console.log('✅ 后台刷新完成，更新用户数据:', updatedUserData);
+                  console.log('✅ 后台刷新完成，更新用户数据');
                   setUser(updatedUserData);
                 } catch (bgRefreshError) {
                   console.warn('⚠️ 后台刷新订阅信息失败，保持默认值:', bgRefreshError);
@@ -142,10 +142,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const session = sessionResult.data?.session;
-      console.log('✅ session 检查完成:', { 
-        hasSession: !!session, 
-        userEmail: session?.user?.email,
-        error: sessionResult.error?.message 
+      console.log('✅ session 检查完成:', {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        error: sessionResult.error?.message
       });
 
       if (sessionResult.error) {
@@ -248,10 +248,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           userWithFullInfo.subscriptionTier = 'free';
         }
         
-        console.log('🔍 [DEBUG] 强制刷新后的最终用户对象:', userWithFullInfo);
+        console.log('🔍 [DEBUG] 强制刷新后的最终用户对象已设置');
         console.log('🔍 [DEBUG] 订阅状态 - subscriptionTier:', userWithFullInfo.subscriptionTier);
-        
-        console.log('🔄 一次性设置完整用户数据:', userWithFullInfo);
+
+        console.log('🔄 一次性设置完整用户数据完成');
         setUser(userWithFullInfo);
         
         // 🔍 验证设置结果
@@ -276,7 +276,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           lastAutoDigestRun: undefined
         };
         
-        console.log('🔄 设置带默认值的用户数据:', userWithDefaults);
+        console.log('🔄 设置带默认值的用户数据完成');
         setUser(userWithDefaults);
       }
       
@@ -423,7 +423,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!error) {
             existingUser = data;
           }
-          console.log('🔍 [诊断] 按ID查询现有用户结果:', existingUser);
+          console.log('🔍 [诊断] 按ID查询现有用户结果:', !!existingUser);
         } catch (idError) {
           console.log('🔍 [诊断] 按ID查询失败，尝试按email查询:', idError);
         }
@@ -543,8 +543,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw error;
         }
         
-        console.log('✅ 用户数据库同步成功:', data);
-        console.log('🔍 [诊断] 成功返回的数据:', data);
+        console.log('✅ 用户数据库同步成功');
+        console.log('🔍 [诊断] 成功返回数据');
         return data;
       }, 3, 1000);
       
@@ -558,7 +558,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      console.log('📝 开始注册用户:', email);
+      console.log('📝 开始注册用户');
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -614,7 +614,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('🔐 开始登录用户:', email);
+      console.log('🔐 开始登录用户');
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -641,7 +641,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
 
-      console.log('✅ 登录成功:', data.user?.email);
+      console.log('✅ 登录成功');
       
       if (data.user) {
         toast({
@@ -935,7 +935,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             autoDigestTimezone: 'UTC',
             lastAutoDigestRun: undefined
           };
-          console.log('📋 设置带默认值的完整用户对象:', authUserDataWithDefaults);
+          console.log('📋 设置带默认值的完整用户对象完成');
           setUser(authUserDataWithDefaults);
         }
         setLoading(false);

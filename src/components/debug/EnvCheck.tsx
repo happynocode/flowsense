@@ -6,11 +6,13 @@ const EnvCheck = () => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   
-  console.log('🔧 环境变量详细检查:', {
-    VITE_SUPABASE_URL: supabaseUrl,
-    VITE_SUPABASE_ANON_KEY: supabaseKey ? `${supabaseKey.substring(0, 20)}...` : 'undefined',
-    allEnvVars: import.meta.env
-  });
+  // 安全的环境变量检查 - 不在控制台输出敏感信息
+  if (import.meta.env.DEV) {
+    console.log('🔧 环境变量检查:', {
+      VITE_SUPABASE_URL: supabaseUrl ? '已设置' : '未设置',
+      VITE_SUPABASE_ANON_KEY: supabaseKey ? '已设置' : '未设置'
+    });
+  }
 
   const checks = [
     {

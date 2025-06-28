@@ -820,13 +820,13 @@ export const userApi = {
       // 🔧 增强查询：同时获取用户基础信息用于调试
       const { data, error } = await supabase
         .from('users')
-        .select('auto_digest_enabled, auto_digest_time, auto_digest_timezone, last_auto_digest_run, created_at, updated_at, email')
+        .select('auto_digest_enabled, auto_digest_time, auto_digest_timezone, last_auto_digest_run, created_at, updated_at')
         .eq('id', user.id)
         .single();
 
       console.log('🔍 Database query result:');
       console.log('  - Error:', error);
-      console.log('  - Data:', data);
+      console.log('  - Has data:', !!data);
       console.log('  - Raw auto_digest_enabled:', data?.auto_digest_enabled, typeof data?.auto_digest_enabled);
 
       if (error) {
