@@ -43,8 +43,8 @@ https://您的域名.com
 这些是完整的回调 URL：
 
 ```
-http://localhost:5173/flowsense/auth/callback
-https://happynocode.github.io/flowsense/auth/callback
+http://localhost:5173/flowsense
+https://happynocode.github.io/flowsense
 ```
 
 ### 6. 保存凭据
@@ -150,8 +150,8 @@ npm run dev
 
 **解决方案**:
 1. 检查 Google Cloud Console 中的 "Authorized redirect URIs"
-2. 确保包含：`http://localhost:5173/flowsense/auth/callback`
-3. 如果是生产环境，确保包含：`https://您的域名.com/flowsense/auth/callback`
+2. 确保包含：`http://localhost:5173/flowsense`
+3. 如果是生产环境，确保包含：`https://您的域名.com/flowsense`
 
 ### "Invalid Origin" 错误
 **原因**: JavaScript origins 配置不正确

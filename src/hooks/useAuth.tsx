@@ -696,7 +696,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/flowsense/auth/callback`,
+          redirectTo: `${window.location.origin}/flowsense/`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -865,6 +865,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         console.log('✅ Supabase 客户端检查通过');
+        
+        // 检查URL中是否包含OAuth回调参数
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlHash = window.location.hash;
+        const hasOAuthParams = urlParams.has('code') || 
+                              urlParams.has('access_token') || 
+                              urlHash.includes('access_token') ||
+                              urlHash.includes('refresh_token');
+        
+        if (hasOAuthParams) {
+          console.log('🔗 检测到OAuth回调参数，让Supabase处理认证...');
+          try {
+            // Supabase会自动处理URL中的认证信息
+            const { data: session, error } = await supabase.auth.getSession();
+            if (error) {
+              console.error('❌ 处理OAuth回调时出错:', error);
+            } else if (session?.session) {
+              console.log('✅ OAuth认证成功，用户已登录');
+              // 清理URL中的认证参数
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          } catch (error) {
+            console.error('❌ OAuth回调处理失败:', error);
+          }
+        }
         
         try {
           console.log('📡 初始化时刷新用户状态...');

@@ -8,7 +8,6 @@ import Header from "./components/layout/Header";
 import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
-import AuthCallback from "./pages/AuthCallback";
 
 import Sources from "./pages/Sources";
 import Digests from "./pages/Digests";
@@ -31,7 +30,6 @@ const App = () => (
             <Header />
             <Routes>
               <Route path="/login" element={<Login />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/" element={<Index />} />
               <Route path="/sources" element={<Sources />} />
               <Route path="/digests" element={<Digests />} />
