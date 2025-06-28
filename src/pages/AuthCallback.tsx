@@ -12,14 +12,20 @@ const AuthCallback = () => {
     const handleAuthCallback = async () => {
       try {
         console.log('🔄 处理 OAuth 回调...');
+        console.log('📍 当前 URL:', window.location.href);
+        console.log('🔍 URL 参数:', window.location.search);
+        console.log('🔍 URL Hash:', window.location.hash);
         
-        // 获取当前 URL 的 hash 或 search 参数
+        // 检查 URL 参数中是否有认证相关的信息
         const urlParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         
         // 检查是否有错误
         const error = urlParams.get('error') || hashParams.get('error');
         const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
+        const code = urlParams.get('code') || hashParams.get('code');
+        
+        console.log('🔍 认证信息:', { error, errorDescription, code });
         
         if (error) {
           console.error('❌ OAuth 回调错误:', error, errorDescription);
@@ -41,8 +47,18 @@ const AuthCallback = () => {
           return;
         }
 
-        // 处理 OAuth 会话
-        const { data, error: sessionError } = await supabase.auth.getSession();
+        // 如果有认证代码，说明这是 OAuth 回调
+        if (code) {
+          console.log('✅ 检测到认证代码，处理 OAuth 会话...');
+          
+          // 对于 Supabase OAuth，我们通常让它自动处理
+          // 等待一小段时间让 Supabase 处理认证
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        // 备用方案：检查当前会话
+        console.log('🔄 检查当前会话...');
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
           console.error('❌ 获取会话失败:', sessionError);
@@ -55,17 +71,17 @@ const AuthCallback = () => {
           return;
         }
 
-        if (data.session) {
-          console.log('✅ OAuth 登录成功:', data.session.user.email);
+        if (sessionData.session) {
+          console.log('✅ 找到现有会话:', sessionData.session.user.email);
           toast({
             title: "登录成功",
-            description: `欢迎回到 FlowSense，${data.session.user.email}！`,
+            description: `欢迎回到 FlowSense，${sessionData.session.user.email}！`,
           });
           
           // 跳转到主页
           navigate('/', { replace: true });
         } else {
-          console.warn('⚠️ 没有找到有效会话');
+          console.warn('⚠️ 没有找到有效会话或认证代码');
           toast({
             title: "登录失败",
             description: "认证过程中出现问题，请重试。",
@@ -85,7 +101,10 @@ const AuthCallback = () => {
       }
     };
 
-    handleAuthCallback();
+    // 添加一个小延迟确保 DOM 完全加载
+    const timeoutId = setTimeout(handleAuthCallback, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, [navigate, toast]);
 
   return (
